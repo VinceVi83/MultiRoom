@@ -35,8 +35,6 @@ class VlControl():
         if token == 1:
             self.cmd_simple(cmd[0])
             return 0
-        # Raise une erreur cela serai mieux
-        return -100
 
     def cmd_complicated(self, cmd):
         """
@@ -58,24 +56,24 @@ class VlControl():
         :param action:
         :return:
         """
-        cmd = self.base_cmd + action
+        cmd = self.base_cmd + Ctes.vlc[action]
         os.system(cmd)
         return 0
 
     def change_volume(self, val_volume):
-        cmd = self.base_cmd + Ctes.vlc.get('vol') + val_volume
+        cmd = self.base_cmd + Ctes.vlc['vol'] + val_volume
         os.system(cmd)
         return 0
 
     def sort_playlist(self, type_classement, ordre):
         if ordre == 0:
-            cmd = self.base_cmd + Ctes.vlc.get('ordre') + type_classement
+            cmd = self.base_cmd + Ctes.vlc['order'] + type_classement
         if ordre == 1:
-            cmd = self.base_cmd + Ctes.vlc.get('Rordre') + type_classement
+            cmd = self.base_cmd + Ctes.vlc['Rordre'] + type_classement
         os.system(cmd)
         return 0
 
     def change_playlist(self, directory):
-        cmd = self.base_cmd + Ctes.vlc.get('dossier') + directory
+        cmd = self.base_cmd + Ctes.vlc['dossier'] + directory
         os.system(cmd)
         return 0
