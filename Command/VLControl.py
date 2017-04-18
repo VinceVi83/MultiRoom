@@ -15,11 +15,13 @@ class VlControl():
         self.base_cmd = 'wget --http-user=' + Ctes.user_vlc + ' --http-password=' + Ctes.pwd_vlc + ' 127.0.0.1:' + self.port + '/requests/status.xml?command_play='
 
     def kill_vlc(self):
+        # TODO : need to kill VLC cleanly for multi users purpose
         os.system('killall vlc')
-        return 0
+        return 1
 
     def start_vlc(self, path):
         os.system('lancer_vlc.sh ' + self.port + ' ' + path + '&')
+        return 1
 
     def interpretation_command_vlc(self, cmd):
         """
@@ -31,10 +33,10 @@ class VlControl():
 
         if token > 1:
             self.cmd_complicated(cmd)
-            return 0
+            return 1
         if token == 1:
             self.cmd_simple(cmd[0])
-            return 0
+            return 1
 
     def cmd_complicated(self, cmd):
         """
@@ -45,10 +47,13 @@ class VlControl():
         """
         if cmd[0] == 'vol':
             self.change_volume(cmd[1])
+            return 1
         if cmd[0] == 'dossier':
             self.change_playlist(cmd[1])
+            return 1
         if cmd[0] == 'sort':
             self.sort_playlist(cmd[1], cmd[2])
+            return 1
 
     def cmd_simple(self, action):
         """
@@ -58,12 +63,12 @@ class VlControl():
         """
         cmd = self.base_cmd + Ctes.vlc[action]
         os.system(cmd)
-        return 0
+        return 1
 
     def change_volume(self, val_volume):
         cmd = self.base_cmd + Ctes.vlc['vol'] + val_volume
         os.system(cmd)
-        return 0
+        return 1
 
     def sort_playlist(self, type_classement, ordre):
         if ordre == 0:
@@ -71,9 +76,9 @@ class VlControl():
         if ordre == 1:
             cmd = self.base_cmd + Ctes.vlc['Rordre'] + type_classement
         os.system(cmd)
-        return 0
+        return 1
 
     def change_playlist(self, directory):
         cmd = self.base_cmd + Ctes.vlc['dossier'] + directory
         os.system(cmd)
-        return 0
+        return 1
