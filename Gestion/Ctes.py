@@ -24,6 +24,10 @@ path_home = '/home/' + user_linux + '/'
 path_cron = '/var/spool/cron/crontabs/'
 path_playlist = getVarEnvironnement("path_playlist")
 
+# User tempory method
+users = {}
+users["toto"] = 'toto'
+
 '''
 Constants by default
 '''
