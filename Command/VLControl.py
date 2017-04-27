@@ -1,8 +1,11 @@
 __author__ = 'VinceVi83'
 
+# !/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 import os
 from Gestion import Ctes
-
+from Gestion.Enum import *
 
 
 class VlControl():
@@ -12,18 +15,19 @@ class VlControl():
 
     def __init__(self, port):
         self.port = port
-        self.base_cmd = 'wget --http-user=' + Ctes.user_vlc + ' --http-password=' + Ctes.pwd_vlc + ' 127.0.0.1:' + self.port + '/requests/status.xml?command_play='
+        self.baseCMD = 'wget --http-user=' + Ctes.user_vlc + ' --http-password=' + Ctes.pwd_vlc + ' 127.0.0.1:' + self.port + '/requests/status.xml?command_play='
 
-    def kill_vlc(self):
+    def killVLC(self):
         # TODO : need to kill VLC cleanly for multi users purpose
         os.system('killall vlc')
-        return 1
+        return ReturnCode.Succes
 
-    def start_vlc(self, path):
+    def startVLC(self, path):
+        # TODO : need to get the PID of new VLC client to kill it and need to check path... and if there some music files
         os.system('lancer_vlc.sh ' + self.port + ' ' + path + '&')
-        return 1
+        return ReturnCode.Succes
 
-    def interpretation_command_vlc(self, cmd):
+    def interpretationCommandVLC(self, cmd):
         """
         This function interpret the command launch the command depend of the complexity of the command
         :param cmd:
@@ -32,13 +36,14 @@ class VlControl():
         token = len(cmd)
 
         if token > 1:
-            self.cmd_complicated(cmd)
-            return 1
+            self.cmdComplicated(cmd)
+            return ReturnCode.Succes
         if token == 1:
-            self.cmd_simple(cmd[0])
-            return 1
+            self.cmdSimple(cmd[0])
+            return ReturnCode.Succes
+        return ReturnCode.ErrInvalidArgument
 
-    def cmd_complicated(self, cmd):
+    def cmdComplicated(self, cmd):
         """
         Manage to complex command as change volume, listen a repertory or sort the current playlist.
         A complex command is a command with need more than 1 argument to work
@@ -46,39 +51,44 @@ class VlControl():
         :return:
         """
         if cmd[0] == 'vol':
-            self.change_volume(cmd[1])
-            return 1
+            self.changeVolume(cmd[1])
+            return ReturnCode.Succes
         if cmd[0] == 'dossier':
-            self.change_playlist(cmd[1])
-            return 1
+            self.changePlaylist(cmd[1])
+            return ReturnCode.Succes
         if cmd[0] == 'sort':
-            self.sort_playlist(cmd[1], cmd[2])
-            return 1
+            self.sortPlaylist(cmd[1], cmd[2])
+            return ReturnCode.Succes
+        return ReturnCode.ErrInvalidArgument
 
-    def cmd_simple(self, action):
+    def cmdSimple(self, action):
         """
         Execute the simple command to VLC
         :param action:
         :return:
         """
-        cmd = self.base_cmd + Ctes.vlc[action]
+        cmd = self.baseCMD + Ctes.vlc[action]
         os.system(cmd)
-        return 1
+        return ReturnCode.Succes
 
-    def change_volume(self, val_volume):
-        cmd = self.base_cmd + Ctes.vlc['vol'] + val_volume
+    def changeVolume(self, valVolume):
+        cmd = self.baseCMD + Ctes.vlc['vol'] + valVolume
         os.system(cmd)
-        return 1
+        return ReturnCode.Succes
 
-    def sort_playlist(self, type_classement, ordre):
+    def sortPlaylist(self, typeClassement, ordre):
+        cmd = ""
         if ordre == 0:
-            cmd = self.base_cmd + Ctes.vlc['order'] + type_classement
+            cmd = self.baseCMD + Ctes.vlc['order'] + typeClassement
         if ordre == 1:
-            cmd = self.base_cmd + Ctes.vlc['Rordre'] + type_classement
+            cmd = self.baseCMD + Ctes.vlc['Rordre'] + typeClassement
+        if cmd == "":
+            return ReturnCode.ErrInvalidArgument
         os.system(cmd)
-        return 1
+        return ReturnCode.Succes
 
-    def change_playlist(self, directory):
-        cmd = self.base_cmd + Ctes.vlc['dossier'] + directory
+
+    def changePlaylist(self, directory):
+        cmd = self.baseCMD + Ctes.vlc['dossier'] + directory
         os.system(cmd)
-        return 1
+        return ReturnCode.Succes

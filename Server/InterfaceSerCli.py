@@ -1,9 +1,13 @@
 __author__ = 'VinceVi83'
 
+# !/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 import  socket, select
 from Server import Service
 from Gestion import Ctes
 from Gestion import Interpretation
+from Gestion.Enum import *
 
 CONNECTION_LIST = []  # list of socket clients
 RECV_BUFFER = 4096  # Advisable to keep it as an exponent of 2
@@ -81,7 +85,5 @@ def serveur_master():
 
                     send = Interpretation.cmd(activeUser[msg[0]], msg[1:])
                     sock.send(send.encode())
-
-    server_socket.close()
 
 serveur_master()

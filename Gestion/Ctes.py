@@ -1,4 +1,7 @@
-__author__ = 'vinsento'
+__author__ = 'VinceVi83'
+
+# !/usr/bin/env python3
+# -*- coding: utf-8 -*-
 
 
 """
@@ -82,3 +85,6 @@ mutagen_keys['copyright'] = ['TCOP']
 mutagen_keys['langage'] = ['TLAN']
 mutagen_keys['date'] = ['TDRC']
 mutagen_keys['piste'] = ['TRCK']
+
+# Need to be fill by file or database by user
+listRPIs = []

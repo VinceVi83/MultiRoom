@@ -1,25 +1,36 @@
+__author__ = 'VinceVi83'
+
+# !/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 import socket
+from Gestion.Enum import *
 
 class InterfaceSerRPIs:
     def __init__(self, ip):
         self.ip = ip
         self.port = 8888
-        self.connexion_RPI = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.connexion_RPI.connect((self.ip, self.port))
-        print("Connexion établie avec le serveur sur le port {}".format(self.port))
+        self.connexionRPI = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        print("Connexion etablie avec le serveur sur le port {}".format(self.port))
+        self.launchConnection()
 
-    def launch_connexion(self, cmd):
-        # ~ self.connect_to_RPI()
-        self.envoi_msg(cmd)
+    def launchConnection(self):
+        try:
+            self.connexionRPI.connect((self.ip, self.port))
+            return ReturnCode.Succes
+        except:
+            print("Client (%s, %s) is offline")
+            return ReturnCode.ErrNotConnected
 
-    def presence(self):
-        self.envoi_msg('Connected ?')
-        self.deconnexion()
-
-    def envoi_msg(self, msg):
-        # ~ msg_a_envoyer = b""
-        self.connexion_RPI.send(msg.encode())
+    def sendMsg(self, msg):
+        try:
+            self.connexionRPI.send(msg.encode())
+            return ReturnCode.Succes
+        except:
+            print("Client (%s, %s) is offline")
+            self.deconnexion()
+            return ReturnCode.ErrNotConnected
 
     def deconnexion(self):
         print("Fermeture de la connexion")
-        self.connexion_RPI.close()
+        self.connexionRPI.close()

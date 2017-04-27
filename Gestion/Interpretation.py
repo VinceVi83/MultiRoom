@@ -1,5 +1,9 @@
 __author__ = 'VinceVi83'
 
+# !/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+from Gestion.Enum import *
 
 """
 Command
@@ -8,18 +12,21 @@ Command
 def cmd(user_service, command):
     # Example application.commande
     if command[0] is "VLC":
-        if user_service.init == False:
+        if not user_service.init:
             user_service.init_vlc(command[1], command[2:])
-            return
+            return ReturnCode.Succes
 
     if command[1] is "kill":
         user_service.VLC.kill_vlc()
         user_service.stop_stream()
-        return
+        return ReturnCode.Succes
 
-    user_service.VLC.interpretation_command_vlc(command[1:])
+    user_service.VLC.interpretationCommandVLC(command[1:])
     return
 
 def cmdRPI():
-    print("Not implemented")
-    return
+    print("Not implemented for process automation purpose")
+    return ReturnCode.Succes
+
+def permissionUser():
+    return ReturnCode.ErrNotImplemented

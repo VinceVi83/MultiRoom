@@ -7,6 +7,8 @@ import socket
 import Gestion.Ctes
 from Command.VLControl import VlControl
 import time
+from Gestion.Enum import *
+from Server.InterfaceSerRPIs import InterfaceSerRPIs
 
 class Service:
     def __init__(self, port_local, port_stream):
@@ -16,27 +18,30 @@ class Service:
         self.path = []
         self.stream_to_ip = []
 
-    def init_vlc(self, path, ip_s):
+    def initVLC(self, path, ip_s):
         self.path = path
         self.ip_s = ip_s
-        self.VLC.start_vlc(path)
+        self.VLC.startVLC(path)
+        # I hope the server don't lag
         time.sleep(10)
-        self.start_stream(ip_s)
+        self.startStream(ip_s)
         self.init = True
+        return ReturnCode.Succes
 
-    def start_stream(self, ip):
+    def startStream(self, ip):
         for ip in self.stream_to_ip:
             self.sendCommand('VLC.Start.' + Gestion.Ctes.local_ip + ":" + self.port_stream)
+        return ReturnCode.Succes
 
-    def stop_stream(self):
+    def stopStream(self):
         for ip in self.stream_to_ip:
             self.sendCommand('VLC.Stop')
-        self.VLC.kill_vlc()
+        self.VLC.killVLC()
+        return ReturnCode.Succes
 
     def sendCommand(self, ip, cmd):
-        port = 8888
-        connexion_RPI = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        connexion_RPI.connect((ip, port))
-
-        connexion_RPI.send(cmd.encode())
-        connexion_RPI.close()
+        tmpConnection = InterfaceSerRPIs(ip)
+        tmpConnection.sendMsg(cmd.encode())
+        # TODO : Need to implement ack method for the execution of the command by RPI to server
+        tmpConnection.deconnexion()
+        return ReturnCode.Succes

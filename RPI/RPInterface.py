@@ -1,5 +1,8 @@
 __author__ = 'VinceVi83'
 
+# !/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 from Gestion import Interpretation
 import socket
 import select
@@ -62,4 +65,3 @@ while 1:
                 CONNECTION_LIST.remove(sock)
                 print("Client (%s, %s) is offline", addr)
                 continue
-server_socket.close()
