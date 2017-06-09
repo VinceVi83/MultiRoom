@@ -30,43 +30,47 @@ I hope to create a tag with a with an application with main features before the 
 
 1st Deadline 30/06/2017 : Make everything works as during my student period ie :
 Control VLC with socket so I will concentrate on modules :
+<ul>
+<li>Main objectifs :</li>
+<ul>
+    <li>Server  : InterfaceSerCli, Service</li>
+    <li>Command : VLControl</li>
+    <li>Gestion : Music</li>
+    <li>Gestion : Create some scripts in bash (I lost all my scripts I need for my project)</li>
+    <li>Docs    : Specification and diagrams about my vision of this project</li>
+</ul>
 
-Main objectifs :
-    Server  : InterfaceSerCli, Service
-    Command : VLControl
-    Gestion : Music
-    Gestion : Create some scripts in bash (I lost all my scripts I need for my project)
-    Docs    : Specification and diagrams about my vision of this project
-
-Second objectifs :
-    Command : ManagePlaylist
-    RPI     : Get work RPI AUDIO STREAM !
-    Docs    : Correct some faults ^^
-
-
+<li>Second objectifs :</li>
+<ul>
+    <li>Command : ManagePlaylist</li>
+    <li>RPI     : Get work RPI AUDIO STREAM !</li>
+    <li>Docs    : Correct some faults ^^</li>
+</ul>
+</ul>
 2nd Deadline 31/07/2017 : Create a GUI !
 I will do and GUI with python for PC, if I have a time to spare I try do a WEB interface I worked on Python-Javascript
 Websocket during student project.
-
-Main objectifs :
-    Client  : InterfacePC (temporary name)
-    Command : AlarmMusicClock, ManagePlaylist
-    RPI     : Get work RPI AUDIO STREAM !
-
-Second objectifs :
-    Client  : InterfaceWeb (temporary name)
-    RPI     : InterfaceRPISer, ServiceRPI (Receive audio stream for now)
-    Server  : InterfaceSerRPIs, ScanConnectedRPI
-    Doc     : PythonDoc
-
+<ul>
+<li>Main objectifs :</li>
+<ul>
+    <li>Client  : InterfacePC (temporary name)</li>
+    <li>Command : AlarmMusicClock, ManagePlaylist</li>
+    <li>RPI     : Get work RPI AUDIO STREAM !</li>
+</ul>
+<li>Second objectifs :</li>
+<ul>
+    <li>Client  : InterfaceWeb (temporary name)</li>
+    <li>RPI     : InterfaceRPISer, ServiceRPI (Receive audio stream for now)</li>
+    <li>Server  : InterfaceSerRPIs, ScanConnectedRPI</li>
+    <li>Doc     : PythonDoc</li>
+</ul>
+</ul>
 
 Third Dealine 30/09/2017 : Make all work !
 
-Main objectifs :
-    Everything not finish
+Main objectifs : Everything not finished.
 
-Second objectifs :
-    Add new functionnalities : Android and vocal interfaces, Interact with youtube
+Second objectifs : Add new functionnalities : Android and vocal interfaces, Interact with youtube
 
 I have some ideas for new features but I need to finish main features, I hope I will respect this deadline.
 I will work during my free time because I have a job.
