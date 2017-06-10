@@ -19,8 +19,8 @@ def enum(enumName, *listValueNames):
     return mainType
 
 
-ReturnCode = enum(
-    "Succes",
+ReturnCode = enum("ReturnCode",
+    "Success",
     "Err",
     "ErrNotConnected",
     "ErrNotImplemented",

@@ -9,7 +9,7 @@ from Gestion.Enum import *
 class InterfaceSerRPIs:
     def __init__(self, ip):
         self.ip = ip
-        self.port = 8888
+        self.port = 9999
         self.connexionRPI = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         print("Connexion etablie avec le serveur sur le port {}".format(self.port))
         self.launchConnection()
@@ -17,7 +17,7 @@ class InterfaceSerRPIs:
     def launchConnection(self):
         try:
             self.connexionRPI.connect((self.ip, self.port))
-            return ReturnCode.Succes
+            return ReturnCode.Success
         except:
             print("Client (%s, %s) is offline")
             return ReturnCode.ErrNotConnected
@@ -25,7 +25,7 @@ class InterfaceSerRPIs:
     def sendMsg(self, msg):
         try:
             self.connexionRPI.send(msg.encode())
-            return ReturnCode.Succes
+            return ReturnCode.Success
         except:
             print("Client (%s, %s) is offline")
             self.deconnexion()

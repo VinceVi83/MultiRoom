@@ -55,6 +55,7 @@ def serveur_master():
                     CONNECTION_LIST.remove(sock)
                     continue
                 msg = data.decode()
+                print("Message non split : " + msg)
                 msg = msg.split(".")
                 print(msg)
                 # example first connexion  user.password
@@ -66,15 +67,17 @@ def serveur_master():
                         CONNECTION_LIST.remove(sock)
                         continue
                     # TODO user account --> data base
-                    if msg[1] is not Ctes.users[[0]]:
-                        print("Password not valid, " + msg[1])
+
+                    print(msg[1] != Ctes.users[msg[0]])
+                    if msg[1] != Ctes.users[msg[0]]:
+                        print("Password not valid for " + msg[0] + "/" + msg[1] + "/")
                         sock.send("Denied".encode())
                         sock.close()
                         CONNECTION_LIST.remove(sock)
                         continue
-                    activeUser[msg[0]] = Service.Service(port + len(activeUser), port_stream + len(activeUser))
-                    sock.send("Welcome")
 
+                    print("user connected : " + msg[0])
+                    activeUser[msg[0]] = Service.Service()
                 else:
                     if msg[1] == 'end':
                         sock.close()
@@ -83,7 +86,6 @@ def serveur_master():
                         print("Client (%s, %s) is offline", addr)
                         continue
 
-                    send = Interpretation.cmd(activeUser[msg[0]], msg[1:])
-                    sock.send(send.encode())
-
-serveur_master()
+                    returncode = activeUser[msg[0]].cmd(msg[1:])
+                    print(returncode)
+                    # sock.send(send.encode())

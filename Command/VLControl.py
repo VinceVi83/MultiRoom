@@ -13,19 +13,23 @@ class VlControl():
     Works only on Linus OS and please install VLC on your computer
     '''
 
-    def __init__(self, port):
-        self.port = port
+    def __init__(self):
+        self.init = False
+        self.port = ""
         self.baseCMD = 'wget --http-user=' + Ctes.user_vlc + ' --http-password=' + Ctes.pwd_vlc + ' 127.0.0.1:' + self.port + '/requests/status.xml?command_play='
 
     def killVLC(self):
         # TODO : need to kill VLC cleanly for multi users purpose
         os.system('killall vlc')
-        return ReturnCode.Succes
+        self.init = False
+        return ReturnCode.Success
 
-    def startVLC(self, path):
+    def startVLC(self, path, port):
         # TODO : need to get the PID of new VLC client to kill it and need to check path... and if there some music files
+        self.port = port
+        self.init = True
         os.system('lancer_vlc.sh ' + self.port + ' ' + path + '&')
-        return ReturnCode.Succes
+        return ReturnCode.Success
 
     def interpretationCommandVLC(self, cmd):
         """
@@ -35,13 +39,14 @@ class VlControl():
         """
         token = len(cmd)
 
+        if cmd[0] in Ctes.vlc.key():
+            return ReturnCode.ErrInvalidArgument
         if token > 1:
             self.cmdComplicated(cmd)
-            return ReturnCode.Succes
+            return ReturnCode.Success
         if token == 1:
             self.cmdSimple(cmd[0])
-            return ReturnCode.Succes
-        return ReturnCode.ErrInvalidArgument
+            return ReturnCode.Success
 
     def cmdComplicated(self, cmd):
         """
@@ -52,13 +57,13 @@ class VlControl():
         """
         if cmd[0] == 'vol':
             self.changeVolume(cmd[1])
-            return ReturnCode.Succes
+            return ReturnCode.Success
         if cmd[0] == 'dossier':
             self.changePlaylist(cmd[1])
-            return ReturnCode.Succes
+            return ReturnCode.Success
         if cmd[0] == 'sort':
             self.sortPlaylist(cmd[1], cmd[2])
-            return ReturnCode.Succes
+            return ReturnCode.Success
         return ReturnCode.ErrInvalidArgument
 
     def cmdSimple(self, action):
@@ -69,12 +74,12 @@ class VlControl():
         """
         cmd = self.baseCMD + Ctes.vlc[action]
         os.system(cmd)
-        return ReturnCode.Succes
+        return ReturnCode.Success
 
     def changeVolume(self, valVolume):
         cmd = self.baseCMD + Ctes.vlc['vol'] + valVolume
         os.system(cmd)
-        return ReturnCode.Succes
+        return ReturnCode.Success
 
     def sortPlaylist(self, typeClassement, ordre):
         cmd = ""
@@ -85,10 +90,10 @@ class VlControl():
         if cmd == "":
             return ReturnCode.ErrInvalidArgument
         os.system(cmd)
-        return ReturnCode.Succes
+        return ReturnCode.Success
 
 
     def changePlaylist(self, directory):
         cmd = self.baseCMD + Ctes.vlc['dossier'] + directory
         os.system(cmd)
-        return ReturnCode.Succes
+        return ReturnCode.Success
