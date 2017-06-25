@@ -10,7 +10,7 @@ TODO : acces via a database or a config file
 import subprocess
 import netifaces as ni
 
-local_ip = ni.ifaddresses('enp4s0f1')[2][0]['addr']
+local_ip = ni.ifaddresses('enp3s0')[2][0]['addr']
 
 def getVarEnvironnement(var):
     return subprocess.check_output("echo $" + var, shell=True).decode().strip()
@@ -29,18 +29,18 @@ path_playlist = getVarEnvironnement("path_playlist")
 
 # User tempory method
 users = {}
-users["toto"] = 'toto'
+users["toto"] = "toto"
 
 '''
 Constants by default
 '''
 vlc = {}
-vlc['pause'] = ['pl_pause']
-vlc['stop'] = ['pl_stop']
-vlc['play'] = ['pl_play']
-vlc['next'] = ['pl_next']
-vlc['prev'] = ['pl_previous']
-vlc['dir'] = ['in_play&input=']
+vlc['pause'] = 'pl_pause' # OK
+vlc['stop'] = 'pl_stop' # OK
+vlc['play'] = 'pl_play' # OK
+vlc['next'] = 'pl_next' # OK
+vlc['prev'] = 'pl_previous' # OK
+vlc['dir'] = 'in_play&input=' # KO
 
 '''
 If id=0 then items will be sorted in normal order, if id=1 they will be sorted in reverse order
@@ -51,40 +51,40 @@ A non exhaustive list of sort modes:
 5 Random
 7 Track number
 '''
-vlc['order'] = ['pl_sort&id="0"&val=']
-vlc['Rorder'] = ['pl_sort&id="1"&val=']
-vlc['random'] = ['pl_random']
-vlc['loop'] = ['pl_loop']
-vlc['repeat'] = ['pl_repeat']
+vlc['order'] = 'pl_sort&id="0"&val='
+vlc['Rorder'] = 'pl_sort&id="1"&val='
+vlc['random'] = 'pl_random' # OK
+vlc['loop'] = 'pl_loop' # loop by default for dev
+vlc['repeat'] = 'pl_repeat'
 '''
 Allowed values are of the form:
 +<int>, -<int>, <int> or <int>%
 '''
-vlc['vol'] = ['volume&val=']
-vlc['pwd'] = [pwd_vlc]
-vlc['user'] = [user_vlc]
+vlc['vol'] = 'volume&val=' # KO should be done on VLC client
+vlc['pwd'] = pwd_vlc
+vlc['user'] = user_vlc
 
 linux = {}
-linux['pwd'] = [pwd_linux]
-linux['user'] = [user_linux]
-linux['home'] = [path_home]
-linux['cron'] = [path_cron]
-linux['playlist'] = [path_playlist]
+linux['pwd'] = pwd_linux
+linux['user'] = user_linux
+linux['home'] = path_home
+linux['cron'] = path_cron
+linux['playlist'] = path_playlist
 
 '''
 Mutagen argument to modify metadata
 '''
 mutagen_keys = {}
-mutagen_keys['titre'] = ['TCOM']
-mutagen_keys['artiste'] = ['TPE1']
-mutagen_keys['album'] = ['TALB']
-mutagen_keys['circle'] = ['TPE2']
-mutagen_keys['genre'] = ['TCON']
-mutagen_keys['commentaire'] = ['COMM']
-mutagen_keys['copyright'] = ['TCOP']
-mutagen_keys['langage'] = ['TLAN']
-mutagen_keys['date'] = ['TDRC']
-mutagen_keys['piste'] = ['TRCK']
+mutagen_keys['titre'] = 'TCOM'
+mutagen_keys['artiste'] = 'TPE1'
+mutagen_keys['album'] = 'TALB'
+mutagen_keys['circle'] = 'TPE2'
+mutagen_keys['genre'] = 'TCON'
+mutagen_keys['commentaire'] = 'COMM'
+mutagen_keys['copyright'] = 'TCOP'
+mutagen_keys['langage'] = 'TLAN'
+mutagen_keys['date'] = 'TDRC'
+mutagen_keys['piste'] = 'TRCK'
 
 # Need to be fill by file or database by user
 listRPIs = []

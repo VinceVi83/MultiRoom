@@ -3,12 +3,17 @@ __author__ = 'VinceVi83'
 # !/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-pathRepPlaylist = '/'
+pathRepPlaylist = "/"
+pathTemplatePlaylist = "/"
 
 from Gestion.Music import Music
 from Gestion.Interpretation import *
 from Gestion.Enum import *
 import os
+import xml.etree.cElementTree as ET
+from pathlib import Path
+
+ext = ".xspf"
 
 class ManagePlaylist():
     '''
@@ -17,13 +22,14 @@ class ManagePlaylist():
     Maybe later add all song contain "name" in playlist
     '''
 
-    def __init__(self, name):
-        self.currentPlaylist = pathRepPlaylist + name
+    def __init__(self):
+        self.currentPlaylist = ""
 
     def changePlaylist(self, name):
-        return ReturnCode.ErrNotImplemented
+        self.currentPlaylist = name
+        return ReturnCode.Success
 
-    def addSongToPlaylist(self, name, namePlaylist):
+    def addSongToPlaylist(self, name,  namePlaylist=None):
         '''
         This function permit you to add the current song to a playlist. If the playlist doesn't exist in the database so
         It will ask you if you create a playlist with the name
@@ -31,74 +37,79 @@ class ManagePlaylist():
         :return:
         '''
 
-        name = ''
-        if True:
+        if namePlaylist == None:
+            if self.currentPlaylist:
+                return ReturnCode.ErrNotImplemented
+            namePlaylist = self.currentPlaylist
+
+        if Path(pathRepPlaylist + namePlaylist):
             self.addSong(name, namePlaylist)
         else:
-            print(
-                "Cette playliste n'existe pas dans votre base de donnée. Voulez-vous créer une nouvelle playliste " + name)
-            if permissionUser().decision():
-                self.createPlaylist(name)
-                self.addSong(name)
+            self.createPlaylist(namePlaylist)
+            self.addSong(name, namePlaylist)
 
-    def addSong(self, name, namePlaylist=None):
+    def addSong(self, music, namePlaylist):
         """
         Add the current song in the playlist
-        TODO : multi playlist ???
         :param name: name of the playlist where you want add the current song
         :return:
         """
-        # processus de musique
-        if namePlaylist == None:
-            pathPlaylist = self.currentPlaylist
 
-        path = Music.path()
-        nom_musique = Music.name()
+        if not os.path.isfile(namePlaylist):
+            return ReturnCode.ErrNotImplemented
 
-        fic = open(pathPlaylist + name, 'a')
-        fic.write('biduleformater + \n')
-        # ~ Un petit write
+        tree = ET.parse(pathRepPlaylist + namePlaylist)
+        root = tree.getroot()
+
+        nodeTracklist = root.find("trackList")
+
+        nodeTrack = ET.SubElement(nodeTracklist, "track")
+        ET.SubElement(nodeTrack, "location").text = music.path
+        ET.SubElement(nodeTrack, "title").text = music.currentMusic
+
+        newXML = ET.tostring(root)
+        with open('create_users_multi_browser.xml', 'w') as f:
+            f.write(newXML)
+
         return ReturnCode.ErrNotImplemented
-
 
     def deleteSong(self, name, namePlaylist):
         """
         Delete the current song in the current playlist
         :return:
         """
-        nom = self.currentPlaylist
-        nom_musique = Music.name()
-        fic = open(nom, 'r')
-        token = ''
-        text = ''
-        read = ''
-        while read != token:
-            read = fic.readline()
+        tree = ET.parse(pathRepPlaylist + namePlaylist)
+        root = tree.getroot()
+        nodetrackList = root.find("trackList")
 
-            if nom_musique not in read:
-                text += read
+        founded = False
+        for nodetrack in nodetrackList:
+            for node in nodetrack:
+                if node.tag is "title":
+                    founded = node.text is name
+            if founded:
+                break
 
-        fic.close()
-        fic = open(self.currentPlaylist + nom, 'w')
-        fic.write(text)
-        fic.close()
+        newXML = ET.tostring(tree)
+        with open('create_users_multi_browser.xml', 'w') as f:
+            f.write(newXML)
 
     @staticmethod
-    def createPlaylist(path):
+    def createPlaylist(name):
         """
         Create the playlist with "name"
         :param name: name of the playlist
         :return:
         """
-        os.system('cp /home/Modèle/playlist ' + path + 'extension a choisir')
-        return ReturnCode.Succes
+        os.system(pathTemplatePlaylist + name + ext)
+        return ReturnCode.Success
 
     @staticmethod
-    def deletePlaylist(path):
+    def deletePlaylist(name):
         """
         Delete the playlist
         :param name: name of the playlist
         :return:
         """
-        os.system('rm ' + path + 'extension a choisir')
-        return ReturnCode.Succes
+        os.system('rm ' + pathRepPlaylist + name + ext)
+        return ReturnCode.Success

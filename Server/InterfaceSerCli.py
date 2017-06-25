@@ -13,9 +13,11 @@ CONNECTION_LIST = []  # list of socket clients
 RECV_BUFFER = 4096  # Advisable to keep it as an exponent of 2
 PORT = 8888
 port = 8000
-port_stream = 9000
+port_stream = 19000
+port_ctrl = 9000
 
 
+# Need Class ManageUsers
 activeUser = {}
 
 def serveur_master():
@@ -24,7 +26,7 @@ def serveur_master():
     server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     server_socket.bind(("127.0.0.1", PORT))
     server_socket.listen(10)
-
+    VLCActivated = 0
     # Add server socket to the list of readable connections
     CONNECTION_LIST.append(server_socket)
     print("Chat server started on port " + str(PORT))
@@ -77,7 +79,8 @@ def serveur_master():
                         continue
 
                     print("user connected : " + msg[0])
-                    activeUser[msg[0]] = Service.Service()
+                    activeUser[msg[0]] = Service.Service(port_ctrl + VLCActivated, port_stream + VLCActivated)
+                    VLCActivated = VLCActivated + 1
                 else:
                     if msg[1] == 'end':
                         sock.close()

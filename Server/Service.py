@@ -9,36 +9,27 @@ import time
 from Gestion.Enum import *
 from Server.InterfaceSerRPIs import InterfaceSerRPIs
 
+complexCtrl = ["VLC"]
+
 class Service:
-    def __init__(self):
+    def __init__(self, port_ctrl, port_stream):
         print("Register a new user")
-        self.VLC = VlControl()
+        self.VLC = VlControl(port_ctrl, port_stream)
         #Todo need a function to affect port to control and stream in case of multiple instance of VLC
-        self.port_ctrl = "8080"
-        self.port_stream = "9000"
+        self.port_ctrl = port_ctrl
+        self.port_stream = port_stream
         self.init = False
         self.path = []
         self.stream_to_ip = []
 
-    def initVLC(self, path, ip_s):
-        self.VLC = VlControl()
-        self.path = path
-        self.ip_s = ip_s
-        self.VLC.startVLC(path, self.port_ctrl)
-        # I hope the server doesn't lag
-        time.sleep(10)
-        self.startStream(ip_s)
-        self.init = True
-        return ReturnCode.Success
-
-    def startStream(self, ip):
+    def launchStreamTo(self, ip):
         for ip in self.stream_to_ip:
-            self.sendCommand('VLC.Start.' + Gestion.Ctes.local_ip + ":" + self.port_stream)
+            self.sendCommand(ip, 'Server/VLC/Start/' + Gestion.Ctes.local_ip + "/" + self.port_stream)
         return ReturnCode.Success
 
     def stopStream(self):
         for ip in self.stream_to_ip:
-            self.sendCommand('VLC.Stop')
+            self.sendCommand(ip, 'VLC.Stop')
         self.VLC.killVLC()
         return ReturnCode.Success
 
@@ -51,23 +42,37 @@ class Service:
 
     def cmd(self, command):
         # Example application.commande
-        if command[0] is "VLC":
-            if not self.init:
-                self.initVLC(command[1], command[2:])
+        print("cmd" + str(command))
+
+        if command[0] in complexCtrl:
+            if len(command) < 2:
+                print("Error, the command need at least two values")
+                return ReturnCode.Err
+
+            if command[0] == "VLC":
+                print("To VLC control")
+                return self.cmdVLC(command[1:])
+        else:
+            print("Not Implemented")
+            return ReturnCode.ErrNotImplemented
+
+    def cmdVLC(self, command):
+        if self.VLC.init:
+            if command[0] == "kill":
+                self.VLC.killVLC()
+                self.stopStream()
+                self.init = False
                 return ReturnCode.Success
 
-        if len(command) < 2:
-            print("Error")
-            return ReturnCode.Err
-
-        if command[1] is "kill":
-            self.VLC.killVLC()
-            self.stopStream()
+            self.VLC.interpretationCommandVLC(command)
             return ReturnCode.Success
 
-        if self.VLC.init:
-            self.VLC.interpretationCommandVLC(command[1:])
-            return ReturnCode.Success
         else:
-            print("VLC not initialized")
+            if len(command) < 2:
+                return ReturnCode.Err
 
+            if command[0] == "start":
+                self.VLC.startVLC(command[1])
+                return ReturnCode.Success
+            print("VLC not initialized")
+            return ReturnCode.Err

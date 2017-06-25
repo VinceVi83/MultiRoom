@@ -6,29 +6,41 @@ __author__ = 'VinceVi83'
 import os
 from Gestion import Ctes
 from Gestion.Enum import *
-
+from subprocess import *
+import time
 
 class VlControl():
     '''
     Works only on Linus OS and please install VLC on your computer
     '''
 
-    def __init__(self):
+    def __init__(self, portCtrl, portStream):
         self.init = False
-        self.port = ""
-        self.baseCMD = 'wget --http-user=' + Ctes.user_vlc + ' --http-password=' + Ctes.pwd_vlc + ' 127.0.0.1:' + self.port + '/requests/status.xml?command_play='
+        # Todo need to manage the end of playlist to remove lop, if not the vlc clients will try to connect until it restart..
+        self.processus = ""
+        self.portCtrl = str(portCtrl)
+        self.portStream = str(portStream)
+        self.path = ""
+        self.vlc_opts = " --http-port=" + self.portCtrl + " --sout \"#standard{access=http,mux=ogg,dst=" + Ctes.local_ip + ":" + self.portStream + "}\"" + " -I dummy" + " --loop"
+        print(self.vlc_opts)
+        self.baseCMD = 'wget --http-user=' + Ctes.user_vlc + ' --http-password=' + Ctes.pwd_vlc + ' ' + ' ' + Ctes.local_ip + ':' + self.portCtrl + '/requests/status.xml?command='
+        print(self.baseCMD)
 
     def killVLC(self):
         # TODO : need to kill VLC cleanly for multi users purpose
-        os.system('killall vlc')
-        self.init = False
+        if self.processus:
+            self.processus.terminate()
+            self.init = False
+            self.port = 0
+            self.path = ""
         return ReturnCode.Success
 
-    def startVLC(self, path, port):
+    def startVLC(self, path):
         # TODO : need to get the PID of new VLC client to kill it and need to check path... and if there some music files
-        self.port = port
         self.init = True
-        os.system('lancer_vlc.sh ' + self.port + ' ' + path + '&')
+        self.path = path
+        cmd = "vlc " + self.path + self.vlc_opts
+        self.processus = Popen(cmd, shell=True)
         return ReturnCode.Success
 
     def interpretationCommandVLC(self, cmd):
@@ -38,8 +50,10 @@ class VlControl():
         :return:
         """
         token = len(cmd)
-
-        if cmd[0] in Ctes.vlc.key():
+        print("interpretationCommandVLC " + str(cmd))
+        print(Ctes.vlc.keys())
+        if not cmd[0] in Ctes.vlc.keys():
+            print("Argument inconnu")
             return ReturnCode.ErrInvalidArgument
         if token > 1:
             self.cmdComplicated(cmd)
@@ -47,6 +61,7 @@ class VlControl():
         if token == 1:
             self.cmdSimple(cmd[0])
             return ReturnCode.Success
+        return ReturnCode.Err
 
     def cmdComplicated(self, cmd):
         """
@@ -72,12 +87,15 @@ class VlControl():
         :param action:
         :return:
         """
+
         cmd = self.baseCMD + Ctes.vlc[action]
         os.system(cmd)
+
         return ReturnCode.Success
 
     def changeVolume(self, valVolume):
         cmd = self.baseCMD + Ctes.vlc['vol'] + valVolume
+        print("print wget" + cmd)
         os.system(cmd)
         return ReturnCode.Success
 
