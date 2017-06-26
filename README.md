@@ -33,22 +33,22 @@ Control VLC with socket so I will concentrate on modules :
 <ul>
 <li>Main objectifs :</li>
 <ul>
-    <li>Server  : InterfaceSerCli, Service</li>
-    <li>Command : VLControl</li>
-    <li>Gestion : Music</li>
-    <li>Gestion : Create some scripts in bash (I lost all my scripts I need for my project)</li>
-    <li>Docs    : Specification and diagrams about my vision of this project</li>
+    <li>Server  : InterfaceSerCli, Service 50%</li>
+    <li>Command : VLControl 75% (Need to test others commands but the main command are OK)</li>
+    <li>Gestion : Music 25%</li>
+    <li>Doc     : Manual</li>
 </ul>
 
 <li>Second objectifs :</li>
 <ul>
-    <li>Command : ManagePlaylist</li>
+    <li>Command : ManagePlaylist 50% All developped but not tested, so I need to be corrected</li>
     <li>RPI     : Get work RPI AUDIO STREAM !</li>
-    <li>Docs    : Correct some faults ^^</li>
+    <li>Docs    : Specification and diagrams about my vision of this project</li>
+    <li>Project : Correct some faults ^^</li>
 </ul>
 </ul>
 2nd Deadline 31/07/2017 : Create a GUI !
-I will do and GUI with python for PC, if I have a time to spare I try do a WEB interface I worked on Python-Javascript
+I will do a GUI with python for PC, if I have a time to spare I try do a WEB interface I worked on Python-Javascript
 Websocket during student project.
 <ul>
 <li>Main objectifs :</li>
@@ -75,3 +75,36 @@ Second objectifs : Add new functionnalities : Android and vocal interfaces, Inte
 I have some ideas for new features but I need to finish main features, I hope I will respect this deadline.
 I will work during my free time because I have a job.
 
+Currently feature working : 
+
+Command usable :
+VLC.start.pathToPlaylist or dir or VLC.start.pathToMusics/Playlist
+VLC.next
+VLC.prev
+VLC.pause 
+VLC.play
+VLC.random
+VLC.kill
+
+
+Temporary manual :
+Package needed : vlc, python3
+Need some configuration to VLC > Preferences > Click on All > Main Interfaces > activate "Web" 
+Need to add password Main Interfaces > Lua > Lua by HTTP > password for pwd_vlc, user_vlc is empty by default
+Need to add the name of the interface you use to connect local network. May be eth0, lan0, wlan0, or something else, use ifconfig to know it.
+Add the two in your var environment in your .bashrc with :
+export user_vlc=""
+export pwd_vlc="pwd"
+export interface="interface"
+
+Case to use :
+On 3 Terminals :
+1 Launch $python3 Main.py
+2 Launch $python3 ClientTestCli.py
+3 vlc http://IP_Server:19000 --loop
+
+Terminal 3, it will be not needed for future version
+vlc http://IP_Server:19000 --loop and later for multi-users vlc http://IP_Server:PortStream --loop 
+I need loop to avoid a drop of VLC client when VLC server go to next song...
+
+Input the command to ClientTestCli.py, it's just an simple communication by socket.

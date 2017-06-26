@@ -10,11 +10,13 @@ TODO : acces via a database or a config file
 import subprocess
 import netifaces as ni
 
-local_ip = ni.ifaddresses('enp3s0')[2][0]['addr']
+
 
 def getVarEnvironnement(var):
     return subprocess.check_output("echo $" + var, shell=True).decode().strip()
 
+interface = getVarEnvironnement("interface")
+local_ip = ni.ifaddresses(interface)[2][0]['addr']
 user_vlc = getVarEnvironnement("user_vlc")
 pwd_vlc = getVarEnvironnement("pwd_vlc")
 
