@@ -33,9 +33,9 @@ Control VLC with socket so I will concentrate on modules :
 <ul>
 <li>Main objectifs :</li>
 <ul>
-    <li>Server  : InterfaceSerCli, Service 50%</li>
+    <li>Server  : InterfaceSerCli, Service 60%</li>
     <li>Command : VLControl 75% (Need to test others commands but the main command are OK)</li>
-    <li>Gestion : Music 25%</li>
+    <li>Gestion : Music 100%</li>
     <li>Doc     : Manual</li>
 </ul>
 
@@ -85,7 +85,11 @@ VLC.pause
 VLC.play
 VLC.random
 VLC.kill
+Music.update.info (to update name and path of the current song and print it)
 
+There some problems to get info of current song in some cases :
+The metadata title of the song have not same name as namefile...
+I don't know if I should forget about it... The only way is to check the metadata of all song to find it...
 
 Temporary manual :
 Package needed : vlc, python3
