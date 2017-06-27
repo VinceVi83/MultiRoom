@@ -8,8 +8,9 @@ from Command.VLControl import VlControl
 import time
 from Gestion.Enum import *
 from Server.InterfaceSerRPIs import InterfaceSerRPIs
+from Gestion.Music import *
 
-complexCtrl = ["VLC"]
+complexCtrl = ["VLC", "Music"]
 
 class Service:
     def __init__(self, port_ctrl, port_stream):
@@ -21,6 +22,7 @@ class Service:
         self.init = False
         self.path = []
         self.stream_to_ip = []
+        self.music = Music(port_ctrl)
 
     def launchStreamTo(self, ip):
         for ip in self.stream_to_ip:
@@ -52,6 +54,9 @@ class Service:
             if command[0] == "VLC":
                 print("To VLC control")
                 return self.cmdVLC(command[1:])
+
+            if command[0] == "Music":
+                return self.cmdMusic(command[1:])
         else:
             print("Not Implemented")
             return ReturnCode.ErrNotImplemented
@@ -76,3 +81,16 @@ class Service:
                 return ReturnCode.Success
             print("VLC not initialized")
             return ReturnCode.Err
+
+    def cmdMusic(self, command):
+        if self.VLC.init:
+            if command[0] == "info":
+                print("Name music :" + self.music.getNameMusic() + " Path :" + self.music.getPath())
+
+            if command[0] == "name":
+                print(self.music.getNameMusic())
+
+            if command[0] == "path":
+                print(self.music.getPath())
+
+        return ReturnCode.Success
