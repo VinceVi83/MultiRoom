@@ -24,7 +24,8 @@ def serveur_master():
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     # this has no effect, why ?
     server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    server_socket.bind(("127.0.0.1", PORT))
+    server_socket.bind((Ctes.local_ip, PORT))
+    print(Ctes.local_ip)
     server_socket.listen(10)
     VLCActivated = 0
     # Add server socket to the list of readable connections
@@ -83,6 +84,8 @@ def serveur_master():
                     VLCActivated = VLCActivated + 1
                     sock.send("Connected".encode())
                 else:
+                    if sock not in activeUser[msg[0]].communication:
+                        activeUser[msg[0]].communication.append(sock)
                     if msg[1] == 'end':
                         sock.close()
                         CONNECTION_LIST.remove(sock)

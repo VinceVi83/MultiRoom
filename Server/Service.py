@@ -21,6 +21,7 @@ class Service:
         self.port_stream = port_stream
         self.init = False
         self.path = []
+        self.communication = []
         self.stream_to_ip = []
         self.music = Music(port_ctrl)
 
@@ -34,6 +35,15 @@ class Service:
             self.sendCommand(ip, 'VLC.Stop')
         self.VLC.killVLC()
         return ReturnCode.Success
+
+    def send(self, msg):
+        for s in self.communication:
+            try:
+                s.send(msg.encode())
+            except:
+                print("Print socket dead ?")
+                self.communication.remove(s)
+                s.close()
 
     def sendCommand(self, ip, cmd):
         tmpConnection = InterfaceSerRPIs(ip)
