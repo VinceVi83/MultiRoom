@@ -2,13 +2,28 @@ from tkinter import *
 
 import tkinter as tk
 from tkinter import font  as tkfont
+import socket
+import subprocess
+import netifaces as ni
+from threading import *
+
+# Todo remove it..
+def getVarEnvironnement(var):
+  return subprocess.check_output("echo $" + var, shell=True).decode().strip()
+
+interface = getVarEnvironnement("interface")
+host = "127.0.0.1"
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+port = 8888
 
 
 class GUI(tk.Tk):
 
     def __init__(self, *args, **kwargs):
         tk.Tk.__init__(self, *args, **kwargs)
-
+        self.thread1 = None
+        self.stop_threads = Event()
+        self.login = ""
         self.title_font = tkfont.Font(family='Helvetica', size=18, weight="bold", slant="italic")
 
         container = tk.Frame(self)
@@ -24,6 +39,28 @@ class GUI(tk.Tk):
             frame.grid(row=0, column=0, sticky="nsew")
 
         self.changeFrame("ConnectFrame")
+
+    def receive(self):
+        while not self.stop_threads.is_set():
+            try:
+                text = s.recv(1024).decode()
+                if not text: break
+                print("Receive : " + text)
+            except:
+                break
+
+    def startReceiver(self):
+        self.stop_threads.clear()
+        self.thread1 = Thread(target = self.receive)
+        self.thread1.start()
+
+    def stopReceiver(self):
+        msg = self.login + "end"
+        s.send(msg.encode())
+        self.stop_threads.set()
+        self.thread1.join()
+        self.thread1 = None
+        s.close()
 
     def changeFrame(self, page_name):
         '''Show a frame for the given page name'''
@@ -69,6 +106,11 @@ class ConnectFrame(tk.Frame):
 
         if (login and pwd):
             print("Hello " + self.entryLogin.get())
+            msg = login + "." + pwd
+            s.connect((host, port))
+            s.send(msg.encode())
+            self.controller.login = login + "."
+            self.controller.startReceiver()
             self.controller.changeFrame("VLController")
 
 class VLController(tk.Frame):
@@ -78,8 +120,28 @@ class VLController(tk.Frame):
         self.controller = controller
         self.labelTitle = tk.Label(self, text="To control VLC", font=controller.title_font)
         self.labelTitle.pack(side="top", fill="x", pady=10)
-        self.buttonQuit = tk.Button(self, text="Disconnect", command=controller.quit)
+
+        # Création de nos widgets
+        self.frameVLCtrl = Frame(self, width=768, height=576, borderwidth=1)
+        self.frameVLCtrl.pack(fill=BOTH)
+
+        self.labelDebug = Label(self.frameVLCtrl, text="debug :")
+        self.entryDebug = Entry(self.frameVLCtrl)
+        self.labelDebug.grid(row=1, sticky=E)
+        self.entryDebug.grid(row=1, column=1)
+
+        self.buttonSend = Button(self, text="Send", fg="red", command=self.sendCMD)
+        self.buttonSend.pack(side="left")
+        self.buttonQuit = tk.Button(self, text="Disconnect", command=self.quit)
         self.buttonQuit.pack()
+
+    def sendCMD(self):
+        msg = self.controller.login + self.entryDebug.get()
+        s.send(msg.encode())
+
+    def quit(self):
+        self.controller.stopReceiver()
+        self.controller.quit()
 
 if __name__ == "__main__":
     interface = GUI()

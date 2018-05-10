@@ -3,7 +3,7 @@ __author__ = 'VinceVi83'
 # !/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import  socket, select
+import socket, select
 from Server import Service
 from Gestion import Ctes
 from Gestion import Interpretation
@@ -81,6 +81,7 @@ def serveur_master():
                     print("user connected : " + msg[0])
                     activeUser[msg[0]] = Service.Service(port_ctrl + VLCActivated, port_stream + VLCActivated)
                     VLCActivated = VLCActivated + 1
+                    sock.send("Connected".encode())
                 else:
                     if msg[1] == 'end':
                         sock.close()
@@ -91,4 +92,5 @@ def serveur_master():
 
                     returncode = activeUser[msg[0]].cmd(msg[1:])
                     print(returncode)
-                    # sock.send(send.encode())
+                    if returncode == ReturnCode.ErrNotImplemented:
+                        sock.send("Not implemented".encode())
