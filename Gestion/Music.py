@@ -16,6 +16,7 @@ pwd_vlc = ''
 chemin = '/run/media/vinsento/455B532D7757A5FD/Project/MultiRoom/status.xml'
 user_vlc = ''
 
+# Mutagen
 class MusicMetadata:
 
     def __init__(self):
@@ -38,17 +39,20 @@ class Music():
         self.portCtrl = str(portCtrl)
         self.count = 0
         self.cmd = 'wget --http-user=' + Ctes.user_vlc + ' --http-password=' + Ctes.pwd_vlc + ' ' + ' ' + Ctes.local_ip + ':' + self.portCtrl + '/requests/status.xml'
+        self.debug = True
 
     def updateInfo(self):
         self.currentMusic = self.getNameMusic()
-        self.path = self.getPath()
-
 
     def getNameMusic(self):
         """
         Retrieve the name of the current song play in VLC
         :return:
         """
+        if self.debug:
+            print("getNameMusic")
+            return "toto"
+
         try:
             if os.path.isfile(chemin):
                 os.system('rm status.xml')
@@ -78,13 +82,18 @@ class Music():
         Need to delete in all playlist also....
         :return:
         """
+
         return ReturnCode.ErrNotImplemented
 
     def getPath(self):
         """
         Retrieve the path of the current song play in VLC from database contained all path of all files in the system
+        Will be use for remove a song, add/delete song from playlist
         :return:
         """
+        if self.debug:
+            print("getNameMusic")
+            return
 
         try:
             p = subprocess.check_output(["locate", self.currentMusic, "--database", "external.red.db"])

@@ -9,13 +9,14 @@ import time
 from Gestion.Enum import *
 from Server.InterfaceSerRPIs import InterfaceSerRPIs
 from Gestion.Music import *
+from threading import *
 
 complexCtrl = ["VLC", "Music"]
 
 class Service:
     def __init__(self, port_ctrl, port_stream):
         print("Register a new user")
-        self.VLC = VlControl(port_ctrl, port_stream)
+        self.VLC = VlControl(self, port_ctrl, port_stream)
         #Todo need a function to affect port to control and stream in case of multiple instance of VLC
         self.port_ctrl = port_ctrl
         self.port_stream = port_stream
@@ -24,6 +25,29 @@ class Service:
         self.communication = []
         self.stream_to_ip = []
         self.music = Music(port_ctrl)
+        self.threadInfo = None
+        self.stop_threads = Event()
+
+    #Todo use duration time to update info
+    def updateInfo(self):
+        while not self.stop_threads.is_set():
+            if len(self.communication):
+                self.music.updateInfo()
+                self.send("Update")
+                time.sleep(5)
+            else:
+                time.sleep(60)
+
+    def startUpdateInfo(self):
+        print("startUpdateInfo")
+        self.stop_threads.clear()
+        self.threadInfo = Thread(target = self.updateInfo)
+        self.threadInfo.start()
+
+    def stopUpdateInfo(self):
+        self.stop_threads.set()
+        self.threadInfo.join()
+        self.threadInfo = None
 
     def launchStreamTo(self, ip):
         for ip in self.stream_to_ip:
