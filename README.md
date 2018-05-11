@@ -12,7 +12,7 @@ use when I am in public transports. Of course offline ! I kind listen at least 2
 I know some application as Deezer or Spotify may offers better way (I never tried it ^^').
 In my case, there are low chance to listen my favorites artists on it, I have more change to listen on youtube..
 To do this task take me a lot of time and I don't really enjoy to sort quickly song ~10sec to  judge a song...
-Yeah I have a LOT of song and every 3 month a get a lot of new songs to listen (I won't reveal how many Go music ~~).
+Yeah I have a LOT of song and every 3 month, I download a lot of new songs to listen (I won't reveal how many Go music ~~).
 I listen a lot of Touhou doujin song.
 
 After to sort, create playlist, delete, I want to use as Music alarm or listen music in my house
@@ -24,59 +24,57 @@ Voice recognition will be the priority when I find an easy to use for DEV and ea
 Planning :
 
 RPI isn't currently my priority, I have some problem with to receive the audio stream on RPI. I have choppy sound with VLC
-and teh problem it's not the power or the speaker but I need to install an package on the RPI but I forget the name and
+and the problem it's not the power or the speaker but I need to install an package on the RPI but I forget the name and
 unfortunately I can't find it. Google my friend doesn't help me ~~.
-I hope to create a tag with a with an application with main features before the deadline.
+I hope to create a tag with a with an application with main features.
 
-1st Deadline 30/06/2017 : Make everything works as during my student period ie :
 Control VLC with socket so I will concentrate on modules :
 <ul>
 <li>Main objectifs :</li>
 <ul>
-    <li>Server  : InterfaceSerCli, Service 60%</li>
-    <li>Command : VLControl 75% (Need to test others commands but the main command are OK)</li>
-    <li>Gestion : Music 100%</li>
-    <li>Doc     : Manual</li>
+    <li>Server</li>
+	<ul>
+		<li>InterfaceSerCli 100%</li>
+		<li>Service 100% (Need to implement others features)</li>
+		<li>Command</li>
+		<ul>
+			<li>VLControl 75% (Need to test others commands but the main command are OK)</li>
+			<li>Arlarm xx% (Need to test)</li>
+			<li>ManagePlaylist 50% (need to test)</li>
+		</ul> 
+	</ul>
+	<li>Client</li>
+    <ul>
+		<li>GUI PC 50% (Need to implement others features)</li>
+    </ul> 
+    <li>Gestion</li>
+    <ul>
+		<li>Music 100% (need to test)</li>
+		<li>MusicMetadata 0%</li>
+    </ul>
+
+    <li>Docs</li>
+    <ul>
+		<li>Tutorial to use it</li>
+		<li>Specification and diagrams about my vision of this project</li>
+    </ul>
+</ul>
+<li>Secondary objectifs :</li>
+	<ul>
+	    <li>RPI</li>
+		<ul>
+			<li>Get work RPI AUDIO STREAM !</li>
+			<li>InterfaceSerRPIs 100%</li>
+			<li>Manage RPI 25%</li>
+		</ul>
+		<li>Doc : PythonDoc</li>
+	</ul>
 </ul>
 
-<li>Second objectifs :</li>
-<ul>
-    <li>Command : ManagePlaylist 50% All developped but not tested, so I need to be corrected</li>
-    <li>RPI     : Get work RPI AUDIO STREAM !</li>
-    <li>Docs    : Specification and diagrams about my vision of this project</li>
-    <li>Project : Correct some faults ^^</li>
-</ul>
-</ul>
-2nd Deadline 31/07/2017 : Create a GUI !
-I will do a GUI with python for PC, if I have a time to spare I try do a WEB interface I worked on Python-Javascript
-Websocket during student project.
-<ul>
-<li>Main objectifs :</li>
-<ul>
-    <li>Client  : InterfacePC (temporary name)</li>
-    <li>Command : AlarmMusicClock, ManagePlaylist</li>
-    <li>RPI     : Get work RPI AUDIO STREAM !</li>
-</ul>
-<li>Second objectifs :</li>
-<ul>
-    <li>Client  : InterfaceWeb (temporary name)</li>
-    <li>RPI     : InterfaceRPISer, ServiceRPI (Receive audio stream for now)</li>
-    <li>Server  : InterfaceSerRPIs, ScanConnectedRPI</li>
-    <li>Doc     : PythonDoc</li>
-</ul>
-</ul>
+For later: Add new functionnalities : Android and vocal interfaces, Interact with youtube
+If I have a time to spare I try do a WEB interface I worked on Python-Javascript with Websocket during student project.
 
-Third Dealine 30/09/2017 : Make all work !
-
-Main objectifs : Everything not finished.
-
-Second objectifs : Add new functionnalities : Android and vocal interfaces, Interact with youtube
-
-I have some ideas for new features but I need to finish main features, I hope I will respect this deadline.
-I will work during my free time because I have a job.
-
-Currently feature working : 
-
+Currently features working :
 Command usable :
 VLC.start.pathToPlaylist or dir or VLC.start.pathToMusics/Playlist
 VLC.next
@@ -85,7 +83,8 @@ VLC.pause
 VLC.play
 VLC.random
 VLC.kill
-Music.update.info (to update name and path of the current song and print it)
+InterfacePC work with minimun command 
+--Music.update.info (to update name and path of the current song and print it)
 
 There some problems to get info of current song in some cases :
 The metadata title of the song have not same name as namefile...
@@ -104,7 +103,8 @@ export interface="interface"
 Case to use :
 On 3 Terminals :
 1 Launch $python3 Main.py
-2 Launch $python3 ClientTestCli.py
+2 Launch $python3 Client/GUI/ClientPC/Interface.py
+2 Launch $python3 Client/GUI/TestCli.py
 3 vlc http://IP_Server:19000 --loop
 
 Terminal 3, it will be not needed for future version

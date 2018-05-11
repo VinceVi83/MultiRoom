@@ -29,7 +29,7 @@ class AlarmMusicClock:
         Replace the current file in crontab with the original
         :return:
         """
-        os.system('echo ' + Ctes.pwd_linux + ' | sudo -S cp /var/spool/cnoteron/crontabs/' + Ctes.user_linux + '.BAK /var/spool/cron/crontabs/' + Ctes.user_linux)
+        os.system('echo ' + Ctes.pwd_linux + ' | sudo -S cp /var/spool/cron/crontabs/' + Ctes.user_linux + '.BAK /var/spool/cron/crontabs/' + Ctes.user_linux)
 
     @staticmethod
     def setAlarmCalendar(self, horaires):

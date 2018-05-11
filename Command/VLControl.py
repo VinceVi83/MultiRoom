@@ -43,9 +43,8 @@ class VlControl():
         self.path = path
         self.services.startUpdateInfo()
         cmd = "vlc " + self.path + self.vlc_opts
-        return ReturnCode.Err
-        #self.processus = Popen(cmd, shell=True)
-        #return ReturnCode.Success
+        self.processus = Popen(cmd, shell=True)
+        return ReturnCode.Success
 
     def interpretationCommandVLC(self, cmd):
         """
