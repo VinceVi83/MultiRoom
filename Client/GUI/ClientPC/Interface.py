@@ -67,6 +67,9 @@ class GUI(tk.Tk):
         frame = self.frames[page_name]
         frame.tkraise()
 
+    def stop(self):
+        self.stopReceiver()
+        self.quit()
 
 class ConnectFrame(tk.Frame):
 
@@ -168,11 +171,11 @@ class VLController(tk.Frame):
         self.frameButtonCtrl = Frame(self, width=768, borderwidth=1)
         self.frameButtonCtrl.pack(fill=BOTH)
 
-        self.buttonPrev = Button(self.frameButtonCtrl, text="<<", command=self.sendTest)
+        self.buttonPrev = Button(self.frameButtonCtrl, text="<<", command=self.prev)
         self.buttonPrev.pack(side="left")
-        self.buttonPlay = Button(self.frameButtonCtrl, text="Play", command=self.sendTest)
+        self.buttonPlay = Button(self.frameButtonCtrl, text="Play", command=self.play)
         self.buttonPlay.pack(side="left")
-        self.buttonNext = Button(self.frameButtonCtrl, text=">>", command=self.sendTest)
+        self.buttonNext = Button(self.frameButtonCtrl, text=">>", command=self.next)
         self.buttonNext.pack(side="left")
         self.buttonModify= Button(self.frameButtonCtrl, text="Modify", fg="red", command=self.sendTest)
         self.buttonModify.pack(side="left")
@@ -180,25 +183,27 @@ class VLController(tk.Frame):
         self.buttonPlaylist.pack(side="left")
         self.buttonMove = Button(self.frameButtonCtrl, text="Move", fg="red", command=self.sendTest)
         self.buttonMove.pack(side="left")
-        self.buttonRemove = Button(self.frameButtonCtrl, text="Del", fg="red", command=self.sendTest)
+        self.buttonRemove = Button(self.frameButtonCtrl, text="Del", fg="red", command=self.remove)
         self.buttonRemove.pack(side="left")
 
         self.labelDirectory = Label(self.frameVLCtrl, text="Directory  : ")
         self.entryDirectory = Entry(self.frameVLCtrl)
         self.labelDirectory.grid(row=8, sticky=E)
         self.entryDirectory.grid(row=8, column=1)
-        self.buttonDirectory = Button(self, text="Open", fg="red", command=self.opendirectory)
-        self.buttonDirectory.pack(side="left")
-
-        self.buttonSend = Button(self, text="Send", fg="red", command=self.sendCMD)
+        self.buttonSend = Button(self, text="Send", command=self.sendCMD)
         self.buttonSend.pack(side="left")
-        self.buttonQuit = tk.Button(self, text="Disconnect", command=self.quit)
+        self.buttonDirectory = Button(self, text="Open", command=self.opendirectory)
+        self.buttonDirectory.pack(side="left")
+        self.buttonSend = Button(self, text="Start", command=self.startVLC)
+        self.buttonSend.pack(side="left")
+        self.buttonQuit = tk.Button(self, text="Disconnect", command=self.controller.stop)
         self.buttonQuit.pack(side="right")
 
     def opendirectory(self):
+        fileopen = ""
         try:
             self.entryDirectory.delete(0, END)
-            fileopen = filedialog.askdirectory(parent=self, initialdir='\\\\192.168.0.29\\Temp\\')
+            fileopen = filedialog.askdirectory(parent=self)
             self.entryDirectory.insert(END, fileopen)
         except:
             self.entryDirectory.insert(END, "There was an error opening ")
@@ -223,13 +228,29 @@ class VLController(tk.Frame):
         msg = self.controller.login + "Test"
         self.controller.client.send(msg.encode())
 
+    def startVLC(self):
+        msg = self.controller.login + "VLC.start." + self.entryDirectory.get()
+        self.controller.client.send(msg.encode())
+
+    def next(self):
+        msg = self.controller.login + "VLC.next"
+        self.controller.client.send(msg.encode())
+
+    def prev(self):
+        msg = self.controller.login + "VLC.prev"
+        self.controller.client.send(msg.encode())
+
+    def play(self):
+        msg = self.controller.login + "VLC.play"
+        self.controller.client.send(msg.encode())
+
+    def remove(self):
+        msg = self.controller.login + "Music.remove"
+        self.controller.client.send(msg.encode())
+
     def sendCMD(self):
         msg = self.controller.login + self.entryDebug.get()
         self.controller.client.send(msg.encode())
-
-    def quit(self):
-        self.controller.stopReceiver()
-        self.controller.quit()
 
 if __name__ == "__main__":
     interface = GUI()
