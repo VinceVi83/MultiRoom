@@ -33,7 +33,11 @@ class Service:
         while not self.stop_threads.is_set():
             if len(self.communication):
                 self.music.updateInfo()
-                self.send("Update")
+                msg = self.music.printInfo()
+                if msg:
+                    self.send(msg)
+                    # smart update, no others methods to know when vlc go to next song
+                    time.sleep(self.music.timeRemaining)
                 time.sleep(5)
             else:
                 time.sleep(60)

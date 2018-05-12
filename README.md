@@ -49,7 +49,7 @@ Control VLC with socket so I will concentrate on modules :
     </ul> 
     <li>Gestion</li>
     <ul>
-		<li>Music 100% (need to test)</li>
+		<li>Music 100%</li>
 		<li>MusicMetadata 0%</li>
     </ul>
 
@@ -90,6 +90,8 @@ There some problems to get info of current song in some cases :
 The metadata title of the song have not same name as namefile...
 I don't know if I should forget about it... The only way is to check the metadata of all song to find it...
 
+Package needed : mutagen (python3), tkniter
+
 Temporary manual :
 Package needed : vlc, python3
 Need some configuration to VLC > Preferences > Click on All > Main Interfaces > activate "Web" 
@@ -111,4 +113,5 @@ Terminal 3, it will be not needed for future version
 vlc http://IP_Server:19000 --loop and later for multi-users vlc http://IP_Server:PortStream --loop 
 I need loop to avoid a drop of VLC client when VLC server go to next song...
 
-Input the command to ClientTestCli.py, it's just an simple communication by socket.
+Input the command to TestCli.py or in "debug" field for Interface, it's just an simple communication by socket.
+

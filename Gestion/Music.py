@@ -10,20 +10,58 @@ from Gestion import Ctes
 from Gestion.Enum import *
 import xml.etree.cElementTree as ET
 from pathlib import Path
+import logging
+import pprint
+import mutagen
+from mutagen.id3 import ID3, COMM
 
-path = ''
-pwd_vlc = ''
-chemin = '/run/media/vinsento/455B532D7757A5FD/Project/MultiRoom/status.xml'
-user_vlc = ''
+#audio.add(COMM(encoding=3, text=u"This is comment!"))
+#audio.save()
+
+logging.basicConfig(filename='removed.log',level=logging.DEBUG)
+
+#Todo add to Ctes.py
+chemin = '/home/shirekan/PycharmProjects/MultiRoom/status.xml'
+trash = "/NAS/Music/Trash/"
+checked = "/NAS/Music/Check/"
 
 # Mutagen
 class MusicMetadata:
 
     def __init__(self):
-        self.artist = ""
-        self.album = ""
-
+        self.metadata = {}
+        self.metadata["title"] = ""
+        self.metadata["artist"] = ""
+        self.metadata["genre"] = ""
+        self.metadata["album"] = ""
+        self.metadata["comment"] = ""
+        self.metadata["langage"] = ""
+        self.metadata["circle"] = ""
+        """
+        mutagen_keys['TCOM'] = 'title'
+        mutagen_keys['TPE1'] = 'artist'
+        mutagen_keys['TALB'] = 'album'
+        mutagen_keys['TPE2'] = 'circle'
+        mutagen_keys['TCON'] = 'genre'
+        mutagen_keys['COMM::XXX'] = 'comment'
+        mutagen_keys['TLAN'] = 'langage'
+        """
     def updateMetadata(self, pathCurrentSong):
+        try:
+            metadata = ID3(pathCurrentSong)
+        except:
+            metadata = mutagen.File(pathCurrentSong, easy=True)
+            print("Exception updateMetadata")
+
+        """
+        >>> tag["COMM::XXX"].text
+        ['This is comment!']
+        """
+        for key in metadata.keys():
+            if key in Ctes.mutagen_keys.keys():
+                self.metadata[Ctes.mutagen_keys[key]] = metadata[key].text[0]
+
+    def modifyMetadata(self, pathCurrentSong, metadata):
         return ReturnCode.ErrNotImplemented
 
 class Music():
@@ -34,56 +72,77 @@ class Music():
 
     def __init__(self, portCtrl):
         self.currentMusic = ""
-        self.path = ""
+        self.currentDir = ""
+        self.lastDir = ""
         self.metadata = MusicMetadata()
         self.portCtrl = str(portCtrl)
         self.count = 0
         self.cmd = 'wget --http-user=' + Ctes.user_vlc + ' --http-password=' + Ctes.pwd_vlc + ' ' + ' ' + Ctes.local_ip + ':' + self.portCtrl + '/requests/status.xml'
-        self.debug = True
+        self.countFail = 0
+        self.timeRemaining = 5
 
     def updateInfo(self):
-        self.currentMusic = self.getNameMusic()
+        returnCode = self.getNameMusic()
+        if returnCode is ReturnCode.Err:
+            print("VLC problem")
+            return ReturnCode.Err
+        self.currentMusic = returnCode
+        path = self.getPath()
+        dir = os.path.dirname(path)
+        if self.currentDir is not dir:
+            self.lastDir = self.currentDir
+            self.currentDir = dir
+        self.metadata.updateMetadata(path)
+
+    def printInfo(self):
+        msg = "metadata:"
+        if self.currentMusic is "":
+            return
+        if self.metadata.metadata["title"] is "":
+            self.metadata.metadata["title"] = self.currentMusic
+
+        for k, v in self.metadata.metadata.items():
+            msg += k + "==" + v + "\n"
+        return msg
 
     def getNameMusic(self):
         """
         Retrieve the name of the current song play in VLC
         :return:
         """
-        if self.debug:
-            print("getNameMusic")
-            return "toto"
-
         try:
             if os.path.isfile(chemin):
-                os.system('rm status.xml')
+                os.system('rm status.xml*')
+
             os.system(self.cmd)
             print(self.cmd)
-
-
-            if not os.path.isfile(chemin):
-                return ReturnCode.ErrNotImplemented
-
             tree = ET.parse(chemin)
             root = tree.getroot()
+            length = root.find("length").text
+            timeElapse = root.find("time").text
+
+            self.timeRemaining = int(length) - int(timeElapse)
             nodeInformation = root.find("information")
             for nodeInfo in nodeInformation[0]:
                 if nodeInfo.attrib["name"] == "filename":
-                    self.currentMusic = nodeInfo.text
                     return nodeInfo.text
-
-
         except:
             print('File Not Found or VLC is not running')
-        return "toto"
-
+        return ReturnCode.Err
 
     def delMusic(self):
         """
         Need to delete in all playlist also....
         :return:
         """
+        logging.warning("delMusic called --> mv " + self.getPath() + " " + trash)
+        os.system("mv " + self.getPath() + " " + trash)
 
-        return ReturnCode.ErrNotImplemented
+        '''
+        logging.warning("delMusic called --> rm " + self.getPath() + " " + trash)
+        os.system("rm " + self.getPath() + " " + trash)
+        '''
+        return ReturnCode.Succes
 
     def getPath(self):
         """
@@ -91,9 +150,6 @@ class Music():
         Will be use for remove a song, add/delete song from playlist
         :return:
         """
-        if self.debug:
-            print("getNameMusic")
-            return
 
         try:
             p = subprocess.check_output(["locate", self.currentMusic, "--database", "external.red.db"])
@@ -110,12 +166,12 @@ class Music():
             # Raise une erreur cela serai mieux
             if path is not '':
                 return path
-            return 'Probleme'
+            return 'Problem'
         except:
             print('Exception : File Not Found')
             Music.maj_db()
             self.count = self.count + 1
-            if self.count > 5:
+            if self.count > 3:
                 print(self.currentMusic)
                 return "Error"
             self.getPath()
@@ -126,10 +182,4 @@ class Music():
         Update the database witch record all files with their path in a file in binary
         :return:
         """
-        os.system('sudo updatedb -o external.red.db -U /run/media/vinsento/455B532D7757A5FD/Project/Test/')
-
-
-
-    def modifyMetaData(self):
-        return ReturnCode.ErrNotImplemented
-
+        os.system('echo ' + Ctes.pwd_linux + ' |  sudo -S updatedb -o external.red.db -U /home/shirekan/PycharmProjects/MultiRoom/test/')

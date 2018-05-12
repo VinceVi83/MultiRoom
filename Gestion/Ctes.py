@@ -75,18 +75,27 @@ linux['playlist'] = path_playlist
 
 '''
 Mutagen argument to modify metadata
+It's so difficult remember tag...
 '''
 mutagen_keys = {}
+mutagen_keys['TCOM'] = 'title'
+mutagen_keys['TPE1'] = 'artist'
+mutagen_keys['TALB'] = 'album'
+mutagen_keys['TPE2'] = 'circle'
+mutagen_keys['TCON'] = 'genre'
+mutagen_keys['COMM::XXX'] = 'comment'
+mutagen_keys['TLAN'] = 'langage'
+"""
 mutagen_keys['titre'] = 'TCOM'
 mutagen_keys['artiste'] = 'TPE1'
 mutagen_keys['album'] = 'TALB'
 mutagen_keys['circle'] = 'TPE2'
 mutagen_keys['genre'] = 'TCON'
-mutagen_keys['commentaire'] = 'COMM'
+mutagen_keys['commentaire'] = 'COMM::XXX'
 mutagen_keys['copyright'] = 'TCOP'
 mutagen_keys['langage'] = 'TLAN'
 mutagen_keys['date'] = 'TDRC'
 mutagen_keys['piste'] = 'TRCK'
-
+"""
 # Need to be fill by file or database by user
 listRPIs = []
