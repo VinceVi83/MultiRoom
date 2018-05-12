@@ -82,15 +82,25 @@ def serveur_master():
                     print("user connected : " + msg[0])
                     activeUser[msg[0]] = Service.Service(port_ctrl + VLCActivated, port_stream + VLCActivated)
                     VLCActivated = VLCActivated + 1
-                    sock.send("Connected".encode())
-                else:
-                    if sock not in activeUser[msg[0]].communication:
-                        activeUser[msg[0]].communication.append(sock)
-                    if msg[1] == 'end':
+                    try:
+                        sock.send("Connected".encode())
+                    except:
+                        print("User disconnected")
                         sock.close()
                         CONNECTION_LIST.remove(sock)
-                        activeUser.pop(msg[0])
+                        continue
+                else:
+                    if sock not in activeUser[msg[0]].communication:
+                        activeUser[msg[0]].addClient(sock)
+                    if 'end' in msg[1]:
+                        print("User disconnected")
+                        sock.close()
+                        CONNECTION_LIST.remove(sock)
+
+                        activeUser[msg[0]].removeClient(sock)
                         print("Client (%s, %s) is offline", addr)
+                        if "stop" in msg[1]:
+                            activeUser[msg[0]].stopServices()
                         continue
 
                     returncode = activeUser[msg[0]].cmd(msg[1:])
