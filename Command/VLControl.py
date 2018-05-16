@@ -93,7 +93,6 @@ class VlControl():
 
         cmd = self.baseCMD + Ctes.vlc[action]
         os.system(cmd)
-
         return ReturnCode.Success
 
     def changeVolume(self, valVolume):

@@ -14,16 +14,12 @@ import logging
 import pprint
 import mutagen
 from mutagen.id3 import ID3, COMM
-
-#audio.add(COMM(encoding=3, text=u"This is comment!"))
-#audio.save()
+os.chdir("/tmp")
 
 logging.basicConfig(filename='removed.log',level=logging.DEBUG)
 
-#Todo add to Ctes.py
-chemin = '/home/shirekan/PycharmProjects/MultiRoom/status.xml'
-trash = "/NAS/Music/Trash/"
-checked = "/NAS/Music/Check/"
+
+# chemin = '/home/shirekan/PycharmProjects/MultiRoom/status.xml'
 
 # Mutagen
 class MusicMetadata:
@@ -46,7 +42,20 @@ class MusicMetadata:
         mutagen_keys['COMM::XXX'] = 'comment'
         mutagen_keys['TLAN'] = 'langage'
         """
+
+    def resetMetadata(self):
+        self.metadata = {}
+        self.metadata["title"] = ""
+        self.metadata["artist"] = ""
+        self.metadata["genre"] = ""
+        self.metadata["album"] = ""
+        self.metadata["comment"] = ""
+        self.metadata["langage"] = ""
+        self.metadata["circle"] = ""
+        self.metadata["filename"] = ""
+
     def updateMetadata(self, pathCurrentSong):
+        self.resetMetadata()
         try:
             metadata = ID3(pathCurrentSong)
         except:
@@ -54,14 +63,42 @@ class MusicMetadata:
             print("Exception updateMetadata")
 
         """
-        >>> tag["COMM::XXX"].text
+        >>> tag["COMM"].text
         ['This is comment!']
         """
         for key in metadata.keys():
             if key in Ctes.mutagen_keys.keys():
                 self.metadata[Ctes.mutagen_keys[key]] = metadata[key].text[0]
 
-    def modifyMetadata(self, pathCurrentSong, metadata):
+    def modifyMetadata(self, pathCurrentSong, metadataModified):
+        self.resetMetadata()
+        try:
+            metadata = ID3(pathCurrentSong)
+        except:
+            metadata = mutagen.File(pathCurrentSong, easy=True)
+            print("Exception updateMetadata")
+
+        listdata = metadataModified.split("\n")
+        metadataDico = {}
+        for data in listdata:
+            tmp = data.split("==")
+            metadataDico[tmp[0]] = tmp[1]
+
+        for key in metadata.keys():
+            if key not in metadataDico.keys():
+                self.registerKey(key, metadataDico[key])
+
+            if key in Ctes.mutagen_keys.keys():
+                if metadata[key].text[0] != metadataDico[Ctes.mutagen_keys[key]]:
+                    metadata[key].text[0] = metadataDico[Ctes.mutagen_keys[key]]
+        metadata.save()
+        return ReturnCode.Success
+
+    def registerKey(self, key, value):
+        if key is "filename":
+            print("Change filename")
+        print("Key not exit in file" + key + value)
+
         return ReturnCode.ErrNotImplemented
 
 class Music():
@@ -80,6 +117,7 @@ class Music():
         self.cmd = 'wget --http-user=' + Ctes.user_vlc + ' --http-password=' + Ctes.pwd_vlc + ' ' + ' ' + Ctes.local_ip + ':' + self.portCtrl + '/requests/status.xml'
         self.countFail = 0
         self.timeRemaining = 5
+        self.workingDir = ""
 
     def updateInfo(self):
         returnCode = self.getNameMusic()
@@ -88,19 +126,22 @@ class Music():
             return ReturnCode.Err
         self.currentMusic = returnCode
         path = self.getPath()
+        if path is "":
+            return ReturnCode.Err
         dir = os.path.dirname(path)
         if self.currentDir is not dir:
             self.lastDir = self.currentDir
             self.currentDir = dir
         self.metadata.updateMetadata(path)
+        return ReturnCode.Success
 
     def printInfo(self):
         msg = "metadata:"
         if self.currentMusic is "":
-            return
+            return ReturnCode.Err
         if self.metadata.metadata["title"] is "":
             self.metadata.metadata["title"] = self.currentMusic
-
+        self.metadata.metadata["filename"] = self.currentMusic
         for k, v in self.metadata.metadata.items():
             msg += k + "==" + v + "\n"
         return msg
@@ -111,12 +152,11 @@ class Music():
         :return:
         """
         try:
-            if os.path.isfile(chemin):
-                os.system('rm status.xml*')
-
+            if os.path.isfile("/tmp/status.xml"):
+                os.system('rm /tmp/status.xml*')
             os.system(self.cmd)
             print(self.cmd)
-            tree = ET.parse(chemin)
+            tree = ET.parse("/tmp/status.xml")
             root = tree.getroot()
             length = root.find("length").text
             timeElapse = root.find("time").text
@@ -135,14 +175,29 @@ class Music():
         Need to delete in all playlist also....
         :return:
         """
-        logging.warning("delMusic called --> mv " + self.getPath() + " " + trash)
-        os.system("mv " + self.getPath() + " " + trash)
+        path = self.getPath()
+        logging.warning("delMusic called --> mv " + path + " " + Ctes.trash)
+        if path is "":
+            return ReturnCode.Err
+        os.system("mv " + path + " " + Ctes.trash)
 
         '''
-        logging.warning("delMusic called --> rm " + self.getPath() + " " + trash)
-        os.system("rm " + self.getPath() + " " + trash)
+        logging.warning("delMusic called --> rm " + path + " " + trash)
+        os.system("rm " + path + " " + trash)
         '''
-        return ReturnCode.Succes
+        return ReturnCode.Success
+
+    def checkedMusic(self):
+        """
+        Need to change in all playlist also....
+        :return:
+        """
+        path = self.getPath()
+        logging.warning("delMusic called --> mv " + path + " " + Ctes.check)
+        if path is "":
+            return ReturnCode.Err
+        os.system("mv " + path + " " + Ctes.check)
+        return ReturnCode.Success
 
     def getPath(self):
         """
@@ -155,31 +210,26 @@ class Music():
             p = subprocess.check_output(["locate", self.currentMusic, "--database", "external.red.db"])
             p = p.splitlines()
             path = ''
-            # v.decode() car le fichier est en binaire va savoir pourquoi...Flem de lire la doc
             for v in p:
                 currentPath = v.decode().split("/")
                 if self.currentMusic in currentPath[-1]:
-                    # Cela serai bien de trouver des doublons
-                    # Avec un test regex pour le chemin
                     path = v.decode()
                     break
-            # Raise une erreur cela serai mieux
             if path is not '':
                 return path
-            return 'Problem'
+            return ""
         except:
             print('Exception : File Not Found')
-            Music.maj_db()
+            self.maj_db()
             self.count = self.count + 1
             if self.count > 3:
                 print(self.currentMusic)
-                return "Error"
-            self.getPath()
+                return ""
+            return self.getPath()
 
-    @staticmethod
-    def maj_db():
+    def maj_db(self):
         """
         Update the database witch record all files with their path in a file in binary
         :return:
         """
-        os.system('echo ' + Ctes.pwd_linux + ' |  sudo -S updatedb -o external.red.db -U /home/shirekan/PycharmProjects/MultiRoom/test/')
+        os.system('echo ' + Ctes.pwd_linux + ' |  sudo -S updatedb -o external.red.db -U ' + self.workingDir)

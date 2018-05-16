@@ -24,6 +24,11 @@ pwd_vlc = getVarEnvironnement("pwd_vlc")
 user_linux = getVarEnvironnement("user_linux")
 pwd_linux = getVarEnvironnement("pwd_linux")
 
+dir_config = getVarEnvironnement("config_multiroom")
+path_music = getVarEnvironnement("path_music")
+trash = getVarEnvironnement("path_trash_music")
+check = getVarEnvironnement("path_music_filtred")
+
 # Path
 path_home = '/home/' + user_linux + '/'
 path_cron = '/var/spool/cron/crontabs/'
@@ -42,7 +47,7 @@ vlc['stop'] = 'pl_stop' # OK
 vlc['play'] = 'pl_play' # OK
 vlc['next'] = 'pl_next' # OK
 vlc['prev'] = 'pl_previous' # OK
-vlc['dir'] = 'in_play&input=' # KO
+vlc['dir'] = 'in_play\&input=' # OK
 
 '''
 If id=0 then items will be sorted in normal order, if id=1 they will be sorted in reverse order
@@ -53,8 +58,8 @@ A non exhaustive list of sort modes:
 5 Random
 7 Track number
 '''
-vlc['order'] = 'pl_sort&id="0"&val='
-vlc['Rorder'] = 'pl_sort&id="1"&val='
+vlc['order'] = 'pl_sort\&id="0"\&val='
+vlc['Rorder'] = 'pl_sort\&id="1"\&val='
 vlc['random'] = 'pl_random' # OK
 vlc['loop'] = 'pl_loop' # loop by default for dev
 vlc['repeat'] = 'pl_repeat'
@@ -62,7 +67,7 @@ vlc['repeat'] = 'pl_repeat'
 Allowed values are of the form:
 +<int>, -<int>, <int> or <int>%
 '''
-vlc['vol'] = 'volume&val=' # KO should be done on VLC client
+vlc['vol'] = 'volume\&val=' # KO should be done on VLC client
 vlc['pwd'] = pwd_vlc
 vlc['user'] = user_vlc
 
@@ -78,12 +83,12 @@ Mutagen argument to modify metadata
 It's so difficult remember tag...
 '''
 mutagen_keys = {}
-mutagen_keys['TCOM'] = 'title'
+mutagen_keys['TIT2'] = 'title'
 mutagen_keys['TPE1'] = 'artist'
 mutagen_keys['TALB'] = 'album'
 mutagen_keys['TPE2'] = 'circle'
 mutagen_keys['TCON'] = 'genre'
-mutagen_keys['COMM::XXX'] = 'comment'
+mutagen_keys['COMM'] = 'comment'
 mutagen_keys['TLAN'] = 'langage'
 """
 mutagen_keys['titre'] = 'TCOM'

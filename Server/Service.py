@@ -12,6 +12,7 @@ from Gestion.Music import *
 from threading import *
 
 complexCtrl = ["VLC", "Music"]
+actionVLC = ["next", "prev", "dir"]
 
 class Service:
     def __init__(self, port_ctrl, port_stream):
@@ -27,20 +28,55 @@ class Service:
         self.music = Music(port_ctrl)
         self.threadInfo = None
         self.stop_threads = Event()
+        self.endService = False
 
     #Todo use duration time to update info
     def updateInfo(self):
         while not self.stop_threads.is_set():
             if len(self.communication):
-                self.music.updateInfo()
-                msg = self.music.printInfo()
-                if msg:
-                    self.send(msg)
-                    # smart update, no others methods to know when vlc go to next song
-                    time.sleep(self.music.timeRemaining)
-                time.sleep(5)
+                self.updateMusic()
+                # smart update, no others methods to know when vlc go to next song
+                for i in range(self.music.timeRemaining):
+                    if self.endService:
+                        break
+                    time.sleep(1)
             else:
                 time.sleep(60)
+
+    def updateMusic(self):
+        if len(self.communication):
+            self.music.updateInfo()
+            msg = self.music.printInfo()
+            # self.send("Update\n")
+            if msg:
+                self.send(msg)
+
+    def addClient(self, sock):
+        self.communication.append(sock)
+        if self.VLC.init:
+            self.music.updateInfo()
+            msg = self.music.printInfo()
+            if msg:
+                sock.send(msg.encode())
+
+    def stopServices(self):
+        self.endService = True
+        if self.VLC.init:
+            self.VLC.killVLC()
+            print("Wait threadInfo finish his last job")
+            self.stopUpdateInfo()
+
+
+    def removeClient(self, sock):
+        self.communication.remove(sock)
+
+    # Todo need to manage case stop/pause
+    def actionVLC(self):
+        if len(self.communication):
+            self.music.updateInfo()
+            msg = self.music.printInfo()
+            if msg:
+                self.send(msg)
 
     def startUpdateInfo(self):
         print("startUpdateInfo")
@@ -70,8 +106,8 @@ class Service:
                 s.send(msg.encode())
             except:
                 print("Print socket dead ?")
-                self.communication.remove(s)
-                s.close()
+                #self.communication.remove(s)
+                #s.close()
 
     def sendCommand(self, ip, cmd):
         tmpConnection = InterfaceSerRPIs(ip)
@@ -88,11 +124,9 @@ class Service:
             if len(command) < 2:
                 print("Error, the command need at least two values")
                 return ReturnCode.Err
-
             if command[0] == "VLC":
                 print("To VLC control")
                 return self.cmdVLC(command[1:])
-
             if command[0] == "Music":
                 return self.cmdMusic(command[1:])
         else:
@@ -101,20 +135,31 @@ class Service:
 
     def cmdVLC(self, command):
         if self.VLC.init:
+            if command[0] == "start":
+                self.music.workingDir = command[1]
+                command[0] = "dir"
             if command[0] == "kill":
                 self.VLC.killVLC()
                 self.stopStream()
                 self.init = False
                 return ReturnCode.Success
-
-            self.VLC.interpretationCommandVLC(command)
-            return ReturnCode.Success
+            ret = self.VLC.interpretationCommandVLC(command)
+            if command[0] in actionVLC:
+                self.actionVLC()
+            return ret
 
         else:
             if len(command) < 2:
                 return ReturnCode.Err
 
             if command[0] == "start":
+                """ Need to stop/start client to restart stream audio (VLC windows restart stream after a change of song, not VLC Linux..)
+                if command[0] == "play":
+                    if command[0] == "play":
+                        command[0] = command[0] if not self.VLC.play else "pause"
+                        self.VLC.play = not self.VLC.play
+                """
+                self.music.workingDir = command[1]
                 self.VLC.startVLC(command[1])
                 return ReturnCode.Success
             print("VLC not initialized")
@@ -124,11 +169,12 @@ class Service:
         if self.VLC.init:
             if command[0] == "info":
                 print("Name music :" + self.music.getNameMusic() + " Path :" + self.music.getPath())
-
             if command[0] == "name":
                 print(self.music.getNameMusic())
-
             if command[0] == "path":
                 print(self.music.getPath())
-
+            if command[0] == "remove":
+                print(self.music.delMusic())
+            if command[0] == "modify":
+                self.music.metadata(self.music.getPath(), command[1])
         return ReturnCode.Success

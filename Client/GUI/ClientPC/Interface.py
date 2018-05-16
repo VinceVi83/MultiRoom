@@ -44,9 +44,14 @@ class GUI(tk.Tk):
         while not self.stop_threads.is_set():
             try:
                 text = self.client.recv(1024).decode()
-                if not text: break
-                print("Receive : " + text)
+                if "metadata" in text:
+                    infos = text.split("metadata:")[1].split("\n")
+                    self.frames["VLController"].updateInfos(infos)
+                else:
+                    if text:
+                        print("From Server : " + text)
             except:
+                print("Problem exception")
                 break
 
     def startReceiver(self):
@@ -55,8 +60,6 @@ class GUI(tk.Tk):
         self.thread1.start()
 
     def stopReceiver(self):
-        msg = self.login + "end"
-        self.client.send(msg.encode())
         self.client.close()
         self.stop_threads.set()
         self.thread1.join()
@@ -67,9 +70,22 @@ class GUI(tk.Tk):
         frame = self.frames[page_name]
         frame.tkraise()
 
-    def stop(self):
+    def disconnect(self):
+        msg = self.login + "end"
+
+        self.client.send(msg.encode())
         self.stopReceiver()
-        self.quit()
+        self.changeFrame("ConnectFrame")
+
+    def stopServices(self):
+        msg = self.login + "endstop"
+        try:
+            self.client.send(msg.encode())
+        except:
+            print("Ok")
+        self.stopReceiver()
+        self.changeFrame("ConnectFrame")
+
 
 class ConnectFrame(tk.Frame):
 
@@ -117,6 +133,7 @@ class ConnectFrame(tk.Frame):
         if (login and pwd):
             print("Hello " + self.entryLogin.get())
             msg = login + "." + pwd
+            self.controller.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.controller.client.connect((ip, port))
             self.controller.client.send(msg.encode())
             self.controller.login = login + "."
@@ -135,38 +152,56 @@ class VLController(tk.Frame):
         self.frameVLCtrl = Frame(self, width=768, height=576, borderwidth=1)
         self.frameVLCtrl.pack(fill=BOTH)
 
+        self.labelFile = Label(self.frameVLCtrl, text="File : ")
         self.labelTitre = Label(self.frameVLCtrl, text="Titre : ")
         self.labelArtist = Label(self.frameVLCtrl, text="Artist : ")
         self.labelGenre = Label(self.frameVLCtrl, text="Genre : ")
         self.labelAlbum = Label(self.frameVLCtrl, text="Album : ")
+        self.labelCircle = Label(self.frameVLCtrl, text="Circle : ")
         self.labelComment = Label(self.frameVLCtrl, text="Comment : ")
         self.labelInstrumental = Label(self.frameVLCtrl, text="Instrumental : ")
 
-        self.entryTitre = Entry(self.frameVLCtrl)
+        self.entryFile = Entry(self.frameVLCtrl)
+        self.entryTitle = Entry(self.frameVLCtrl)
         self.entryArtist = Entry(self.frameVLCtrl)
         self.entryGenre = Entry(self.frameVLCtrl)
+        self.entryCircle = Entry(self.frameVLCtrl)
         self.entryAlbum = Entry(self.frameVLCtrl)
         self.entryComment = Entry(self.frameVLCtrl)
         self.entryInstrumental = Entry(self.frameVLCtrl)
 
-        self.labelTitre.grid(row=1, sticky=E)
-        self.labelArtist.grid(row=2, sticky=E)
-        self.labelGenre.grid(row=3, sticky=E)
-        self.labelAlbum.grid(row=4, sticky=E)
-        self.labelComment.grid(row=5, sticky=E)
-        self.labelInstrumental.grid(row=6, sticky=E)
+        self.labelFile.grid(row=1, sticky=E)
+        self.labelTitre.grid(row=2, sticky=E)
+        self.labelArtist.grid(row=3, sticky=E)
+        self.labelGenre.grid(row=4, sticky=E)
+        self.labelAlbum.grid(row=5, sticky=E)
+        self.labelCircle.grid(row=6, sticky=E)
+        self.labelComment.grid(row=7, sticky=E)
+        self.labelInstrumental.grid(row=8, sticky=E)
 
-        self.entryTitre.grid(row=1, column=1)
-        self.entryArtist.grid(row=2, column=1)
-        self.entryGenre.grid(row=3, column=1)
-        self.entryAlbum.grid(row=4, column=1)
-        self.entryComment.grid(row=5, column=1)
-        self.entryInstrumental.grid(row=6, column=1)
+        self.entryFile.grid(row=1, column=1)
+        self.entryTitle.grid(row=2, column=1)
+        self.entryArtist.grid(row=3, column=1)
+        self.entryGenre.grid(row=4, column=1)
+        self.entryAlbum.grid(row=5, column=1)
+        self.entryCircle.grid(row=6, column=1)
+        self.entryComment.grid(row=7, column=1)
+        self.entryInstrumental.grid(row=8, column=1)
+
+        self.dicoEntry = {}
+        self.dicoEntry["filename"] = self.entryFile
+        self.dicoEntry["title"] = self.entryTitle
+        self.dicoEntry["artist"] = self.entryArtist
+        self.dicoEntry["album"] = self.entryAlbum
+        self.dicoEntry["genre"] = self.entryGenre
+        self.dicoEntry["comment"] = self.entryComment
+        self.dicoEntry["circle"] = self.entryCircle
+        self.dicoEntry["langage"] = self.entryInstrumental
 
         self.labelDebug = Label(self.frameVLCtrl, text="debug : ")
         self.entryDebug = Entry(self.frameVLCtrl)
-        self.labelDebug.grid(row=7, sticky=E)
-        self.entryDebug.grid(row=7, column=1)
+        self.labelDebug.grid(row=9, sticky=E)
+        self.entryDebug.grid(row=9, column=1)
 
         self.frameButtonCtrl = Frame(self, width=768, borderwidth=1)
         self.frameButtonCtrl.pack(fill=BOTH)
@@ -188,15 +223,17 @@ class VLController(tk.Frame):
 
         self.labelDirectory = Label(self.frameVLCtrl, text="Directory  : ")
         self.entryDirectory = Entry(self.frameVLCtrl)
-        self.labelDirectory.grid(row=8, sticky=E)
-        self.entryDirectory.grid(row=8, column=1)
+        self.labelDirectory.grid(row=10, sticky=E)
+        self.entryDirectory.grid(row=10, column=1)
         self.buttonSend = Button(self, text="Send", command=self.sendCMD)
         self.buttonSend.pack(side="left")
         self.buttonDirectory = Button(self, text="Open", command=self.opendirectory)
         self.buttonDirectory.pack(side="left")
         self.buttonSend = Button(self, text="Start", command=self.startVLC)
         self.buttonSend.pack(side="left")
-        self.buttonQuit = tk.Button(self, text="Disconnect", command=self.controller.stop)
+        self.buttonStop = tk.Button(self, text="Stop", fg="red", command=self.controller.stopServices)
+        self.buttonStop.pack(side="right")
+        self.buttonQuit = tk.Button(self, text="Disconnect", command=self.controller.disconnect)
         self.buttonQuit.pack(side="right")
 
     def opendirectory(self):
@@ -210,19 +247,13 @@ class VLController(tk.Frame):
             self.entryDirectory.insert(END, fileopen)
 
     def updateInfos(self, infos):
-        self.entryTitre.delete(0, END)
-        self.entryArtist.delete(0, END)
-        self.entryGenre.delete(0, END)
-        self.entryAlbum.delete(0, END)
-        self.entryComment.delete(0, END)
-        self.entryInstrumental.delete(0, END)
+        for key in self.dicoEntry:
+            self.dicoEntry[key].delete(0, END)
 
-        self.entryTitre.insert(0, "toto")
-        self.entryArtist.insert(0, "toto")
-        self.entryGenre.insert(0, "toto")
-        self.entryAlbum.insert(0, "toto")
-        self.entryComment.insert(0, "toto")
-        self.entryInstrumental.insert(0, "toto")
+        for info in infos:
+            tmp = info.split("==")
+            if tmp[0] in self.dicoEntry.keys():
+                self.dicoEntry[tmp[0]].insert(0, tmp[1])
 
     def sendTest(self):
         msg = self.controller.login + "Test"
