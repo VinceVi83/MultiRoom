@@ -45,7 +45,7 @@ class GUI(tk.Tk):
             try:
                 text = self.client.recv(1024).decode()
                 if "metadata" in text:
-                    infos = text.split("metadata:")[1].split("\n")
+                    infos = text.split("metadata:")[1].split("\n1\n")
                     self.frames["VLController"].updateInfos(infos)
                 else:
                     if text:
@@ -132,11 +132,11 @@ class ConnectFrame(tk.Frame):
 
         if (login and pwd):
             print("Hello " + self.entryLogin.get())
-            msg = login + "." + pwd
+            msg = login + "\n1\n" + pwd
             self.controller.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.controller.client.connect((ip, port))
             self.controller.client.send(msg.encode())
-            self.controller.login = login + "."
+            self.controller.login = login + "\n1\n"
             self.controller.startReceiver()
             self.controller.changeFrame("VLController")
 
@@ -251,7 +251,7 @@ class VLController(tk.Frame):
             self.dicoEntry[key].delete(0, END)
 
         for info in infos:
-            tmp = info.split("==")
+            tmp = info.split("\n2\n")
             if tmp[0] in self.dicoEntry.keys():
                 self.dicoEntry[tmp[0]].insert(0, tmp[1])
 
@@ -260,27 +260,32 @@ class VLController(tk.Frame):
         self.controller.client.send(msg.encode())
 
     def startVLC(self):
-        msg = self.controller.login + "VLC.start." + self.entryDirectory.get()
+        msg = self.controller.login + "VLC\n1\nstart\n1\n" + self.entryDirectory.get()
         self.controller.client.send(msg.encode())
 
     def next(self):
-        msg = self.controller.login + "VLC.next"
+        msg = self.controller.login + "VLC\n1\nnext"
         self.controller.client.send(msg.encode())
 
     def prev(self):
-        msg = self.controller.login + "VLC.prev"
+        msg = self.controller.login + "VLC\n1\nprev"
         self.controller.client.send(msg.encode())
 
     def play(self):
-        msg = self.controller.login + "VLC.play"
+        msg = self.controller.login + "VLC\n1\nplay"
         self.controller.client.send(msg.encode())
 
     def remove(self):
-        msg = self.controller.login + "Music.remove"
+        msg = self.controller.login + "Music\n1\nremove"
+        self.controller.client.send(msg.encode())
+
+    def checked(self):
+        msg = self.controller.login + "Music\n1\nchecked"
         self.controller.client.send(msg.encode())
 
     def sendCMD(self):
         msg = self.controller.login + self.entryDebug.get()
+        msg = msg.replace("*", "\n1\n")
         self.controller.client.send(msg.encode())
 
 if __name__ == "__main__":

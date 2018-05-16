@@ -7,6 +7,7 @@ import os
 from Gestion import Ctes
 from Gestion.Enum import *
 from subprocess import *
+
 import time
 
 class VlControl():
@@ -16,34 +17,32 @@ class VlControl():
 
     def __init__(self, services, portCtrl, portStream):
         self.init = False
-        # Todo need to manage the end of playlist to remove lop, if not the vlc clients will try to connect until it restart..
-        self.processus = ""
+        self.process = Popen
+        self.play = False
         self.portCtrl = str(portCtrl)
         self.portStream = str(portStream)
         self.path = ""
         # To start/stop threadInfo
         self.services = services
-        self.vlc_opts = " --http-port=" + self.portCtrl + " --sout \"#standard{access=http,mux=ogg,dst=" + Ctes.local_ip + ":" + self.portStream + "}\"" + " -I dummy" + " --loop"
-        print(self.vlc_opts)
-        self.baseCMD = 'wget --http-user=' + Ctes.user_vlc + ' --http-password=' + Ctes.pwd_vlc + ' ' + ' ' + Ctes.local_ip + ':' + self.portCtrl + '/requests/status.xml?command='
-        print(self.baseCMD)
+        self.vlc_opts = " --http-port=" + self.portCtrl + " --sout \"#standard{access=http,mux=ogg,dst=" + Ctes.local_ip + ":" + self.portStream + "}\"" + " -I dummy"#  + " --loop"
+        self.baseCMD = 'curl --user :' + Ctes.pwd_vlc + ' ' + ' ' + Ctes.local_ip + ':' + self.portCtrl + '/requests/status.xml?command='
 
     def killVLC(self):
-        # TODO : need to kill VLC cleanly for multi users purpose
-        if self.processus:
-            self.processus.terminate()
+        if self.process:
+            os.system("kill -9 " + str(self.process.pid))
             self.init = False
-            self.port = 0
+            self.play = False
             self.path = ""
         return ReturnCode.Success
 
     def startVLC(self, path):
-        # TODO : need to get the PID of new VLC client to kill it and need to check path... and if there some music files
         self.init = True
+        self.play = True
         self.path = path
-        self.services.startUpdateInfo()
         cmd = "vlc " + self.path + self.vlc_opts
-        self.processus = Popen(cmd, shell=True)
+        self.process = Popen(cmd, shell=True)
+
+        self.services.startUpdateInfo()
         return ReturnCode.Success
 
     def interpretationCommandVLC(self, cmd):
@@ -76,7 +75,7 @@ class VlControl():
         if cmd[0] == 'vol':
             self.changeVolume(cmd[1])
             return ReturnCode.Success
-        if cmd[0] == 'dossier':
+        if cmd[0] == 'dir':
             self.changePlaylist(cmd[1])
             return ReturnCode.Success
         if cmd[0] == 'sort':
@@ -91,13 +90,12 @@ class VlControl():
         :return:
         """
 
-        cmd = self.baseCMD + Ctes.vlc[action]
+        cmd = self.baseCMD + Ctes.vlc[action] + " > /dev/null"
         os.system(cmd)
         return ReturnCode.Success
 
     def changeVolume(self, valVolume):
         cmd = self.baseCMD + Ctes.vlc['vol'] + valVolume
-        print("print wget" + cmd)
         os.system(cmd)
         return ReturnCode.Success
 
@@ -114,6 +112,6 @@ class VlControl():
 
 
     def changePlaylist(self, directory):
-        cmd = self.baseCMD + Ctes.vlc['dossier'] + directory
+        cmd = self.baseCMD + Ctes.vlc['dir'] + directory + " > /dev/null"
         os.system(cmd)
         return ReturnCode.Success

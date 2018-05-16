@@ -10,6 +10,7 @@ from Gestion.Enum import *
 from Server.InterfaceSerRPIs import InterfaceSerRPIs
 from Gestion.Music import *
 from threading import *
+import re
 
 complexCtrl = ["VLC", "Music"]
 actionVLC = ["next", "prev", "dir"]
@@ -136,6 +137,7 @@ class Service:
     def cmdVLC(self, command):
         if self.VLC.init:
             if command[0] == "start":
+                command[1] = command[1].translate(str.maketrans(Ctes.escape_char))
                 self.music.workingDir = command[1]
                 command[0] = "dir"
             if command[0] == "kill":
@@ -159,6 +161,7 @@ class Service:
                         command[0] = command[0] if not self.VLC.play else "pause"
                         self.VLC.play = not self.VLC.play
                 """
+                command[1] = command[1].translate(str.maketrans(Ctes.escape_char))
                 self.music.workingDir = command[1]
                 self.VLC.startVLC(command[1])
                 return ReturnCode.Success

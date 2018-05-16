@@ -104,3 +104,15 @@ mutagen_keys['piste'] = 'TRCK'
 """
 # Need to be fill by file or database by user
 listRPIs = []
+
+escape_char = {"+":  r"\+",
+                "-":  r"\-",
+                "]":  r"\]",
+                " ": r"\ ",
+                "[": r"\[",
+                ")":  r"\)",
+                "(": r"\(",
+                "^":  r"\^",
+                "$":  r"\$",
+                "*":  r"\*",
+                ".":  r"\."}

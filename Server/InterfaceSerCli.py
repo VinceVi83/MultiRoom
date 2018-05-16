@@ -59,7 +59,7 @@ def serveur_master():
                     continue
                 msg = data.decode()
                 print("Message non split : " + msg)
-                msg = msg.split(".")
+                msg = msg.split("\n1\n")
                 print(msg)
                 # example first connexion  user.password
                 if msg[0] not in activeUser.keys():

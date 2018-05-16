@@ -143,7 +143,7 @@ class Music():
             self.metadata.metadata["title"] = self.currentMusic
         self.metadata.metadata["filename"] = self.currentMusic
         for k, v in self.metadata.metadata.items():
-            msg += k + "==" + v + "\n"
+            msg += k + "\n2\n" + v + "\n1\n"
         return msg
 
     def getNameMusic(self):
@@ -208,6 +208,7 @@ class Music():
 
         try:
             p = subprocess.check_output(["locate", self.currentMusic, "--database", "external.red.db"])
+            print(self.currentMusic)
             p = p.splitlines()
             path = ''
             for v in p:
@@ -232,4 +233,5 @@ class Music():
         Update the database witch record all files with their path in a file in binary
         :return:
         """
+        print(self.workingDir)
         os.system('echo ' + Ctes.pwd_linux + ' |  sudo -S updatedb -o external.red.db -U ' + self.workingDir)
