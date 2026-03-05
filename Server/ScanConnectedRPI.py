@@ -4,8 +4,8 @@ __author__ = 'VinceVi83'
 # -*- coding: utf-8 -*-
 
 from Server.InterfaceSerRPIs import InterfaceSerRPIs
-from Gestion.Enum import *
 from Gestion import Ctes
+from Gestion.Ctes import RETURN_CODE
 import time
 
 class ScannerRPI:
@@ -15,17 +15,18 @@ class ScannerRPI:
         # May have a multi-threading acces problem in near future
         self.hasBeenModified = False
         self.beingProcessed = False
+        self.ismodified = False
 
     def addSlaveRPI(self, ip):
         if ip in self.listRPIDisconnected:
-            return ReturnCode.ErrIllegalIP
+            return RETURN_CODE.ERR_ILLEGAL_IP
 
         if ip not in self.listRPIConnected:
             self.listRPIConnected.append(ip)
             self.listRPIDisconnected.pop(ip)
-            return ReturnCode.Succes
+            return RETURN_CODE.SUCCESS
         else:
-            return ReturnCode.ErrDuplicate
+            return RETURN_CODE.ERR_DUPLICATE
 
     def deleteSlaveRPI(self, ip):
         if ip in self.listRPIConnected:
@@ -33,8 +34,8 @@ class ScannerRPI:
         if ip not in self.listRPIDisconnected:
             self.listRPIDisconnected.append(ip)
         else:
-            return ReturnCode.ErrDuplicate
-        return ReturnCode.Succes
+            return RETURN_CODE.ERR_DUPLICATE
+        return RETURN_CODE.SUCCESS
 
     def regularScan(self):
         '''
@@ -44,21 +45,21 @@ class ScannerRPI:
         '''
         retryRPIDisconnected = 0
         while True:
-            returncode = ReturnCode.Null
+            RETURN_CODE = RETURN_CODE.Null
 
             if self.beingProcessed:
                 time.sleep(60)
                 continue
 
             if len(self.listRPIConnected) > 0:
-                returncode = self.scanRPI()
+                RETURN_CODE = self.scanRPI()
                 retryRPIDisconnected += 1
 
             if retryRPIDisconnected == 5 and len(self.listRPIDisconnected) > 0:
                     retryRPIDisconnected = 0
-                    returncode = self.scanRPI(False)
+                    RETURN_CODE = self.scanRPI(False)
 
-            if not self.hasBeenModified and returncode == ReturnCode.SuccesModified:
+            if not self.hasBeenModified:
                 self.hasBeenModified = True
 
             time.sleep(60)
@@ -69,8 +70,6 @@ class ScannerRPI:
         :param connected: To try to scan connected or disconnected RPIs
         :return: 
         '''
-
-        modified = False
         # TODO : Check if tmpmethod can del or add a RPI
         if connected:
             callMethod = self.deleteSlaveRPI
@@ -87,10 +86,8 @@ class ScannerRPI:
             except:
                 print(ip + ' is not available')
                 callMethod(ip)
-                modified = True
-        if modified:
-            return ReturnCode.SuccesModified
-        return ReturnCode.Succes
+                self.hasBeenModified = True
+        return RETURN_CODE.SUCCESS
 
 
 rpi = ScannerRPI()

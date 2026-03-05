@@ -5,7 +5,7 @@ __author__ = 'VinceVi83'
 
 import os
 from Gestion import Ctes
-from Gestion.Enum import *
+from Gestion.Ctes import RETURN_CODE
 
 class AlarmMusicClock:
     '''

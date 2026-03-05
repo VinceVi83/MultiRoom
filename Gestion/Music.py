@@ -1,237 +1,102 @@
-__author__ = 'VinceVi83'
-
-# !/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
 import os
-import subprocess
-import re
-from Gestion import Ctes
-from Gestion.Enum import *
-import xml.etree.cElementTree as ET
-from pathlib import Path
 import logging
-import pprint
-import mutagen
-from mutagen.id3 import ID3, COMM
+import json
+import xml.etree.cElementTree as ET
+import requests
+import mutagen  # type: ignore
+from Gestion import Ctes
+from Gestion.Ctes import RETURN_CODE
+
+# Configuration initiale
 os.chdir("/tmp")
+logging.basicConfig(filename='vlc_integration.log', level=logging.DEBUG)
 
-logging.basicConfig(filename='removed.log',level=logging.DEBUG)
 
-
-# chemin = '/home/shirekan/PycharmProjects/MultiRoom/status.xml'
-
-# Mutagen
 class MusicMetadata:
+    """Handles extraction and storage of audio file tags."""
 
     def __init__(self):
-        self.metadata = {}
-        self.metadata["title"] = ""
-        self.metadata["artist"] = ""
-        self.metadata["genre"] = ""
-        self.metadata["album"] = ""
-        self.metadata["comment"] = ""
-        self.metadata["langage"] = ""
-        self.metadata["circle"] = ""
-        """
-        mutagen_keys['TCOM'] = 'title'
-        mutagen_keys['TPE1'] = 'artist'
-        mutagen_keys['TALB'] = 'album'
-        mutagen_keys['TPE2'] = 'circle'
-        mutagen_keys['TCON'] = 'genre'
-        mutagen_keys['COMM::XXX'] = 'comment'
-        mutagen_keys['TLAN'] = 'langage'
-        """
+        self.metadata = {
+            k: "" for k in [
+                "title", "artist", "genre", "album", 
+                "comment", "language", "circle", "filename"
+            ]
+        }
 
-    def resetMetadata(self):
-        self.metadata = {}
-        self.metadata["title"] = ""
-        self.metadata["artist"] = ""
-        self.metadata["genre"] = ""
-        self.metadata["album"] = ""
-        self.metadata["comment"] = ""
-        self.metadata["langage"] = ""
-        self.metadata["circle"] = ""
-        self.metadata["filename"] = ""
+    def _reset_metadata(self):
+        """Clear all stored metadata values."""
+        self.metadata = {k: "" for k in self.metadata.keys()}
 
-    def updateMetadata(self, pathCurrentSong):
-        self.resetMetadata()
-        try:
-            metadata = ID3(pathCurrentSong)
-        except:
-            metadata = mutagen.File(pathCurrentSong, easy=True)
-            print("Exception updateMetadata")
-
-        """
-        >>> tag["COMM"].text
-        ['This is comment!']
-        """
-        for key in metadata.keys():
-            if key in Ctes.mutagen_keys.keys():
-                self.metadata[Ctes.mutagen_keys[key]] = metadata[key].text[0]
-
-    def modifyMetadata(self, pathCurrentSong, metadataModified):
-        self.resetMetadata()
-        try:
-            metadata = ID3(pathCurrentSong)
-        except:
-            metadata = mutagen.File(pathCurrentSong, easy=True)
-            print("Exception updateMetadata")
-
-        listdata = metadataModified.split("\n")
-        metadataDico = {}
-        for data in listdata:
-            tmp = data.split("==")
-            metadataDico[tmp[0]] = tmp[1]
-
-        for key in metadata.keys():
-            if key not in metadataDico.keys():
-                self.registerKey(key, metadataDico[key])
-
-            if key in Ctes.mutagen_keys.keys():
-                if metadata[key].text[0] != metadataDico[Ctes.mutagen_keys[key]]:
-                    metadata[key].text[0] = metadataDico[Ctes.mutagen_keys[key]]
-        metadata.save()
-        return ReturnCode.Success
-
-    def registerKey(self, key, value):
-        if key is "filename":
-            print("Change filename")
-        print("Key not exit in file" + key + value)
-
-        return ReturnCode.ErrNotImplemented
-
-class Music():
-    '''
-    Library about a function link with a current song
-    Works only on Linus OS
-    '''
-
-    def __init__(self, portCtrl):
-        self.currentMusic = ""
-        self.currentDir = ""
-        self.lastDir = ""
-        self.metadata = MusicMetadata()
-        self.portCtrl = str(portCtrl)
-        self.count = 0
-        self.cmd = 'wget --http-user=' + Ctes.user_vlc + ' --http-password=' + Ctes.pwd_vlc + ' ' + ' ' + Ctes.local_ip + ':' + self.portCtrl + '/requests/status.xml'
-        self.countFail = 0
-        self.timeRemaining = 5
-        self.workingDir = ""
-
-    def updateInfo(self):
-        returnCode = self.getNameMusic()
-        if returnCode is ReturnCode.Err:
-            print("VLC problem")
-            return ReturnCode.Err
-        self.currentMusic = returnCode
-        path = self.getPath()
-        if path is "":
-            return ReturnCode.Err
-        dir = os.path.dirname(path)
-        if self.currentDir is not dir:
-            self.lastDir = self.currentDir
-            self.currentDir = dir
-        self.metadata.updateMetadata(path)
-        return ReturnCode.Success
-
-    def printInfo(self):
-        msg = "metadata:"
-        if self.currentMusic is "":
-            return ReturnCode.Err
-        if self.metadata.metadata["title"] is "":
-            self.metadata.metadata["title"] = self.currentMusic
-        self.metadata.metadata["filename"] = self.currentMusic
-        for k, v in self.metadata.metadata.items():
-            msg += k + "\n2\n" + v + "\n1\n"
-        return msg
-
-    def getNameMusic(self):
-        """
-        Retrieve the name of the current song play in VLC
-        :return:
-        """
-        try:
-            if os.path.isfile("/tmp/status.xml"):
-                os.system('rm /tmp/status.xml*')
-            os.system(self.cmd)
-            print(self.cmd)
-            tree = ET.parse("/tmp/status.xml")
-            root = tree.getroot()
-            length = root.find("length").text
-            timeElapse = root.find("time").text
-
-            self.timeRemaining = int(length) - int(timeElapse)
-            nodeInformation = root.find("information")
-            for nodeInfo in nodeInformation[0]:
-                if nodeInfo.attrib["name"] == "filename":
-                    return nodeInfo.text
-        except:
-            print('File Not Found or VLC is not running')
-        return ReturnCode.Err
-
-    def delMusic(self):
-        """
-        Need to delete in all playlist also....
-        :return:
-        """
-        path = self.getPath()
-        logging.warning("delMusic called --> mv " + path + " " + Ctes.trash)
-        if path is "":
-            return ReturnCode.Err
-        os.system("mv " + path + " " + Ctes.trash)
-
-        '''
-        logging.warning("delMusic called --> rm " + path + " " + trash)
-        os.system("rm " + path + " " + trash)
-        '''
-        return ReturnCode.Success
-
-    def checkedMusic(self):
-        """
-        Need to change in all playlist also....
-        :return:
-        """
-        path = self.getPath()
-        logging.warning("delMusic called --> mv " + path + " " + Ctes.check)
-        if path is "":
-            return ReturnCode.Err
-        os.system("mv " + path + " " + Ctes.check)
-        return ReturnCode.Success
-
-    def getPath(self):
-        """
-        Retrieve the path of the current song play in VLC from database contained all path of all files in the system
-        Will be use for remove a song, add/delete song from playlist
-        :return:
-        """
+    def update_metadata(self, song_path):
+        """Extract metadata from file using mutagen."""
+        self._reset_metadata()
+        if not song_path or not os.path.exists(song_path):
+            return
 
         try:
-            p = subprocess.check_output(["locate", self.currentMusic, "--database", "external.red.db"])
-            print(self.currentMusic)
-            p = p.splitlines()
-            path = ''
-            for v in p:
-                currentPath = v.decode().split("/")
-                if self.currentMusic in currentPath[-1]:
-                    path = v.decode()
-                    break
-            if path is not '':
-                return path
-            return ""
-        except:
-            print('Exception : File Not Found')
-            self.maj_db()
-            self.count = self.count + 1
-            if self.count > 3:
-                print(self.currentMusic)
-                return ""
-            return self.getPath()
+            audio = mutagen.File(song_path)
+            if audio is None:
+                return
 
-    def maj_db(self):
-        """
-        Update the database witch record all files with their path in a file in binary
-        :return:
-        """
-        print(self.workingDir)
-        os.system('echo ' + Ctes.pwd_linux + ' |  sudo -S updatedb -o external.red.db -U ' + self.workingDir)
+            for key, attr in Ctes.mutagen_keys.items():
+                if key in audio:
+                    # Extraction sécurisée du contenu texte
+                    tags = audio[key]
+                    val = tags.text[0] if hasattr(tags, 'text') else str(tags[0])
+                    self.metadata[attr] = val
+        except Exception as e:
+            logging.error(f"Metadata extraction error for {song_path}: {e}")
+
+
+class Music:
+    """Interacts with VLC HTTP API to track current playback."""
+
+    def __init__(self, index):
+        self.current_music = ""
+        self.current_dir = ""
+        self.full_path = ""
+        self.time_remaining = 0
+        self.port_ctrl = str(9000 + index)
+        self.vlc_url = f"http://{Ctes.local_ip}:{self.port_ctrl}/requests/status.xml"
+        self.metadata_handler = MusicMetadata()
+
+    def update_status(self):
+        """Fetch current VLC status and update metadata."""
+        try:
+            # Utilisation de pwd_vlc défini dans Ctes
+            response = requests.get(self.vlc_url, auth=('', Ctes.cfg.pwd_vlc))
+            if response.status_code == 200:
+                root = ET.fromstring(response.text)
+
+                for info in root.iter('info'):
+                    if info.get('name') == 'filename':
+                        self.current_music = info.text
+                    if info.get('name') == 'path':
+                        self.full_path = info.text
+
+                # Extraction du temps
+                time_node = root.find('time')
+                length_node = root.find('length')
+                
+                if time_node is not None and length_node is not None:
+                    self.time_remaining = int(length_node.text) - int(time_node.text)
+
+                if self.full_path:
+                    self.metadata_handler.update_metadata(self.full_path)
+
+        except Exception as e:
+            logging.error(f"Error update_status via VLC: {e}")
+
+    def get_info_json(self):
+        """Returns metadata as a JSON string for network transmission."""
+        if not self.current_music:
+            return str(RETURN_CODE.ERR)
+
+        data = self.metadata_handler.metadata.copy()
+        # On s'assure que l'artiste et le titre ne sont pas vides
+        if not data.get("artist"):
+            data["artist"] = self.current_music
+        if not data.get("title"):
+            data["title"] = self.current_music
+
+        return "metadata:" + json.dumps(data)

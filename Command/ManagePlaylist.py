@@ -8,7 +8,8 @@ pathTemplatePlaylist = "/"
 
 from Gestion.Music import Music
 from Gestion.Interpretation import *
-from Gestion.Enum import *
+from Gestion import Ctes
+from Gestion.Ctes import RETURN_CODE
 import os
 import xml.etree.cElementTree as ET
 from pathlib import Path
@@ -27,7 +28,7 @@ class ManagePlaylist():
 
     def changePlaylist(self, name):
         self.currentPlaylist = name
-        return ReturnCode.Success
+        return RETURN_CODE.SUCCESS
 
     def addSongToPlaylist(self, name,  namePlaylist=None):
         '''
@@ -39,7 +40,7 @@ class ManagePlaylist():
 
         if namePlaylist == None:
             if self.currentPlaylist:
-                return ReturnCode.ErrNotImplemented
+                return RETURN_CODE.ERR_NOT_IMPLEMENTED
             namePlaylist = self.currentPlaylist
 
         if Path(pathRepPlaylist + namePlaylist):
@@ -56,7 +57,7 @@ class ManagePlaylist():
         """
 
         if not os.path.isfile(namePlaylist):
-            return ReturnCode.ErrNotImplemented
+            return RETURN_CODE.ERR_NOT_IMPLEMENTED
 
         tree = ET.parse(pathRepPlaylist + namePlaylist)
         root = tree.getroot()
@@ -71,7 +72,7 @@ class ManagePlaylist():
         with open('create_users_multi_browser.xml', 'w') as f:
             f.write(newXML)
 
-        return ReturnCode.ErrNotImplemented
+        return RETURN_CODE.ERR_NOT_IMPLEMENTED
 
     def deleteSong(self, name, namePlaylist):
         """
@@ -102,7 +103,7 @@ class ManagePlaylist():
         :return:
         """
         os.system(pathTemplatePlaylist + name + ext)
-        return ReturnCode.Success
+        return RETURN_CODE.SUCCESS
 
     @staticmethod
     def deletePlaylist(name):
@@ -112,4 +113,4 @@ class ManagePlaylist():
         :return:
         """
         os.system('rm ' + pathRepPlaylist + name + ext)
-        return ReturnCode.Success
+        return RETURN_CODE.SUCCESS

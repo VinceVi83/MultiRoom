@@ -4,7 +4,8 @@ __author__ = 'VinceVi83'
 # -*- coding: utf-8 -*-
 
 import socket
-from Gestion.Enum import *
+from Gestion import Ctes
+from Gestion.Ctes import RETURN_CODE
 
 class InterfaceSerRPIs:
     def __init__(self, ip):
@@ -17,19 +18,19 @@ class InterfaceSerRPIs:
     def launchConnection(self):
         try:
             self.connexionRPI.connect((self.ip, self.port))
-            return ReturnCode.Success
+            return RETURN_CODE.SUCCESS
         except:
             print("Client (%s, %s) is offline")
-            return ReturnCode.ErrNotConnected
+            return RETURN_CODE.ERR_NOT_CONNECTED
 
     def sendMsg(self, msg):
         try:
             self.connexionRPI.send(msg.encode())
-            return ReturnCode.Success
+            return RETURN_CODE.SUCCESS
         except:
             print("Client (%s, %s) is offline")
             self.deconnexion()
-            return ReturnCode.ErrNotConnected
+            return RETURN_CODE.ERR_NOT_CONNECTED
 
     def deconnexion(self):
         print("Fermeture de la connexion")

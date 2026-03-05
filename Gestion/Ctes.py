@@ -1,118 +1,108 @@
-__author__ = 'VinceVi83'
-
-# !/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
-
 """
-TODO : acces via a database or a config file
+Constants and configuration management.
 """
-import subprocess
-import netifaces as ni
+import os
+import re
+from pathlib import Path
+from types import SimpleNamespace
+import netifaces as ni  # type: ignore
+from dotenv import load_dotenv # type: ignore
+
+# Chargement du fichier .env
+ENV_PATH = Path(__file__).parent.parent / '.env'
+load_dotenv()
+def get_var_environment(var, default=""):
+    """Fetch environment variable and strip whitespace."""
+    return os.getenv(var, default).strip()
+cfg = SimpleNamespace(**{k: get_var_environment(k) for k in ENV_KEYS})
+
+USERS = {
+    "test": "test"
+}
+
+# PEP 8: Les constantes globales sont en UPPER_CASE
+RETURN_CODE = SimpleNamespace(
+    SUCCESS=1,
+    ERR=2,
+    ERR_NOT_CONNECTED=3,
+    ERR_NOT_IMPLEMENTED=4,
+    ERR_DUPLICATE=5,
+    ERR_ILLEGAL_IP=6,
+    ERR_INVALID_ARGUMENT=7,
+    ERR_NO_MUSIC_FILES=8,
+    NULL=9
+)
 
 
 
-def getVarEnvironnement(var):
-    return subprocess.check_output("echo $" + var, shell=True).decode().strip()
 
-interface = getVarEnvironnement("interface")
-local_ip = ni.ifaddresses(interface)[2][0]['addr']
-user_vlc = getVarEnvironnement("user_vlc")
-pwd_vlc = getVarEnvironnement("pwd_vlc")
 
-# TODO : Create a user or change right of some files
-user_linux = getVarEnvironnement("user_linux")
-pwd_linux = getVarEnvironnement("pwd_linux")
+# Liste des clés à récupérer
+ENV_KEYS = [
+    "interface", "user_vlc", "pwd_vlc", "user_linux", "pwd_linux",
+    "music_folder_1", "music_folder_2", "config_multiroom",
+    "path_music", "path_trash_music", "path_music_filtred", "path_playlist"
+]
 
-dir_config = getVarEnvironnement("config_multiroom")
-path_music = getVarEnvironnement("path_music")
-trash = getVarEnvironnement("path_trash_music")
-check = getVarEnvironnement("path_music_filtred")
+# cfg (Configuration) regroupé dans un namespace
 
-# Path
-path_home = '/home/' + user_linux + '/'
-path_cron = '/var/spool/cron/crontabs/'
-path_playlist = getVarEnvironnement("path_playlist")
 
-# User tempory method
-users = {}
-users["toto"] = "toto"
+# Détermination de l'IP locale
+try:
+    local_ip = ni.ifaddresses(cfg.interface)[ni.AF_INET][0]['addr']
+except (KeyError, ValueError, Exception):
+    local_ip = "127.0.0.1"
+    print(f"Warning: Interface {cfg.interface} not found, fallback to 127.0.0.1")
 
-'''
-Constants by default
-'''
-vlc = {}
-vlc['pause'] = 'pl_pause' # OK
-vlc['stop'] = 'pl_stop' # OK
-vlc['play'] = 'pl_play' # OK
-vlc['next'] = 'pl_next' # OK
-vlc['prev'] = 'pl_previous' # OK
-vlc['dir'] = 'in_play\&input=' # OK
+# Chemins dérivés
+PATH_HOME = f"/home/{cfg.user_linux}/"
+PATH_CRON = "/var/spool/cron/crontabs/"
 
-'''
-If id=0 then items will be sorted in normal order, if id=1 they will be sorted in reverse order
-A non exhaustive list of sort modes:
-0 Id
-1 Name
-3 Author
-5 Random
-7 Track number
-'''
-vlc['order'] = 'pl_sort\&id="0"\&val='
-vlc['Rorder'] = 'pl_sort\&id="1"\&val='
-vlc['random'] = 'pl_random' # OK
-vlc['loop'] = 'pl_loop' # loop by default for dev
-vlc['repeat'] = 'pl_repeat'
-'''
-Allowed values are of the form:
-+<int>, -<int>, <int> or <int>%
-'''
-vlc['vol'] = 'volume\&val=' # KO should be done on VLC client
-vlc['pwd'] = pwd_vlc
-vlc['user'] = user_vlc
+vlc = {
+    "1": "pl_pause",
+    "2": "pl_previous",
+    "3": "pl_next",
+    "4": "volume&val=-30",
+    "5": "volume&val=+30",
+    "6": "pl_random",
+    "7": "status.xml",
+    "playlist": "",
+    'dir': "in_play&input=",
+    'pwd': cfg.pwd_vlc,
+    'user': cfg.user_vlc
+}
 
-linux = {}
-linux['pwd'] = pwd_linux
-linux['user'] = user_linux
-linux['home'] = path_home
-linux['cron'] = path_cron
-linux['playlist'] = path_playlist
+linux = {
+    'pwd': cfg.pwd_linux,
+    'user': cfg.user_linux,
+    'home': PATH_HOME,
+    'cron': PATH_CRON,
+    'playlist': cfg.path_playlist
+}
 
-'''
-Mutagen argument to modify metadata
-It's so difficult remember tag...
-'''
-mutagen_keys = {}
-mutagen_keys['TIT2'] = 'title'
-mutagen_keys['TPE1'] = 'artist'
-mutagen_keys['TALB'] = 'album'
-mutagen_keys['TPE2'] = 'circle'
-mutagen_keys['TCON'] = 'genre'
-mutagen_keys['COMM'] = 'comment'
-mutagen_keys['TLAN'] = 'langage'
-"""
-mutagen_keys['titre'] = 'TCOM'
-mutagen_keys['artiste'] = 'TPE1'
-mutagen_keys['album'] = 'TALB'
-mutagen_keys['circle'] = 'TPE2'
-mutagen_keys['genre'] = 'TCON'
-mutagen_keys['commentaire'] = 'COMM::XXX'
-mutagen_keys['copyright'] = 'TCOP'
-mutagen_keys['langage'] = 'TLAN'
-mutagen_keys['date'] = 'TDRC'
-mutagen_keys['piste'] = 'TRCK'
-"""
-# Need to be fill by file or database by user
-listRPIs = []
+playlist = {
+    "default": "/home/shireikan/ProjectLinux/MultiRoom_Test/Default",
+    "touhou": "/home/shireikan/ProjectLinux/MultiRoom_Test/Touhou",
+    "rock": "/home/shireikan/ProjectLinux/MultiRoom_Test/Rock"
+}
 
-escape_char = {"+":  r"\+",
-                "-":  r"\-",
-                "]":  r"\]",
-                " ": r"\ ",
-                "[": r"\[",
-                ")":  r"\)",
-                "(": r"\(",
-                "^":  r"\^",
-                "$":  r"\$",
-                "*":  r"\*",
-                ".":  r"\."}
+mutagen_keys = {
+    'TIT2': 'title',
+    'TPE1': 'artist',
+    'TALB': 'album',
+    'TPE2': 'circle',
+    'TCON': 'genre',
+    'COMM': 'comment',
+    'TLAN': 'language'
+}
+
+list_rpis = []
+
+
+def escape_path(text):
+    """Escapes special characters in a path string."""
+    return re.escape(text)
+
+
+CHARS_TO_ESCAPE = "+-][ )(^$*."
+ESCAPE_CHAR_MAP = {c: f"\\{c}" for c in CHARS_TO_ESCAPE}

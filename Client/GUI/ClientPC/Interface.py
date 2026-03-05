@@ -46,7 +46,7 @@ class GUI(tk.Tk):
                 text = self.client.recv(1024).decode()
                 if "metadata" in text:
                     infos = text.split("metadata:")[1].split("\n1\n")
-                    self.frames["VLController"].updateInfos(infos)
+                    self.frames["VLController"].updateMusic(infos)
                 else:
                     if text:
                         print("From Server : " + text)
