@@ -6,6 +6,17 @@
 
 The goal is to simplify service execution (music, domotics, agenda, shopping list) through a central orchestrator, replacing repetitive manual/physical tasks with an intelligent service layer.
 
+## Demo & Performance
+To showcase the real-time capabilities of **A.L.I.S.U.**, a video demonstration is available. It highlights the full pipeline: Voice Capture ➔ Whisper Transcription ➔ LLM Intent Extraction ➔ Service Execution.
+
+### [Watch the Demo: Voice-Controlled Media Orchestration](https://www.youtube.com/watch?v=JYTv3L7crkk)
+*(Note: This video is unlisted and intended for technical review.)*
+
+**What you will see in the demo:**
+* **Full Pipeline Integration:** End-to-end processing from natural language to hardware/service action.
+* **Smart Extraction:** How A.L.I.S.U. interprets natural language to pilot the **VLC Lua HTTP interface**.
+* **Reliability Focus:** The demo features the core logic, current development prioritizes **enhanced prompt robustness** for higher recognition accuracy and extract information.
+
 ## Vision & Origines
 This project was born during my student years, long before the rise of modern LLMs. It originated from a dream: building a personal Jarvis to manage a massive local music library (Touhou music) stored on a NAS, and to control smart objects via voice commands.
 
