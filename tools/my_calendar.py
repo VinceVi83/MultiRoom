@@ -7,9 +7,23 @@ from datetime import datetime
 from pathlib import Path
 from datetime import timedelta
 from config_loader import cfg
-from tools.mailer_proton import send_mail
+from tools.mailer_proton import MailerProton
+
 
 class CalendarService:
+    """Manages calendar events and provides functionalities to fetch and send concert tickets.
+
+    Methods:
+        __new__(cls) : Singleton pattern to ensure only one instance of CalendarService.
+        __init__() : Initializes the service and runs a health check.
+        _run_health_check() : Checks the health of the service by verifying the existence of a JSON file and the availability of an iCal URL.
+        is_healthy() : Returns the health status of the service.
+        _get_calendar_events() : Fetches and parses the remote iCal file.
+        fetch_calendar_events(keyword, month, limit) : Filters the iCal events based on optional keyword and month.
+        get_next_concert_data() : Analyzes the JSON dictionary of tickets to find the next concert.
+        mail_me_next_concert() : Sends the next concert details by email with its attached file.
+        get_week_events(offset) : Fetches events for the current or next week.
+    """
     _instance = None
 
     def __new__(cls):
@@ -25,6 +39,7 @@ class CalendarService:
         self.index_path = Path(cfg.DIR_DOCS) / "concert_tickets/concerts.json"
         self.status = self._run_health_check()
         self._initialized = True
+        self.mailer_proton = MailerProton()
 
     def _run_health_check(self):
         checks = {"json_file": False, "ical_url": False}
@@ -40,14 +55,9 @@ class CalendarService:
         return checks
 
     def is_healthy(self):
-        """Returns True if everything is OK, otherwise lists the errors."""
-        if all(self.status.values()):
-            return True, "All systems GO"
-        errors = [k for k, v in self.status.items() if not v]
-        return False, f"Issues detected: {', '.join(errors)}"
+        return all(self.status.values()), "All systems GO" if all(self.status.values()) else f"Issues detected: {', '.join([k for k, v in self.status.items() if not v])}"
 
     def _get_calendar_events(self):
-        """Fetches and parses the remote iCal file."""
         response = requests.get(cfg.LINK_CALENDAR, timeout=10)
         response.raise_for_status()
         calendar = vobject.readOne(response.text)
@@ -73,7 +83,6 @@ class CalendarService:
         return sorted(events, key=lambda x: x["dt"])
 
     def fetch_calendar_events(self, keyword="", month="", limit=None):
-        """Filters the iCal events."""
         all_events = self._get_calendar_events()
         filtered = []
         now = datetime.now()
@@ -89,7 +98,6 @@ class CalendarService:
         return filtered[:limit] if limit else filtered
 
     def get_next_concert_data(self):
-        """Analyzes the JSON dictionary of tickets."""
         if not self.index_path.exists():
             return None
 
@@ -120,7 +128,6 @@ class CalendarService:
         return concerts_list[0]
 
     def mail_me_next_concert(self):
-        """Send the next concert by email with its attached file."""
         try:
             next_event = self.get_next_concert_data()
             if not next_event:
@@ -142,7 +149,7 @@ class CalendarService:
             )
 
             attachment = Path(cfg.DIR_DOCS) / "concert_tickets" / pdf_file
-            success = send_mail(
+            success = self.mailer_proton.send_mail(
                 subject=subject,
                 body=body,
                 to_email=f"concert@{cfg.DOMAIN}",
@@ -154,10 +161,6 @@ class CalendarService:
             return f"Critical Error in Mail Service: {e}"
 
     def get_week_events(self, offset=0):
-        """
-        offset=0 : Current week
-        offset=1 : Next week
-        """
         all_events = self._get_calendar_events()
         now = datetime.now()
 
@@ -172,8 +175,3 @@ class CalendarService:
             if start_of_target_week <= e["dt"] <= end_of_target_week
         ]
         return filtered
-if __name__ == "__main__":
-    cal = CalendarService()
-    events = cal.fetch_calendar_events(limit=1)
-    for e in events:
-        print(f"Next: {e['summary']} on {e['dt']}")

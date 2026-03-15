@@ -6,9 +6,9 @@ import os
 import requests
 import time
 import json
-from faster_whisper import WhisperModel
 from services.router_llm import RouterLLM
 from tools.scraper import ScraperService
+from tools.whisper_engine import WhisperEngine
 from config_loader import cfg
 from services.user_session import UserSession
 from tools.task_context import TaskContext
@@ -17,6 +17,20 @@ from datetime import datetime
 from pathlib import Path
 
 class SessionManager:
+    """
+    Manages user sessions and handles incoming requests.
+
+    Methods:
+    - __init__(self) : Initializes the session manager.
+    - _cleanup_inactive_sessions(self) : Cleans up inactive sessions.
+    - _worker_loop(self) : Processes tasks from the queue.
+    - _handle_direct_command(self, session, text) : Handles direct commands.
+    - _handle_stt_request(self, session, url) : Handles speech-to-text requests.
+    - _handle_auth(self, sock, username, password) : Handles user authentication.
+    - handle_client(self, sock) : Handles client connections.
+    - run_server(self) : Starts the SSL-secured Hub Server.
+    """
+
     def __init__(self):
         self.host = cfg.INTERFACE_IP
         self.port = int(cfg.HUB_PORT)
@@ -24,14 +38,8 @@ class SessionManager:
         self.user_count = 0
         self.active_sessions = {}
 
-        print("[*] Loading Whisper (distil-large-v3/CPU)...")
-        self.whisper = WhisperModel(
-            "medium",
-            device="cpu",
-            compute_type="int8",
-            cpu_threads=12,
-            num_workers=1
-        )
+        print("[*] Loading Whisper...")
+        self.whisper = WhisperEngine()
         print("[*] Loading RouterLLM...")
         self.router = RouterLLM()
         self.active_sessions["system"] = UserSession("system", self.user_count)
@@ -59,6 +67,7 @@ class SessionManager:
 
             for username in to_delete:
                 del self.active_sessions[username]
+
     def _worker_loop(self):
         while True:
             session, payload = self.task_queue.get()
@@ -73,7 +82,6 @@ class SessionManager:
                 self.task_queue.task_done()
 
     def _handle_direct_command(self, session, text):
-        """Utilise directement l'objet session pour router l'action"""
         print(text)
         if text:
             print(f"[*] Transcription [{session.username}]: {text}")
@@ -81,7 +89,6 @@ class SessionManager:
             self.router.command_queue.put(context)
 
     def _handle_stt_request(self, session, url):
-        """Mise à jour pour utiliser l'objet UserSession"""
         temp_file = f"/tmp/temp_{session.index}_{threading.get_ident()}.wav"
         try:
             response = requests.get(url, timeout=10)
@@ -89,17 +96,7 @@ class SessionManager:
                 with open(temp_file, "wb") as f:
                     f.write(response.content)
 
-                segments, _ = self.whisper.transcribe(
-                    temp_file,
-                    beam_size=3,
-                    language=cfg.LANGUAGE,
-                    vad_filter=True,
-                    vad_parameters=dict(min_silence_duration_ms=500),
-                    initial_prompt=f"{cfg.USERNAME}, Command, Playlist, Touhou, English",
-
-                )
-                text = " ".join([segment.text for segment in segments]).strip()
-
+                text = self.whisper.transcribe(temp_file)
                 if text:
                     print(f"[*] Transcription [{session.username}]: {text}")
                     context = TaskContext(user_input=text, session=session, audio_path=temp_file)

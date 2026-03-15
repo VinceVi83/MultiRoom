@@ -11,11 +11,22 @@ import uuid
 import platform
 import subprocess
 from http.server import SimpleHTTPRequestHandler, HTTPServer
+from config_loader import cfg
 
-HUB_IP = "172.21.8.200"
-HUB_PORT = 28888
 
 class STT:
+    """Speech-to-Text (STT) system for capturing and processing voice commands.
+
+    Methods:
+        __init__(http_port, json_path): Initializes the STT system.
+        get_hardware_signature(): Generates a unique hardware signature.
+        test_microphone(): Tests the microphone level.
+        _serve_file(): Starts a one-shot HTTP server for the Hub.
+        record_audio(): Records audio from the microphone.
+        send_link_to_hub(): Sends the recorded audio link to the Hub.
+        run(): Starts the STT system in continuous listening mode.
+    """
+
     def __init__(self):
         self.temp_filename = "temp_voice.wav"
         self.http_port = 8090
@@ -29,7 +40,6 @@ class STT:
         self.audio = pyaudio.PyAudio()
 
     def get_hardware_signature(self):
-        """Generates a unique SHA-256 signature based on machine specific IDs."""
         try:
             os_id = str(subprocess.check_output('wmic csproduct get uuid'), 'utf-8').split('\n')[1].strip()
             mac_addr = ':'.join(['{:02x}'.format((uuid.getnode() >> ele) & 0xff)
@@ -40,7 +50,6 @@ class STT:
             return hashlib.sha256(platform.node().encode()).hexdigest()
 
     def test_microphone(self):
-        """Checks the microphone level at startup using numpy."""
         print("[*] Testing microphone signal...")
         stream = self.audio.open(format=self.format, channels=self.channels,
                                  rate=self.rate, input=True,
@@ -61,30 +70,12 @@ class STT:
             stream.close()
 
     def _serve_file(self):
-        """One-shot HTTP server for the Hub."""
         handler = SimpleHTTPRequestHandler
         server = HTTPServer(('0.0.0.0', self.http_port), handler)
         server.handle_request()
 
-    def test_microphone(self):
-        print("[*] Testing microphone signal...")
-        stream = self.audio.open(format=self.format, channels=self.channels,
-                                 rate=self.rate, input=True,
-                                 frames_per_buffer=self.chunk)
-        try:
-            data = stream.read(self.chunk * 10)
-
-            audio_data = np.frombuffer(data, dtype=np.int16).astype(np.float64)
-            rms = np.sqrt(np.mean(audio_data**2))
-            print(f"[OK] Microphone ready (RMS level: {rms:.2f})")
-        except Exception as e:
-            print(f"[!] Microphone test error: {e}")
-        finally:
-            stream.stop_stream()
-            stream.close()
-
     def record_audio(self):
-        print("\n[Listening] Waiting for a voice command...")
+        print("\n[Listening] Waiting for a voice command. ..")
 
         stream = self.audio.open(format=self.format, channels=self.channels,
                                  rate=self.rate, input=True,
@@ -93,8 +84,9 @@ class STT:
         is_recording = False
         silent_chunks = 0
 
-        THRESHOLD = 500
-        SILENCE_LIMIT = int(self.rate / self.chunk * 1.5)
+        THRESHOLD = 300
+        SILENCE_LIMIT = int(self.rate / self.chunk * 3.0)
+        CONTINUE_THRESHOLD = THRESHOLD * 0.8
 
         while True:
             data = stream.read(self.chunk)
@@ -102,7 +94,7 @@ class STT:
             audio_data_float = audio_data_raw.astype(np.float64)
             rms = np.sqrt(np.mean(audio_data_float**2))
 
-            if rms > THRESHOLD:
+            if rms > THRESHOLD or (is_recording and rms > CONTINUE_THRESHOLD):
                 if not is_recording:
                     print(f">>> [DETECTION] Volume: {rms:.0f} - Recording...")
                     is_recording = True
@@ -144,8 +136,8 @@ class STT:
             threading.Thread(target=self._serve_file, daemon=True).start()
             time.sleep(0.2)
 
-            with socket.create_connection(("172.21.8.200", 28888), timeout=5) as sock:
-                with context.wrap_socket(sock, server_hostname="172.21.8.200") as ssock:
+            with socket.create_connection((cfg.HUB_IP, 28888), timeout=5) as sock:
+                with context.wrap_socket(sock, server_hostname=cfg.HUB_IP) as ssock:
                     ssock.sendall(secure_packet.encode('utf-8'))
                     print(f"[OK] Signal sent to Hub : {url}")
                     response = ssock.recv(1024).decode('utf-8')

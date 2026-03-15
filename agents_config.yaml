@@ -1,3 +1,13 @@
+# LLM Agent Configuration File
+#
+# This YAML file defines configurations for various LLM agents used in the system.
+# Each agent has specific prompts, options, and settings tailored to their role.
+#
+# Sections:
+#    - RouterLLM: Main router agents for intent classification
+#    - ConcertManager: Agents for concert data extraction
+#    - GlobalLLM: General-purpose LLM agents for various tasks
+
 RouterLLM:
   router_thematic:
     use_json: true
@@ -34,18 +44,17 @@ RouterLLM_SUB:
       top_p: 0.0
       temperature: 0.0
     prompt: |
-      Task: Classify home automation intent into a numeric ID.
+      Task: Extract information to pilote home automation devices.
       
-      IDs:
-      1: LIGHT (Controlling lights, plugs, or temperature)
-      2: ACTION (Specific hardware triggers or complex scenarios)
+      1: TYPE of device (eg. LIGHT, SWITCH, PLUG, THERMOSTAT)
+      2: ACTION (ON/OFF/NIGHT_MODE/DAY_MODE/LOWER_BRIGHTNESS/RAISE_BRIGHTNESS/INFO)
       0: NONE (Not a valid home automation command)
       
       STRICT RULES:
-      1. Return a JSON object with the key "ID".
+      1. Return a JSON object with the key "TYPE", "ACTION".
       2. Be extremely literal.
       
-      Example: {"ID": "1"}
+      Example: {"TYPE": "LIGHT", "ACTION": "ON"} or  {"TYPE": "NONE", "ACTION": "NONE"}
 
   INFO_AGENT:
     use_json: true
@@ -58,7 +67,7 @@ RouterLLM_SUB:
       
       IDs:
       1: WEATHER (Local weather, news headlines, or forecasts)
-      2: WEB_FAST (Quick factual questions, e.g., "Qui est le CEO de Nvidia ?")
+      2: WEB_FAST (Quick factual questions, e.g., "Who is the CEO of Nvidia?")
       3: WEB_DEEP (Deep analysis, comparisons, detailed reading)
       0: NONE (Not an information request)
       
@@ -104,20 +113,20 @@ RouterLLM_SUB:
       repeat_last_n: 64
       options:
         temperature: 0.7
-      prompt: |
-        Task: Agir en tant qu'assistant personnel amical et efficace.
-        
-        Instruction: 
-        Reçois des données brutes (JSON ou texte) et transforme-les en une réponse naturelle, concise et polie en français.
-        
-        Rules:
-        - Ne pas inventer d'informations non présentes dans les données.
-        - Si la donnée est vide ou indique une erreur, réponds avec empathie.
-        - Utilise un ton chaleureux mais reste direct.
-        - Ne réponds que par la phrase finale, pas de commentaires.
-
-        Constraint: La réponse doit être prête à être lue par une synthèse vocale.
+    prompt: |
+      Task: Act as a friendly and efficient personal assistant.
       
+      Instruction: 
+      Receive raw data (JSON or text) and transform it into a natural, concise, and polite response in English.
+      
+      Rules:
+      - Do not invent information not present in the data.
+      - If the data is empty or indicates an error, respond with empathy.
+      - Use a warm tone but remain direct.
+      - Respond only with the final sentence, no comments.
+
+      Constraint: The response must be ready to be read by a text-to-speech system.
+
   DAILY_AGENT:
     use_json: true
     options:
@@ -146,7 +155,6 @@ RouterLLM_SUB:
       2. Be extremely literal. Do not guess.
       
       Example: {"ID": "1"}
-  
 
   MUSIC_AGENT:
     use_json: true
@@ -230,11 +238,9 @@ RouterLLM_SUB:
       Task: Extract only the names of the food items.
       Example:
       {
-        "items": ["lait", "oeufs"]
+        "items": ["milk", "eggs"]
       }
       Rule: Return ONLY JSON.
-
-
 
 
 ConcertManager:
@@ -254,11 +260,6 @@ ConcertManager:
       Extract the venue and city.
       Respond with JSON format: {"location": "VENUE, CITY"}
 
-
-
-
-
-
 GlobalLLM:
   generic:
     use_json: false
@@ -268,10 +269,10 @@ GlobalLLM:
       num_predict: 500
       num_ctx: 2048
     prompt: |
-      Task: Assistant généraliste.
-      Instruction: Réponds de manière concise et directe.
-      Language: Français.
-      Constraint: Pas d'introduction, pas de conclusion, va droit au but.
+      Task: General-purpose assistant.
+      Instruction: Respond concisely and directly.
+      Language: English.
+      Constraint: No introduction, no conclusion, get straight to the point.
 
   weather_forecast:
     use_json: true
@@ -281,10 +282,10 @@ GlobalLLM:
       num_predict: 500
       num_ctx: 2048
     prompt: |
-      Task: Assistant Météo Précis.
-      Instruction: Analyse les données météo pour la date et le lieu fournis.
-      Language: Français.
-      Constraint: Réponse en JSON pur. Pas de texte avant ou après.
+      Task: Precise Weather Assistant.
+      Instruction: Analyze weather data for the provided date and location.
+      Language: English.
+      Constraint: Pure JSON response only. No text before or after.
       Structure:
         - global: { temp_avg: int, rain_risk: "high|med|low", summary: string }
         - periods:
@@ -298,18 +299,18 @@ GlobalLLM:
       temperature: 0.1
       num_predict: 500
     prompt: |
-      Task: Analyse de perturbations transports (IDF/Paris).
-      Context: Trajet de {origin} vers {destination}.
-      Input: Données de trafic en temps réel (RATP/SNCF).
-      Instruction: Identifie UNIQUEMENT les incidents bloquants sur cet itinéraire.
-      Language: Français.
-      Constraint: Réponse en JSON. Si tout est fluide, "status" est "OK".
+      Task: Analyze transport disruptions (IDF/Paris).
+      Context: Route from {origin} to {destination}.
+      Input: Real-time traffic data (RATP/SNCF).
+      Instruction: Identify ONLY blocking incidents on this route.
+      Language: English.
+      Constraint: JSON response only. If everything is smooth, "status" is "OK".
       Format: 
         {
           "status": "OK" | "DELAY" | "BLOCK",
-          "impacted_lines": ["Ligne X", "RER Y"],
-          "message": "Court résumé de l'impact",
-          "alternative": "Suggestion rapide si besoin"
+          "impacted_lines": ["Line X", "RER Y"],
+          "message": "Brief summary of impact",
+          "alternative": "Quick suggestion if needed"
         }
         
   location_agent:
@@ -320,7 +321,7 @@ GlobalLLM:
       num_predict: 20
       num_ctx: 2048
     prompt: |
-      Task: Extract the room name (location) from a French home automation command.
+      Task: Extract the room name (location) from a home automation command.
       
       Locations: REPLACE_LOCATIONS
       
@@ -334,8 +335,8 @@ GlobalLLM:
       2. If no room from the list is found, return "Unknown".
       3. Return ONLY the JSON object.
 
-      Example input: "Éteins tout dans la cuisine s'il te plaît"
-      Example output: {"location": "Cuisine"}
+      Example input: "Turn off everything in the kitchen please"
+      Example output: {"location": "Kitchen"}
 
   mail:
     use_json: true
@@ -349,13 +350,9 @@ GlobalLLM:
       Example:
       {
         "to": "jean@mail.com", 
-        "body": "Salut, on se voit demain ?"
+        "body": "Hi, shall we meet tomorrow?"
       }
       Constraint: Return ONLY JSON.
-
-
-
-
 
 
   french_research_agent:
@@ -370,14 +367,14 @@ GlobalLLM:
       num_ctx: 4096
       repeat_penalty: 1.1
     prompt: |
-      Task: Synthèse factuelle rigoureuse.
-      Instruction: Extraire et structurer les données sans fioritures.
-      Language: Français uniquement.
+      Task: Rigorous factual synthesis.
+      Instruction: Extract and structure data without embellishments.
+      Language: English only.
       Rules: 
-      1. Pas d'introduction, pas de conclusion.
-      2. Liste à puces pour les faits.
-      3. Chiffres et dates précis obligatoires.
-      4. Citer [Source: domaine.com].
+      1. No introduction, no conclusion.
+      2. Bullet points for facts.
+      3. Precise figures and dates required.
+      4. Cite [Source: domain.com].
 
 
   french_research_agent_extreme:
@@ -393,19 +390,14 @@ GlobalLLM:
       repeat_penalty: 1.15
       repeat_last_n: 128
     prompt: |
-      Task: Analyse de documents longs et complexes.
-      Instruction: Synthétise les informations de manière purement factuelle.
-      Language: Français uniquement.
+      Task: Analysis of long and complex documents.
+      Instruction: Synthesize information in a purely factual manner.
+      Language: English only.
       Rules:
-      1. Structure par points techniques clés.
-      2. Extraction exhaustive des données (noms, dates, chiffres).
-      3. Zéro fioriture, style direct et pro.
-      4. Citer [Source: domaine.com].
-
-
-
-
-
+      1. Structure by key technical points.
+      2. Exhaustive extraction of data (names, dates, figures).
+      3. Zero embellishment, direct and professional style.
+      4. Cite [Source: domain.com].
 
   global_research_agent:
     model: "qwen2.5:7b-instruct"

@@ -6,24 +6,22 @@ import time
 from config_loader import cfg
 from types import SimpleNamespace
 
+
 class OllamaClient:
     """
     A thread-safe singleton client to manage Ollama interactions and VRAM optimization.
 
     This class ensures that only one LLM inference runs at a time using a threading lock
     and handles automatic model unloading to prevent GPU memory overflow.
+
+    Methods:
+        __init__(self) : Initializes the client using centralized configuration.
+        execute(self, user_input, agent_cfg=None, debug=False, verbose=False) : Executes a synchronized LLM request for a specific agent.
+        manage_vram(self, target_model) : Unloads the current model if a different one is requested.
+        _prepare(self, c, user_input) : Formats the cfg object for self.client.chat(**...).
     """
 
     def __init__(self):
-        """
-        Initializes the client using centralized configuration.
-
-        Attributes:
-            base_url (str): The host address from cfg.OLLAMA_CONFIG.
-            client (ollama.Client): The official Ollama Python instance.
-            current_model (str): Tracks the currently loaded model in VRAM.
-            _lock (threading.Lock): Mutex to ensure thread-safe execution.
-        """
         self.base_url = cfg.OLLAMA_CONFIG
         self.client = ollama.Client(host=self.base_url)
         self.current_model = None
@@ -35,24 +33,8 @@ class OllamaClient:
             print(f"Error connecting to Ollama : {e}")
 
     def execute(self, user_input, agent_cfg=None, debug=False, verbose=False):
-        """
-        Executes a synchronized LLM request for a specific agent.
-
-        Args:
-            user_input (str): The message or data to process.
-            agent_cfg (SimpleNamespace): Configuration containing:
-                - model (str): Model name.
-                - prompt (str): System instructions.
-                - use_json (bool): Format toggle.
-                - options (dict): Model parameters (temp, etc.).
-            debug (bool): If True, prints GPU performance metrics.
-            verbose (bool): If True, prints full prompt/response logs.
-
-        Returns:
-            Union[str, dict]: The LLM response, parsed as JSON if use_json is True.
-        """
         with self._lock:
-            self._manage_vram(agent_cfg.model)
+            self.manage_vram(agent_cfg.model)
             agent_cfg_final = agent_cfg
             agent_cfg_final.user_input = user_input
 
@@ -90,12 +72,7 @@ class OllamaClient:
             except Exception as e:
                 return {"error": f"LLM execution failed: {e}"}
 
-    def _manage_vram(self, target_model):
-        """
-        Unloads the current model if a different one is requested.
-        Args:
-            target_model (str): The name of the model to be loaded.
-        """
+    def manage_vram(self, target_model):
         if self.current_model and self.current_model != target_model:
             print("Discharge current model")
             try:
@@ -109,7 +86,6 @@ class OllamaClient:
         self.current_model = target_model
 
     def _prepare(self, c, user_input):
-        """Formate l'objet cfg pour self.client.chat(**...)"""
         return {
             "model": c.model if 'model' in c.__dict__ else cfg.MODEL_NAME_MAIN,
             "format": "json" if c.use_json else "",
@@ -119,6 +95,7 @@ class OllamaClient:
             ],
             "options": c.options
         }
+
 
 def create_agent_config(prompt, model=None, use_json=True, **custom_options):
     """Generates an agent config using MODEL_NAME_MAIN by default"""
@@ -138,6 +115,7 @@ def create_agent_config(prompt, model=None, use_json=True, **custom_options):
         use_json=use_json,
         options=SimpleNamespace(**base_options)
     )
+
 
 llm = OllamaClient()
 

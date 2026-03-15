@@ -7,3 +7,5 @@ music_assistant.txt
 *.pyd
 .aider*
 .vscode
+settings.json
+test.py

@@ -11,16 +11,23 @@ from trafilatura import fetch_url, extract
 from config_loader import cfg
 from tools.llm_agent import llm
 
-class ScraperService:
-    """
-    Web scraping and search aggregation service (Singleton).
 
-    Main methods:
-    - get_search_candidates(query, ...): Searches and scores results via SearXNG.
-    - scrape_full_content(url): Extracts raw text from a web page (deep analysis).
-    - get_web_summary(query, agent_cfg): Quick summary based on snippets.
-    - get_web_discovery(query): List of candidates for user selection.
-    - get_web_extraction(query, candidate, agent_cfg): Deep analysis of a specific page.
+class ScraperService:
+    """Web scraping and search aggregation service (Singleton).
+
+    Summary:
+        Orchestrates web scraping, search result scoring, content extraction, and weather reporting.
+        Manages singleton instances to ensure consistent state across the application lifecycle.
+
+    Methods:
+        __new__(cls) : Singleton pattern implementation to ensure only one instance exists.
+        __init__(self, debug=False) : Initializes service configuration and debug mode.
+        get_search_candidates(self, query, count=8, lang=None, time_boost=False) : Retrieves and scores search results from external engines.
+        scrape_full_content(self, url) : Extracts full text content from a given URL.
+        get_web_summary(self, query, agent_cfg) : Generates a quick summary using aggregated snippets.
+        get_web_discovery(self, query, time_boost=False) : Provides an interface for interactive selection of search candidates.
+        get_web_extraction(self, query, selected_candidate, agent_cfg) : Performs deep scraping and extraction on a selected candidate.
+        print_weather_report(self, data) : Formats and prints weather data from Home Assistant.
     """
     _instance = None
 
@@ -41,8 +48,7 @@ class ScraperService:
 
         self._initialized = True
 
-    def get_search_candidates(self, query, count=8, lang=cfg.LANGUAGE2, time_boost=False):
-        """Retrieve and score search results."""
+    def get_search_candidates(self, query, count=8, lang=None, time_boost=False):
         try:
             params = {
                 "q": query,
@@ -86,14 +92,12 @@ class ScraperService:
         return sorted(candidates, key=lambda x: x['score'], reverse=True)[:count]
 
     def scrape_full_content(self, url):
-        """Cleanly extract text from a URL."""
         downloaded = fetch_url(url)
         if not downloaded:
             return None
         return extract(downloaded, include_tables=True, include_comments=False)
 
     def get_web_summary(self, query, agent_cfg):
-        """Quick summary via snippets (2k-4k context)."""
         candidates = self.get_search_candidates(query, count=6)
         if not candidates:
             return "NO_RESULTS_FOUND"
@@ -111,7 +115,6 @@ class ScraperService:
         return llm.execute(user_input=payload, agent_cfg=agent_cfg)
 
     def get_web_discovery(self, query, time_boost=False):
-        """Interface for interactive selection."""
         candidates = self.get_search_candidates(query, count=5, time_boost=time_boost)
         if not candidates:
             return None, "NO_RESULTS_FOUND"
@@ -123,7 +126,6 @@ class ScraperService:
         return candidates, formatted_list
 
     def get_web_extraction(self, query, selected_candidate, agent_cfg):
-        """Scraping deep (32k context) of a candidate."""
         content = self.scrape_full_content(selected_candidate['url'])
         if not content:
             return "EXTRACTION_FAILED"
@@ -153,6 +155,7 @@ class ScraperService:
             name = {"morning": "Morning", "afternoon": "Afternoon", "evening": "Evening"}.get(period, period.upper())
             print(f" {icon} {name:<12} | {details.get('temp')}°C | {details.get('desc')}")
         print(f"{'='*45}\n")
+
 
 if __name__ == "__main__":
     scraper = ScraperService()

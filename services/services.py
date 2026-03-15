@@ -3,6 +3,7 @@ from config_loader import cfg
 from tools.llm_agent import llm
 from tools.my_calendar import CalendarService
 from tools.scraper import ScraperService
+from services.ha_service import HAService
 from services.shopping import ShoppingService
 
 agents_dict = {
@@ -11,14 +12,21 @@ agents_dict = {
     "SHOP_ADD": cfg.RouterLLM_SUB.SHOP_ADD
 }
 
+
 class ServiceDispatcher:
+    """Centralized service dispatcher for executing commands and routing to appropriate services.
+
+    Methods:
+        execute(context) : Entry point for routing to the appropriate service based on context category.
+        _handle_daily(context) : Handles daily-related commands including shopping list operations.
+        _handle_calendar(context) : Handles calendar-related commands like fetching events and concerts.
+        _handle_music(context) : Handles music-related commands including playlist and VLC agent interactions.
+        _handle_domotic(context) : Handles Home Assistant domotic-related commands.
+        _handle_info(context) : Handles information-related commands like weather and web search.
     """
-    Dispatcher static for executing commands.
-    Centralizes business logic without polluting the RouterLLM.
-    """
+
     @staticmethod
     def execute(context):
-        """Entry point for routing to the appropriate service."""
         handlers = {
             "DOMOTIC_AGENT": ServiceDispatcher._handle_domotic,
             "CALENDAR_AGENT": ServiceDispatcher._handle_calendar,
@@ -26,6 +34,7 @@ class ServiceDispatcher:
             "DAILY_AGENT": ServiceDispatcher._handle_daily,
             "INFO_AGENT": ServiceDispatcher._handle_info
         }
+
         handler = handlers.get(context.category)
         if handler:
             try:
@@ -90,13 +99,10 @@ class ServiceDispatcher:
 
     @staticmethod
     def _handle_domotic(context):
+        ha_service = HAService()
         location_res = llm.execute(context.user_input, cfg.GlobalLLM.location_agent)
-        context.location = location_res.get('location', 'Nonsense')
-
-        if context.label in ["LIGHTS", "ACTION"]:
-
-            return "Domotic service executed"
-        return "NONSENSE"
+        context.location = location_res.get('location', 'NONSENSE')
+        return ha_service.handle_request(context.label, context.location)
 
     @staticmethod
     def _handle_info(context):
@@ -110,13 +116,7 @@ class ServiceDispatcher:
             scraper.get_web_extraction(context.user_input, candidate, cfg.GlobalLLM.french_research_agent_extreme)
         return "OK"
 
-
 def format_result(result):
-    """
-    Transforms a dictionary {'K': 'V'} into string "K:V".
-    If the input is not a dictionary, returns the input as is.
-    """
     if isinstance(result, dict):
-
         return ",".join([f"{k}:{v}" for k, v in result.items()])
     return str(result)

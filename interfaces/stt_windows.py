@@ -2,12 +2,12 @@ import os, sys, time, socket, queue
 import sounddevice as sd
 import numpy as np
 import threading
-from faster_whisper import WhisperModel
+from tools.whisper_engine import WhisperEngine
 from config_loader import cfg
 
 MICRO_GAIN, TRIGGER_THRESHOLD = 3.0, 0.05
-MODEL_SIZE, DEVICE, COMPUTE_TYPE = "medium", "cuda", "float16"
-WSL_IP, PORT = "172.21.8.200", 5000
+WSL_IP, PORT = cfg.HUB_IP, 5000
+
 
 def init_cuda():
     base = os.path.join(os.environ['LOCALAPPDATA'], 'Python', 'pythoncore-3.14-64', 'Lib', 'site-packages')
@@ -17,17 +17,14 @@ def init_cuda():
             os.add_dll_directory(path)
             os.environ['PATH'] = path + os.pathsep + os.environ['PATH']
 
-class WhisperEngine:
-    def __init__(self):
-        print(f"[*] Loading {MODEL_SIZE}...")
-        self.model = WhisperModel(MODEL_SIZE, device=DEVICE, compute_type=COMPUTE_TYPE)
-
-    def transcribe(self, audio):
-        segments, _ = self.model.transcribe(audio, language=cfg.LANGUAGE, vad_filter=True,
-                                            initial_prompt="Command, VLC, Playlist, Jukebox, Touhou, Japanese.")
-        return "".join([s.text for s in segments]).strip()
-
 class AudioBuffer:
+    """Manages an audio buffer for capturing and processing audio data.
+
+    Methods:
+    - __init__(): Initializes the audio buffer with empty state.
+    - push(chunk, vol) : Adds audio data to the buffer and checks for activity.
+    - pull() : Retrieves and clears the audio data from the buffer.
+    """
     def __init__(self):
         self.buffer, self.active, self.silence = [], False, 0
 
@@ -47,6 +44,7 @@ class AudioBuffer:
         self.buffer, self.active, self.silence = [], False, 0
         return data
 
+
 def send(text):
     if not text: return
     try:
@@ -58,8 +56,13 @@ def send(text):
     except Exception:
         print("\n[ERR] Server unreachable")
 
+
 def run_mic_test(duration=5):
-    """Displays a volume bar for X seconds to validate hardware."""
+    """Runs a microphone test for a specified duration to validate hardware.
+
+    Args:
+    - duration: Duration of the test in seconds.
+    """
     print("\n" + "="*40)
     print(f"--- INITIAL MIC TEST ({duration}s) ---")
     print("="*40)
@@ -80,7 +83,6 @@ def run_mic_test(duration=5):
     print("\n\n[*] Test completed. Loading AI model...\n")
 
 def main():
-    init_cuda()
     run_mic_test(5)
     engine, manager, q = WhisperEngine(), AudioBuffer(), queue.Queue()
 
@@ -112,6 +114,7 @@ def main():
     finally:
         exit_event.set()
         print("[*] Cleaning up and closing stream.")
+
 
 if __name__ == "__main__":
     try:

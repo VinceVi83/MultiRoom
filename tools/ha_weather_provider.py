@@ -4,8 +4,10 @@ from typing import List, Optional
 from datetime import datetime
 from config_loader import cfg
 
+
 @dataclass
 class WeatherHour:
+    """Represents an hourly weather forecast."""
     timestamp: datetime
     condition: str
     temperature: float
@@ -15,6 +17,7 @@ class WeatherHour:
 
 @dataclass
 class WeatherDay:
+    """Represents a daily weather forecast."""
     timestamp: datetime
     condition: str
     temp_max: float
@@ -23,12 +26,24 @@ class WeatherDay:
 
 @dataclass
 class WeatherStatus:
+    """Represents the current weather status."""
     status: str
     temperature: float
     humidity: int
     last_update: datetime
 
+
 class MeteoHaApi:
+    """API to interact with Home Assistant for weather data.
+
+    Methods:
+        __init__(entity_id) : Initializes the API with the entity ID.
+        fetch_current_status() -> WeatherStatus : Fetches the current weather status.
+        fetch_hourly_forecast() -> List[WeatherHour] : Fetches the hourly weather forecast.
+        fetch_daily_forecast() -> List[WeatherDay] : Fetches the daily weather forecast.
+        base_url_services() -> str : Returns the base URL for the weather services.
+    """
+
     def __init__(self, entity_id=cfg.HA_WEATHER_LOCATION):
         self.host = f"http://{cfg.HA_HOSTNAME}:8123/api"
         self.token = cfg.HA_TOKEN
@@ -52,7 +67,6 @@ class MeteoHaApi:
         )
 
     def fetch_hourly_forecast(self) -> List[WeatherHour]:
-        """Retrieve and sort all hourly forecasts"""
         url = f"{self.base_url_services()}?return_response"
         payload = {"entity_id": self.entity_id, "type": "hourly"}
         
@@ -71,7 +85,6 @@ class MeteoHaApi:
         ]
 
     def fetch_daily_forecast(self) -> List[WeatherDay]:
-        """Retrieve and sort daily forecasts"""
         url = f"{self.base_url_services()}?return_response"
         payload = {"entity_id": self.entity_id, "type": "daily"}
         
@@ -90,6 +103,7 @@ class MeteoHaApi:
 
     def base_url_services(self):
         return f"{self.host}/services/weather/get_forecasts"
+
 
 if __name__ == "__main__":
     meteo = MeteoHaApi()

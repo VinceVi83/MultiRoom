@@ -14,10 +14,24 @@ from http.server import SimpleHTTPRequestHandler, HTTPServer
 from config_loader import cfg
 from pathlib import Path
 
-HUB_IP = "172.21.8.200"
-HUB_PORT = 28888
-
 class STTSimulator:
+    """
+    Simulates a text-to-speech system for testing purposes.
+
+    Methods:
+        __init__(http_port, json_path) : Initializes the simulator instance and sets default attributes.
+        check_result(response) : Validates if the received response matches expected task context data.
+        get_hardware_signature() : Generates a unique hardware signature for authentication.
+        load_and_verify() : Loads JSON records and verifies existence of associated audio files.
+        connect_hub(timeout=60) : Establishes a secure SSL connection to the central hub.
+        _send_packet(message, label) : Encodes and transmits data packets to the hub, handling responses.
+        authenticate() : Performs initial authentication with the hub using the signature.
+        _serve_file() : Starts a temporary HTTP server to serve audio files for recording.
+        send_to_hub(entry, mode) : Constructs and sends PTT or text commands to the hub.
+        interactive_mode(mode) : Runs the simulator allowing manual selection of test records.
+        auto_mode(mode) : Automatically iterates through all available test records sequentially.
+    """
+
     def __init__(self):
         self.http_port = 8090
         self.json_path = Path(cfg.DIR_DOCS) / "Recording/record.json"
@@ -103,8 +117,8 @@ class STTSimulator:
         context.check_hostname = False
         context.verify_mode = ssl.CERT_NONE
         try:
-            raw_sock = socket.create_connection((HUB_IP, HUB_PORT), timeout=timeout)
-            self.client_socket = context.wrap_socket(raw_sock, server_hostname=HUB_IP)
+            raw_sock = socket.create_connection((cfg.HUB_IP, cfg.HUB_PORT), timeout=timeout)
+            self.client_socket = context.wrap_socket(raw_sock, server_hostname=cfg.HUB_IP)
             return True
         except Exception as e:
             print(f"[!] Connection error: {e}")
@@ -127,7 +141,7 @@ class STTSimulator:
             return None
 
     def authenticate(self):
-        auth_packet = f"{self.signature}:Auth:test:test"
+        auth_packet = f"{self.signature}:Auth:{cfg.LIST_USERS[0]}:{cfg.DICO_USERS[cfg.LIST_USERS[0]]}"
         if self._send_packet(auth_packet, "AUTH"):
             self.authenticated = True
 

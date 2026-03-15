@@ -13,12 +13,20 @@ from tools.my_calendar import CalendarService
 from tools.scraper import ScraperService
 from services.services import ServiceDispatcher
 from services.shopping import ShoppingService
-from tools.mailer_proton import send_mail
+from services.ha_service import HAService
+
 
 class RouterLLM:
     """
-    Handles command routing and persistent state for interactive AI services.
+    Main AI Router module that orchestrates intent detection, interactive web research, and service dispatching.
+
+    Methods:
+        __init__(self) : Initializes the RouterLLM instance with command queue, threading, and service instances.
+        dispatch_request(self, context) : Dispatches a request to the appropriate service based on user input.
+        inference_loop(self) : Background worker processing the command queue.
+        format_result(self, result) : Transforms a dictionary into a string 'KEY:Value' or returns the raw string.
     """
+
     def __init__(self):
         self.command_queue = queue.Queue()
         self.is_running = True
@@ -27,6 +35,7 @@ class RouterLLM:
         self.calendar = CalendarService()
         self.web_scraper = ScraperService()
         self.shopping = ShoppingService()
+        self.domotic = HAService()
         self.debug = False
 
     def dispatch_request(self, context):
@@ -38,21 +47,24 @@ class RouterLLM:
 
         if config:
             sub_res = llm.execute(context.user_input, config["agent"])
-            res_id = str(sub_res.get('ID'))
-            context.label = config["mapping"].get(res_id)
+
+            if context.category == "DOMOTIC_AGENT":
+                context.label = self.format_result(sub_res)
+            else:
+                res_id = str(sub_res.get('ID'))
+                context.label = config["mapping"].get(res_id)
             if context.label:
                 context.result = ServiceDispatcher.execute(context)
             else:
                 context.result = f"ID [{res_id}] not found in the dictionary {context.category}"
 
-        context.duration = time.time() - start_total
+        context.duration_llm = time.time() - start_total
+        context.duration = time.time() - context.start
         return context._archive_and_rename()
 
     def inference_loop(self):
-        """
-        Background worker processing the command queue.
-        """
         while self.is_running:
+            llm.manage_vram(cfg.MODEL_NAME_MAIN)
             item = self.command_queue.get()
             if item is None: break
             context = item
@@ -69,10 +81,10 @@ class RouterLLM:
                 self.command_queue.task_done()
 
     def format_result(self, result):
-        """Transforms a dictionary into a string 'KEY:Value' or returns the raw string"""
         if isinstance(result, dict):
             return ",".join([f"{k}:{v}" for k, v in result.items()])
         return str(result)
+
 
 if __name__ == "__main__":
     router = RouterLLM()

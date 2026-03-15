@@ -1,152 +1,138 @@
-import os
-import yaml
+import os, yaml, socket, getpass, psutil
 from pathlib import Path
 from types import SimpleNamespace
+from enum import Enum
 from dotenv import load_dotenv, dotenv_values
-import socket
 
-ROOT = Path(__file__).resolve().parent
-ENV_MAIN = ROOT / '.env'
-YAML_CONFIG = ROOT / 'agents_config.yaml'
-load_dotenv(ENV_MAIN)
+class ReturnCode(Enum):
+    SUCCESS = 1
+    ERR = 2
+    ERR_NOT_CONNECTED = 3
+    ERR_NOT_IMPLEMENTED = 4
+    ERR_ALREADY_DONE = 5
+    ERR_UNKNOWN_DEVICE = 6
+    ERR_INVALID_ARGUMENT = 7
+    ERR_NOT_CONFIGURED = 8
+    NULL = 9
 
-def dict_to_ns(d):
-    if isinstance(d, dict):
-        defaults = {
-            "model": os.getenv("MODEL_NAME_MAIN"),
-            "use_json": False,
-            "options": {},
-            "prompt": ""
-        }
-        defaults.update(d)
-        return SimpleNamespace(**{
-            k: (dict_to_ns(v) if k != "options" else v)
-            for k, v in defaults.items()
-        })
-    return d
+class AlisuConfig:
+    def __init__(self):
+        self.ROOT = Path(__file__).resolve().parent
+        self.DATA_DIR = Path.home() / "Documents" / "ALISU_DATA"
+        self.ENV_PATH = self.DATA_DIR / ".env"
+        self.YAML_PATH = self.ROOT / 'agents_config.yaml'
+        
+        self.cfg = SimpleNamespace()
+        
+        self._load_environment()
+        self._load_agents_yaml()
+        self._setup_system_info()
+        self._map_playlists()
+        self._finalize_prompts()
 
-env_vars = dotenv_values(ENV_MAIN)
-base_dict = {}
-for k, v in env_vars.items():
-    if v is None: continue
-    key = k.upper()
-    val = v.strip()
+    def _load_environment(self):
+        load_dotenv(self.ENV_PATH)
+        env_vars = dotenv_values(self.ENV_PATH)
+        
+        for k, v in env_vars.items():
+            if v is None: continue
+            key, val = k.upper(), v.strip()
+            
+            if ',' in val:
+                if ':' in val:
+                    parsed = {i.split(':')[0].strip(): i.split(':')[1].strip() for i in val.split(',') if ':' in i}
+                else:
+                    parsed = [i.strip() for i in val.split(',') if i.strip()]
+            else:
+                parsed = val
+            
+            setattr(self.cfg, key, parsed)
 
-    if key.startswith("DICO_"):
-        try:
-            dico_val = {}
-            for item in val.split(','):
-                if ':' in item:
-                    sub_k, sub_v = item.split(':', 1)
-                    dico_val[sub_k.strip()] = sub_v.strip()
-            base_dict[key] = dico_val
-        except Exception:
-            base_dict[key] = val
+    def _dict_to_ns(self, d):
+        if not isinstance(d, dict): return d
+        defaults = {"model": os.getenv("MODEL_NAME_MAIN"), "use_json": True}
+        merged = {**defaults, **d}
+        return SimpleNamespace(**{k: (self._dict_to_ns(v) if k != "options" else v) for k, v in merged.items()})
 
-    elif key.startswith("LIST_"):
-        try:
-            base_dict[key] = [item.strip() for item in val.split(',') if item.strip()]
-        except Exception:
-            base_dict[key] = val
-    else:
-        base_dict[key] = val
+    def _load_agents_yaml(self):
+        if not self.YAML_PATH.exists():
+            raise FileNotFoundError(f"CRITICAL: YAML config missing at {self.YAML_PATH}")
 
-if YAML_CONFIG.exists():
-    with open(YAML_CONFIG, 'r', encoding='utf-8') as f:
-        yaml_data = yaml.safe_load(f) or {}
-else:
-    yaml_data = {}
+        with open(self.YAML_PATH, 'r', encoding='utf-8') as f:
+            try:
+                data = yaml.safe_load(f) or {}
+            except yaml.YAMLError as exc:
+                print(f"\n[!!!] YAML SYNTAX ERROR in {self.YAML_PATH}")
+                raise exc 
+            
+            if not data:
+                raise ValueError(f"CRITICAL: {self.YAML_PATH} is empty!")
 
-cfg = SimpleNamespace(**base_dict)
+            for k, v in data.items():
+                setattr(self.cfg, k, self._dict_to_ns(v))
 
-import socket
-
-def get_ip_python(interface=cfg.INTERFACE_NAME):
-    try:
-        import fcntl
-        import struct
+    def _setup_system_info(self):
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        return socket.inet_ntoa(fcntl.ioctl(
-            s.fileno(),
-            0x8915,
-            struct.pack('256s', interface[:15].encode('utf-8'))
-        )[20:24])
-    except Exception:
-        return None
+        try:
+            s.connect(("8.8.8.8", 80))
+            self.cfg.INTERFACE_IP = s.getsockname()[0]
+        except:
+            self.cfg.INTERFACE_IP = "127.0.0.1"
+        finally:
+            s.close()
+        self.cfg.RETURN_CODE = ReturnCode
+        
+    def _map_playlists(self):
+        p_dir = Path(getattr(self.cfg, 'DIR_DOCS', self.DATA_DIR)) / "Playlists"
+        self.cfg.PLAYLIST_DIR = p_dir
+        self.cfg.PLAYLIST_LIST = {i.name: i for i in p_dir.iterdir()} if p_dir.exists() else {}
 
-cfg.INTERFACE_IP = get_ip_python()
+    def _finalize_prompts(self):
+        playlists_str = "\n".join([f"- {name}" for name in self.cfg.PLAYLIST_LIST])
+        self.cfg.RouterLLM_SUB.PLAYLIST_AGENT.prompt = \
+            self.cfg.RouterLLM_SUB.PLAYLIST_AGENT.prompt.replace("REPLACE", playlists_str)
 
-for key, value in yaml_data.items():
-    setattr(cfg, key, dict_to_ns(value))
+        loc_val = self.cfg.REPLACE_LOCATION
+        
+        if isinstance(loc_val, list):
+            loc_val = ", ".join(loc_val)
+            
+        self.cfg.GlobalLLM.location_agent.prompt = \
+            self.cfg.GlobalLLM.location_agent.prompt.replace("REPLACE_LOCATIONS", loc_val)
 
-def map_directory_contents(directory):
-    path = Path(directory).expanduser().resolve()
-    content_map = {}
+        self.cfg.routing_table = {
+            "DOMOTIC_AGENT": {
+                "agent": self.cfg.RouterLLM_SUB.DOMOTIC_AGENT,
+                "mapping": getattr(self.cfg, 'DICO_SUB_DOMOTIC', {}),
+                "labels": list(getattr(self.cfg, 'DICO_SUB_DOMOTIC', {}).values())
+            },
+            "INFO_AGENT": {
+                "agent": self.cfg.RouterLLM_SUB.INFO_AGENT,
+                "mapping": getattr(self.cfg, 'DICO_SUB_INFO', {}),
+                "labels": list(getattr(self.cfg, 'DICO_SUB_INFO', {}).values())
+            },
+            "CALENDAR_AGENT": {
+                "agent": self.cfg.RouterLLM_SUB.CALENDAR_AGENT,
+                "mapping": getattr(self.cfg, 'DICO_SUB_CALENDAR', {}),
+                "labels": list(getattr(self.cfg, 'DICO_SUB_CALENDAR', {}).values())
+            },
+            "DAILY_AGENT": {
+                "agent": self.cfg.RouterLLM_SUB.DAILY_AGENT,
+                "mapping": getattr(self.cfg, 'DICO_SUB_DAILY', {}),
+                "labels": list(getattr(self.cfg, 'DICO_SUB_DAILY', {}).values())
+            },
+            "MUSIC_AGENT": {
+                "agent": self.cfg.RouterLLM_SUB.MUSIC_AGENT,
+                "mapping": getattr(self.cfg, 'DICO_SUB_MUSIC', {}),
+                "labels": list(getattr(self.cfg, 'DICO_SUB_MUSIC', {}).values())
+            },
+            "VLC_AGENT": {
+                "agent": self.cfg.RouterLLM_SUB.VLC_AGENT,
+                "mapping": getattr(self.cfg, 'DICO_SUB_VLC', {}),
+                "labels": list(getattr(self.cfg, 'DICO_SUB_VLC', {}).values())
+            }
+        }
+        self.cfg.SUB_MAPPINGS = {k: v["mapping"] for k, v in self.cfg.routing_table.items()}
 
-    if not path.exists() or not path.is_dir():
-        return content_map
-
-    for item in path.iterdir():
-
-        content_map[item.name] = item
-
-    return content_map
-
-cfg.PLAYLIST_DIR = Path(cfg.DIR_DOCS) / "Playlists"
-cfg.PLAYLIST_LIST = map_directory_contents(cfg.PLAYLIST_DIR)
-cfg.PLAYLIST_NAMES = list(cfg.PLAYLIST_LIST.keys())
-
-cfg.RETURN_CODE = SimpleNamespace(
-    SUCCESS=1,
-    ERR=2,
-    ERR_NOT_CONNECTED=3,
-    ERR_NOT_IMPLEMENTED=4,
-    ERR_DUPLICATE=5,
-    ERR_ILLEGAL_IP=6,
-    ERR_INVALID_ARGUMENT=7,
-    ERR_NO_MUSIC_FILES=8,
-    NULL=9
-)
-
-playlists_str = "\n".join([f"- {name}" for name in cfg.PLAYLIST_LIST])
-current_prompt = cfg.RouterLLM_SUB.PLAYLIST_AGENT.prompt
-cfg.RouterLLM_SUB.PLAYLIST_AGENT.prompt = current_prompt.replace("REPLACE", playlists_str)
-
-current_prompt = cfg.GlobalLLM.location_agent.prompt
-cfg.GlobalLLM.location_agent.prompt = current_prompt.replace("REPLACE_LOCATIONS", cfg.REPLACE_LOCATION)
-
-# Construction de la table de routage fusionnée
-cfg.routing_table = {
-    "DOMOTIC_AGENT": {
-        "agent": cfg.RouterLLM_SUB.DOMOTIC_AGENT,
-        "mapping": cfg.DICO_SUB_DOMOTIC,
-        "labels": list(cfg.DICO_SUB_DOMOTIC.values())
-    },
-    "INFO_AGENT": {
-        "agent": cfg.RouterLLM_SUB.INFO_AGENT,
-        "mapping": cfg.DICO_SUB_INFO,
-        "labels": list(cfg.DICO_SUB_INFO.values())
-    },
-    "CALENDAR_AGENT": {
-        "agent": cfg.RouterLLM_SUB.CALENDAR_AGENT,
-        "mapping": cfg.DICO_SUB_CALENDAR,
-        "labels": list(cfg.DICO_SUB_CALENDAR.values())
-    },
-    "DAILY_AGENT": {
-        "agent": cfg.RouterLLM_SUB.DAILY_AGENT,
-        "mapping": cfg.DICO_SUB_DAILY,
-        "labels": list(cfg.DICO_SUB_DAILY.values())
-    },
-    "MUSIC_AGENT": {
-        "agent": cfg.RouterLLM_SUB.MUSIC_AGENT,
-        "mapping": cfg.DICO_SUB_MUSIC,
-        "labels": list(cfg.DICO_SUB_MUSIC.values())
-    },
-    "VLC_AGENT": {
-        "agent": cfg.RouterLLM_SUB.VLC_AGENT,
-        "mapping": cfg.DICO_SUB_VLC,
-        "labels": list(cfg.DICO_SUB_VLC.values())
-    }
-}
-
-cfg.SUB_MAPPINGS = {k: v["mapping"] for k, v in cfg.routing_table.items()}
+alisu_loader = AlisuConfig()
+cfg = alisu_loader.cfg

@@ -5,7 +5,22 @@ import time
 from config_loader import cfg
 from pathlib import Path
 
+
 class VLControl:
+    """VLC Media Player Control Service.
+
+    Manages VLC media player control and playlist management.
+
+    Methods:
+        __init__(services, index) : Initializes the VLC control instance.
+        _escape_path(text) : Escapes special characters in a path string.
+        interpret_vlc_command(cmd_tokens) : Interprets and executes VLC commands.
+        handle_simple_command(action) : Handles simple VLC commands.
+        change_playlist(target) : Changes the current playlist.
+        start_vlc(path=None) : Starts the VLC media player.
+        kill_vlc() : Terminates the VLC media player.
+    """
+
     def __init__(self, services, index):
         self.is_initialized = False
         self.is_playing = False
@@ -15,7 +30,6 @@ class VLControl:
         self.port_ctrl = str(9000 + index)
         self.port_stream = str(19000 + index)
         self.current_path = ""
-
 
         self.vlc_commands = {
             "1": "pl_pause",
@@ -29,7 +43,6 @@ class VLControl:
             'dir': "in_play&input="
         }
 
-
         self.playlist_map = {
             "touhou": f"{cfg.DIR_DOCS}/Playlists/touhou",
             "rock": f"{cfg.DIR_DOCS}/Playlists/rock",
@@ -42,7 +55,6 @@ class VLControl:
         self.start_vlc()
 
     def _escape_path(self, text):
-        """Escapes special characters in a path string."""
         return re.escape(text)
 
     def interpret_vlc_command(self, cmd_tokens):
@@ -78,7 +90,7 @@ class VLControl:
         args = [
             "vlc", "--loop", "--playlist-enqueue", path,
             f"--http-port={self.port_ctrl}", "--sout", sout_param,
-            "-I", "dummy", "--extraintf", "http", "--http-password", cfg.VLC_PWD
+            "-I", "dummy", "--extraintf", "http", "--http-password", cfg.DICO_USERS[cfg.LIST_USERS[0]]
         ]
 
         try:
@@ -90,7 +102,6 @@ class VLControl:
             return cfg.RETURN_CODE.ERR
 
     def kill_vlc(self):
-        """Terminates the VLC process and ensures all states are reset (Original Logic)."""
         if self.process:
             try:
                 if self.process.poll() is None:

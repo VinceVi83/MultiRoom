@@ -9,8 +9,15 @@ from config_loader import cfg
 os.chdir("/tmp")
 logging.basicConfig(filename='vlc_integration.log', level=logging.DEBUG)
 
+
 class MusicMetadata:
-    """Handles extraction and storage of audio file tags."""
+    """Handles extraction and storage of audio file tags.
+
+    Methods:
+        __init__(self) : Initializes the metadata handler with empty metadata dictionary.
+        _reset_metadata(self) : Clears all stored metadata values.
+        update_metadata(self, song_path) : Extracts metadata from an audio file using mutagen.
+    """
 
     def __init__(self):
         self.metadata = {
@@ -21,11 +28,9 @@ class MusicMetadata:
         }
 
     def _reset_metadata(self):
-        """Clear all stored metadata values."""
         self.metadata = {k: "" for k in self.metadata.keys()}
 
     def update_metadata(self, song_path):
-        """Extract metadata from file using mutagen."""
         self._reset_metadata()
         if not song_path or not os.path.exists(song_path):
             return
@@ -43,8 +48,16 @@ class MusicMetadata:
         except Exception as e:
             logging.error(f"Metadata extraction error for {song_path}: {e}")
 
+
 class Music:
-    """Interacts with VLC HTTP API to track current playback."""
+    """Interacts with VLC HTTP API to track current playback.
+
+    Methods:
+        __init__(self, index) : Initializes the Music instance with VLC port and URL configuration.
+        update_status(self) : Fetches current VLC status and updates metadata from file.
+        get_info_json(self) : Returns metadata as a JSON string for network transmission.
+    """
+
     def __init__(self, index):
         self.current_music = ""
         self.current_dir = ""
@@ -55,7 +68,6 @@ class Music:
         self.metadata_handler = MusicMetadata()
 
     def update_status(self):
-        """Fetch current VLC status and update metadata."""
         try:
             response = requests.get(self.vlc_url, auth=('', cfg.DICO_USERS_LINUX['user']))
             if response.status_code == 200:
@@ -80,7 +92,6 @@ class Music:
             logging.error(f"Error update_status via VLC: {e}")
 
     def get_info_json(self):
-        """Returns metadata as a JSON string for network transmission."""
         if not self.current_music:
             return str(cfg.cfg.RETURN_CODE.ERR)
 
