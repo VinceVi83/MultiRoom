@@ -20,7 +20,7 @@ To showcase the real-time capabilities of **A.L.I.S.U.**, a video demonstration 
 ## Vision & Origines
 This project was born during my student years, long before the rise of modern LLMs. It originated from a dream: building a personal Jarvis to manage a massive local music library (Touhou music) stored on a NAS, and to control smart objects via voice commands.
 
-Back then (around 2017), consumer home automation was still in its infancy. It mostly consisted of simplistic gadgets, locked within proprietary applications and heavily dependent on the Cloud. My goal was to prove that with limited means, a smart architecture, and well-integrated voice recognition, one could surpass closed commercial solutions—which, for the most part, remain just as restrictive today.
+Back then (around 2017), consumer home automation was still in its infancy. It mostly consisted of simplistic gadgets, locked within proprietary applications and heavily dependent on the Cloud. My goal was to prove that with limited means, a smart architecture, and well-integrated voice recognition, one could surpass closed commercial solutions which, for the most part, remain just as restrictive today.
 
 ### What sets A.L.I.S.U. apart:
 
