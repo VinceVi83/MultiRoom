@@ -3,14 +3,11 @@ import logging
 import json
 import xml.etree.cElementTree as ET
 import requests
-import mutagen  # type: ignore
-from Gestion import Ctes
-from Gestion.Ctes import RETURN_CODE
+import mutagen
+from config_loader import cfg
 
-# Configuration initiale
 os.chdir("/tmp")
 logging.basicConfig(filename='vlc_integration.log', level=logging.DEBUG)
-
 
 class MusicMetadata:
     """Handles extraction and storage of audio file tags."""
@@ -18,7 +15,7 @@ class MusicMetadata:
     def __init__(self):
         self.metadata = {
             k: "" for k in [
-                "title", "artist", "genre", "album", 
+                "title", "artist", "genre", "album",
                 "comment", "language", "circle", "filename"
             ]
         }
@@ -38,33 +35,29 @@ class MusicMetadata:
             if audio is None:
                 return
 
-            for key, attr in Ctes.mutagen_keys.items():
+            for key, attr in cfg.mutagen_keys.items():
                 if key in audio:
-                    # Extraction sécurisée du contenu texte
                     tags = audio[key]
                     val = tags.text[0] if hasattr(tags, 'text') else str(tags[0])
                     self.metadata[attr] = val
         except Exception as e:
             logging.error(f"Metadata extraction error for {song_path}: {e}")
 
-
 class Music:
     """Interacts with VLC HTTP API to track current playback."""
-
     def __init__(self, index):
         self.current_music = ""
         self.current_dir = ""
         self.full_path = ""
         self.time_remaining = 0
-        self.port_ctrl = str(9000 + index)
-        self.vlc_url = f"http://{Ctes.local_ip}:{self.port_ctrl}/requests/status.xml"
+        self.port_ctrl = int(cfg.VLC_PORT_START) + index
+        self.vlc_url = f"http://127.0.0.1:{self.port_ctrl}/requests/status.xml"
         self.metadata_handler = MusicMetadata()
 
     def update_status(self):
         """Fetch current VLC status and update metadata."""
         try:
-            # Utilisation de pwd_vlc défini dans Ctes
-            response = requests.get(self.vlc_url, auth=('', Ctes.cfg.pwd_vlc))
+            response = requests.get(self.vlc_url, auth=('', cfg.DICO_USERS_LINUX['user']))
             if response.status_code == 200:
                 root = ET.fromstring(response.text)
 
@@ -74,10 +67,9 @@ class Music:
                     if info.get('name') == 'path':
                         self.full_path = info.text
 
-                # Extraction du temps
                 time_node = root.find('time')
                 length_node = root.find('length')
-                
+
                 if time_node is not None and length_node is not None:
                     self.time_remaining = int(length_node.text) - int(time_node.text)
 
@@ -90,10 +82,9 @@ class Music:
     def get_info_json(self):
         """Returns metadata as a JSON string for network transmission."""
         if not self.current_music:
-            return str(RETURN_CODE.ERR)
+            return str(cfg.cfg.RETURN_CODE.ERR)
 
         data = self.metadata_handler.metadata.copy()
-        # On s'assure que l'artiste et le titre ne sont pas vides
         if not data.get("artist"):
             data["artist"] = self.current_music
         if not data.get("title"):

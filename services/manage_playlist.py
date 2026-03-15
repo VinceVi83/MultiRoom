@@ -1,15 +1,5 @@
-__author__ = 'VinceVi83'
-
-# !/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
-pathRepPlaylist = "/"
-pathTemplatePlaylist = "/"
-
-from Gestion.Music import Music
-from Gestion.Interpretation import *
-from Gestion import Ctes
-from Gestion.Ctes import RETURN_CODE
+from tools.music_info import Music
+from config_loader import cfg
 import os
 import xml.etree.cElementTree as ET
 from pathlib import Path
@@ -28,11 +18,11 @@ class ManagePlaylist():
 
     def changePlaylist(self, name):
         self.currentPlaylist = name
-        return RETURN_CODE.SUCCESS
+        return cfg.RETURN_CODE.SUCCESS
 
     def addSongToPlaylist(self, name,  namePlaylist=None):
         '''
-        This function permit you to add the current song to a playlist. If the playlist doesn't exist in the database so
+        This function permits you to add the current song to a playlist. If the playlist doesn't exist in the database so
         It will ask you if you create a playlist with the name
         :param name: name of playlist where you want add the current song
         :return:
@@ -40,7 +30,7 @@ class ManagePlaylist():
 
         if namePlaylist == None:
             if self.currentPlaylist:
-                return RETURN_CODE.ERR_NOT_IMPLEMENTED
+                return cfg.RETURN_CODE.ERR_NOT_IMPLEMENTED
             namePlaylist = self.currentPlaylist
 
         if Path(pathRepPlaylist + namePlaylist):
@@ -57,7 +47,7 @@ class ManagePlaylist():
         """
 
         if not os.path.isfile(namePlaylist):
-            return RETURN_CODE.ERR_NOT_IMPLEMENTED
+            return cfg.RETURN_CODE.ERR_NOT_IMPLEMENTED
 
         tree = ET.parse(pathRepPlaylist + namePlaylist)
         root = tree.getroot()
@@ -72,7 +62,7 @@ class ManagePlaylist():
         with open('create_users_multi_browser.xml', 'w') as f:
             f.write(newXML)
 
-        return RETURN_CODE.ERR_NOT_IMPLEMENTED
+        return cfg.RETURN_CODE.ERR_NOT_IMPLEMENTED
 
     def deleteSong(self, name, namePlaylist):
         """
@@ -103,7 +93,7 @@ class ManagePlaylist():
         :return:
         """
         os.system(pathTemplatePlaylist + name + ext)
-        return RETURN_CODE.SUCCESS
+        return cfg.RETURN_CODE.SUCCESS
 
     @staticmethod
     def deletePlaylist(name):
@@ -113,4 +103,4 @@ class ManagePlaylist():
         :return:
         """
         os.system('rm ' + pathRepPlaylist + name + ext)
-        return RETURN_CODE.SUCCESS
+        return cfg.RETURN_CODE.SUCCESS

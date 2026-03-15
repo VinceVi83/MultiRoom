@@ -1,0 +1,456 @@
+RouterLLM:
+  router_thematic:
+    use_json: true
+    options:
+      temperature: 0.0
+      num_predict: 20
+      num_ctx: 2048
+      top_k: 1
+      top_p: 0.0
+    prompt: |
+      Task: Classify French user input into one of these numeric IDs.
+      
+      IDs:
+      1: DOMOTIC (Lights, plugs, temperature control)
+      2: CALENDAR (Dates, appointments, concerts, schedules)
+      3: INFO (Weather, news, web research)
+      4: DAILY (Grocery, fridge, achat, courses)
+      5: MUSIC (Music, playlists)
+      0: NONE (Nonsense, philosophy, or no clear action)
+
+      STRICT RULES:
+      1. Be extremely literal. Do not guess.
+      2. Return a JSON object with the key "result".
+      
+      Example: {"result": "1"}
+
+RouterLLM_SUB:
+  DOMOTIC_AGENT:
+    use_json: true
+    options:
+      num_predict: 20
+      num_ctx: 2048
+      top_k: 1
+      top_p: 0.0
+      temperature: 0.0
+    prompt: |
+      Task: Classify home automation intent into a numeric ID.
+      
+      IDs:
+      1: LIGHT (Controlling lights, plugs, or temperature)
+      2: ACTION (Specific hardware triggers or complex scenarios)
+      0: NONE (Not a valid home automation command)
+      
+      STRICT RULES:
+      1. Return a JSON object with the key "ID".
+      2. Be extremely literal.
+      
+      Example: {"ID": "1"}
+
+  INFO_AGENT:
+    use_json: true
+    options:
+      temperature: 0.0
+      num_predict: 20
+      num_ctx: 2048
+    prompt: |
+      Task: Classify information request into a numeric ID.
+      
+      IDs:
+      1: WEATHER (Local weather, news headlines, or forecasts)
+      2: WEB_FAST (Quick factual questions, e.g., "Qui est le CEO de Nvidia ?")
+      3: WEB_DEEP (Deep analysis, comparisons, detailed reading)
+      0: NONE (Not an information request)
+      
+      STRICT RULES:
+      1. Return a JSON object with the key "ID".
+      2. Be literal.
+      
+      Example: {"ID": "2"}
+
+  CALENDAR_AGENT:
+    use_json: true
+    options:
+      temperature: 0.0
+      num_predict: 20
+      num_ctx: 2048
+    prompt: |
+      Task: Classify the CALENDAR request into a numeric ID.
+      
+      IDs:
+      1: NEXT_RDV (Next generic appointment)
+      2: NEXT_CONCERT (Next concert event)
+      3: CURRENT_WEEK (Schedule for the current week)
+      4: NEXT_WEEK (Schedule for the next week)
+      5: MAIL_NEXT_CONCERT (Send next concert details by email)
+      0: NONE (Not a valid calendar request)
+      
+      STRICT RULES:
+      1. Return a JSON object with the key "ID".
+      2. Be extremely literal. Do not guess.
+      
+      Example: {"ID": "1"}
+  
+  CALENDAR_REPORTER:
+    use_json: false
+    options:
+      seed: 42
+      temperature: 0.0
+      top_k: 1
+      top_p: 0.0
+      num_predict: 800
+      num_ctx: 4096
+      repeat_penalty: 1.1
+      repeat_last_n: 64
+      options:
+        temperature: 0.7
+      prompt: |
+        Task: Agir en tant qu'assistant personnel amical et efficace.
+        
+        Instruction: 
+        Reçois des données brutes (JSON ou texte) et transforme-les en une réponse naturelle, concise et polie en français.
+        
+        Rules:
+        - Ne pas inventer d'informations non présentes dans les données.
+        - Si la donnée est vide ou indique une erreur, réponds avec empathie.
+        - Utilise un ton chaleureux mais reste direct.
+        - Ne réponds que par la phrase finale, pas de commentaires.
+
+        Constraint: La réponse doit être prête à être lue par une synthèse vocale.
+      
+  DAILY_AGENT:
+    use_json: true
+    options:
+      temperature: 0.0
+      num_predict: 20
+      num_ctx: 2048
+    prompt: |
+      Task: Classify the user intent into a numeric ID.
+      
+      [SECTION GROCERY]
+      1: SHOP_ADD (Add items to list)
+      2: SHOP_DEL (Clear entire list)
+      3: SHOP_MAIL (Send list via email)
+      4: SHOP_INFO (Query information about list)
+      
+      [SECTION FRIDGE]
+      5: FRIDGE_ADD (Put food in)
+      6: FRIDGE_REM (Take food out / finished)
+      7: FRIDGE_INFO (Check stock)
+
+      [SECTION REJECTION]
+      0: NONE (Nonsense, joke, general chat, or unrelated)
+      
+      STRICT RULES:
+      1. Return a JSON object with the key "ID".
+      2. Be extremely literal. Do not guess.
+      
+      Example: {"ID": "1"}
+  
+
+  MUSIC_AGENT:
+    use_json: true
+    options:
+      temperature: 0.0
+      num_predict: 20
+      num_ctx: 2048
+    prompt: |
+      Task: Classify the music/media request into a numeric ID.
+      
+      IDs:
+      1: PLAYLIST (Requesting a specific music playlist or artist)
+      2: MUSIC (Controls: stop, play, pause, skip, volume, next)
+      0: NONE (Not related to media playback)
+      
+      STRICT RULES:
+      1. Return a JSON object with the key "ID".
+      2. Be extremely literal.
+      
+      Example: {"ID": "2"}
+
+  PLAYLIST_AGENT:
+    use_json: true
+    options:
+      temperature: 0.0
+      num_predict: 50
+      num_ctx: 2048
+    prompt: |
+      Task: Extract playlist name.
+      
+      Existing Playlists:
+      REPLACE
+
+      Instructions:
+      1. Identify the 'PLAYLIST' from the list of Existing Playlists.
+      2. If the user mentions a name NOT in the list (e.g., for CREATE_PLAYLIST), extract that new name.
+      3. Always favor the exact spelling from 'Existing Playlists' if a match is close.
+
+      Context:
+      - Action: CREATE_PLAYLIST, ADD_TO_PLAYLIST, DEL_FROM_PLAYLIST, INFO_PLAYLIST.
+
+      Example Output:
+      {
+        "PLAYLIST": "Rock Chill"
+      }
+
+      Constraint: Output ONLY the JSON object.
+      Rule: If no playlist name is found or the request is unclear, return {"PLAYLIST": "0"}.
+
+  VLC_AGENT:
+    use_json: true
+    options:
+      seed: 42
+      temperature: 0.0
+      num_predict: 20
+      num_ctx: 2048
+    prompt: |
+      Task: Jukebox Control Classification.
+      
+      IDs:
+      1: TOGGLE (Pause, resume, play, stop)
+      2: PREVIOUS (Previous track, go back, restart song)
+      3: NEXT (Next track, skip, change song)
+      4: VOL_DOWN (Lower volume, quieter, softer)
+      5: VOL_UP (Increase volume, louder, turn it up)
+      6: SHUFFLE (Random mode, mix it up)
+      7: INFO (What is playing, current song details)
+      0: UNKNOWN (Unknown or unrelated to music)
+
+      Constraint: Return a JSON object with the key "ID".
+      
+      Example: {"ID": "1"}
+
+  SHOP_ADD:
+    use_json: true
+    options:
+      temperature: 0.0
+      num_predict: 200
+      num_ctx: 2048
+    prompt: |
+      Task: Extract only the names of the food items.
+      Example:
+      {
+        "items": ["lait", "oeufs"]
+      }
+      Rule: Return ONLY JSON.
+
+
+
+
+ConcertManager:
+  extract_artist:
+    use_json: true
+    options:
+      temperature: 0.0
+    prompt: |
+      Extract the main artist name. 
+      Respond with JSON format: {"artist": "NAME"}
+  
+  extract_address:
+    use_json: true
+    options:
+      temperature: 0.0
+    prompt: |
+      Extract the venue and city.
+      Respond with JSON format: {"location": "VENUE, CITY"}
+
+
+
+
+
+
+GlobalLLM:
+  generic:
+    use_json: false
+    options:
+      seed: 42
+      temperature: 0.3
+      num_predict: 500
+      num_ctx: 2048
+    prompt: |
+      Task: Assistant généraliste.
+      Instruction: Réponds de manière concise et directe.
+      Language: Français.
+      Constraint: Pas d'introduction, pas de conclusion, va droit au but.
+
+  weather_forecast:
+    use_json: true
+    options:
+      seed: 42
+      temperature: 0.1
+      num_predict: 500
+      num_ctx: 2048
+    prompt: |
+      Task: Assistant Météo Précis.
+      Instruction: Analyse les données météo pour la date et le lieu fournis.
+      Language: Français.
+      Constraint: Réponse en JSON pur. Pas de texte avant ou après.
+      Structure:
+        - global: { temp_avg: int, rain_risk: "high|med|low", summary: string }
+        - periods:
+            morning: { temp: int, rain: boolean, desc: string }
+            afternoon: { temp: int, rain: boolean, desc: string }
+            evening: { temp: int, rain: boolean, desc: string }
+
+  traffic_checker:
+    use_json: true
+    options:
+      temperature: 0.1
+      num_predict: 500
+    prompt: |
+      Task: Analyse de perturbations transports (IDF/Paris).
+      Context: Trajet de {origin} vers {destination}.
+      Input: Données de trafic en temps réel (RATP/SNCF).
+      Instruction: Identifie UNIQUEMENT les incidents bloquants sur cet itinéraire.
+      Language: Français.
+      Constraint: Réponse en JSON. Si tout est fluide, "status" est "OK".
+      Format: 
+        {
+          "status": "OK" | "DELAY" | "BLOCK",
+          "impacted_lines": ["Ligne X", "RER Y"],
+          "message": "Court résumé de l'impact",
+          "alternative": "Suggestion rapide si besoin"
+        }
+        
+  location_agent:
+    use_json: true
+    options:
+      seed: 42
+      temperature: 0.0
+      num_predict: 20
+      num_ctx: 2048
+    prompt: |
+      Task: Extract the room name (location) from a French home automation command.
+      
+      Locations: REPLACE_LOCATIONS
+      
+      Output Format:
+      {
+        "location": "Name of the room"
+      }
+
+      Rules:
+      1. Identify which room from the list is mentioned.
+      2. If no room from the list is found, return "Unknown".
+      3. Return ONLY the JSON object.
+
+      Example input: "Éteins tout dans la cuisine s'il te plaît"
+      Example output: {"location": "Cuisine"}
+
+  mail:
+    use_json: true
+    options:
+      seed: 42
+      temperature: 0.0
+      num_predict: 400
+      num_ctx: 4096
+    prompt: |
+      Task: Extract recipient and message body.
+      Example:
+      {
+        "to": "jean@mail.com", 
+        "body": "Salut, on se voit demain ?"
+      }
+      Constraint: Return ONLY JSON.
+
+
+
+
+
+
+  french_research_agent:
+    model: "mistral-nemo:12b-instruct-v1-q4_K_M"
+    use_json: false
+    options:
+      seed: 42
+      temperature: 0.0
+      top_k: 1
+      top_p: 0.0
+      num_predict: 800
+      num_ctx: 4096
+      repeat_penalty: 1.1
+    prompt: |
+      Task: Synthèse factuelle rigoureuse.
+      Instruction: Extraire et structurer les données sans fioritures.
+      Language: Français uniquement.
+      Rules: 
+      1. Pas d'introduction, pas de conclusion.
+      2. Liste à puces pour les faits.
+      3. Chiffres et dates précis obligatoires.
+      4. Citer [Source: domaine.com].
+
+
+  french_research_agent_extreme:
+    model: "mistral-nemo:12b-instruct-v1-q4_K_M"
+    use_json: false
+    options:
+      seed: 42
+      temperature: 0.0
+      top_k: 1
+      top_p: 0.0
+      num_predict: 1500
+      num_ctx: 8192
+      repeat_penalty: 1.15
+      repeat_last_n: 128
+    prompt: |
+      Task: Analyse de documents longs et complexes.
+      Instruction: Synthétise les informations de manière purement factuelle.
+      Language: Français uniquement.
+      Rules:
+      1. Structure par points techniques clés.
+      2. Extraction exhaustive des données (noms, dates, chiffres).
+      3. Zéro fioriture, style direct et pro.
+      4. Citer [Source: domaine.com].
+
+
+
+
+
+
+  global_research_agent:
+    model: "qwen2.5:7b-instruct"
+    use_json: false
+    options:
+      seed: 42
+      temperature: 0.0
+      top_k: 1
+      top_p: 0.0
+      num_predict: 50
+      num_ctx: 2048
+      repeat_penalty: 1.1
+    prompt: |
+      Task: Quick factual extraction from web snippets.
+      Instruction: Provide a direct answer based on the context. 
+      Constraint: Be extremely concise. Cite [Source: domain.com].
+
+  global_research_agent_heavy:
+    model: "qwen2.5:7b-instruct"
+    use_json: false
+    options:
+      seed: 42
+      temperature: 0.2
+      top_k: 20
+      top_p: 0.1
+      num_predict: 1000
+      num_ctx: 24576
+      repeat_penalty: 1.1
+      repeat_last_n: 128
+    prompt: |
+      Task: Deep web analysis and cross-referencing.
+      Instruction: Synthesize information from multiple full-page sources.
+      Constraint: Use bullet points. Cite sources using [1], [2] with URLs at the end.
+
+  global_research_agent_extreme:
+    model: "qwen2.5:7b-instruct"
+    use_json: false
+    options:
+      seed: 42
+      temperature: 0.1
+      num_predict: 2000
+      num_ctx: 32768
+      repeat_penalty: 1.2
+      repeat_last_n: 256
+    prompt: |
+      Task: Exhaustive document parsing and technical summary.
+      Instruction: Analyze the entire 32k context window for hidden details.
+      Constraint: Detail every technical specification found.

@@ -1,130 +1,96 @@
 import os
 import subprocess
+import re
 import time
-from Gestion import Ctes
-from Gestion.Ctes import RETURN_CODE
+from config_loader import cfg
+from pathlib import Path
 
 class VLControl:
-    """
-    Controller for VLC media player via HTTP interface.
-    Compatible with Linux OS. Requires VLC installation.
-    """
-
     def __init__(self, services, index):
         self.is_initialized = False
+        self.is_playing = False
         self.process = None
+        self.services = services
+        self.index = index
         self.port_ctrl = str(9000 + index)
         self.port_stream = str(19000 + index)
         self.current_path = ""
-        self.services = services
-        self.playlists = [k.lower() for k in Ctes.playlist.keys()]
-        
-        # Playback State Flags
-        self.random_enabled = False
-        self.loop_enabled = False
-        self.repeat_enabled = False
-        self.is_playing = False
+
+
+        self.vlc_commands = {
+            "1": "pl_pause",
+            "2": "pl_previous",
+            "3": "pl_next",
+            "4": "volume&val=-30",
+            "5": "volume&val=+30",
+            "6": "pl_random",
+            "7": "status.xml",
+            "playlist": "",
+            'dir': "in_play&input="
+        }
+
+
+        self.playlist_map = {
+            "touhou": f"{cfg.DIR_DOCS}/Playlists/touhou",
+            "rock": f"{cfg.DIR_DOCS}/Playlists/rock",
+        }
+
         self.base_request = (
-            f"curl --user :test '{Ctes.local_ip}:{self.port_ctrl}/"
+            f"curl -s --user :test 'http://{cfg.INTERFACE_IP}:{self.port_ctrl}/"
             f"requests/status.xml?command="
         )
         self.start_vlc()
 
+    def _escape_path(self, text):
+        """Escapes special characters in a path string."""
+        return re.escape(text)
+
     def interpret_vlc_command(self, cmd_tokens):
-        """
-        Routes incoming commands to simple or complex handlers based on argument count.
-        """
-        if not cmd_tokens or cmd_tokens[0] not in Ctes.vlc.keys() :
-            print("Unknown argument received", cmd_tokens)
-            return RETURN_CODE.ERR_INVALID_ARGUMENT
-            
-        arg_count = len(cmd_tokens)
-        if arg_count > 1:
-            return self.handle_complex_command(cmd_tokens)
-        
-        return self.handle_simple_command(cmd_tokens[0])
+        if not cmd_tokens or cmd_tokens[0] not in self.vlc_commands:
+            return cfg.RETURN_CODE.ERR_INVALID_ARGUMENT
 
-    # region Complex command
-    def handle_complex_command(self, cmd_tokens):
-        """
-        Handles commands requiring additional parameters (volume, directory, sorting).
-        """
-        action = cmd_tokens[0]
-        if action == 'playlist':
+        action = cmd_tokens[0].lower()
+        if action == 'playlist' and len(cmd_tokens) > 1:
             return self.change_playlist(cmd_tokens[1])
-        return RETURN_CODE.ERR_INVALID_ARGUMENT
 
-    def change_playlist(self, target):
-        """Changes the active directory or playlist dynamically."""
-        if target.startswith('/'):
-            final_path = target
-        else:
-            final_path = Ctes.playlist.get(target.lower(), Ctes.playlist["default"])
-
-        self.execute_curl(f"{self.base_request}pl_empty")
-        request_url = f"{self.base_request}{Ctes.vlc['dir']}{final_path}"
-        self.execute_curl(request_url)
-        return RETURN_CODE.SUCCESS
-    # endregion
-
-    # region VLC management
-    def execute_curl(self, request_url):
-        """Executes the VLC HTTP command via a subprocess curl call."""
-        request_url = request_url + "'"
-        print(f"Curl VLC : {request_url}")
-        subprocess.run(
-            request_url, 
-            shell=True, 
-            stdout=subprocess.DEVNULL, 
-            stderr=subprocess.DEVNULL
-        )
+        return self.handle_simple_command(action)
 
     def handle_simple_command(self, action):
-        """Executes basic commands without additional parameters."""
-        request_url = f"{self.base_request}{Ctes.vlc[action]}"
-        self.execute_curl(request_url)
-        return RETURN_CODE.SUCCESS
+        request_url = f"{self.base_request}{self.vlc_commands[action]}'"
+        subprocess.run(request_url, shell=True, stdout=subprocess.DEVNULL)
+        return cfg.RETURN_CODE.SUCCESS
+
+    def change_playlist(self, target):
+        final_path = cfg.PLAYLIST_LIST["Default"]
+        subprocess.run(f"{self.base_request}pl_empty'", shell=True, stdout=subprocess.DEVNULL)
+        path_esc = self._escape_path(final_path)
+        request_url = f"{self.base_request}{self.vlc_commands['dir']}{path_esc}'"
+        subprocess.run(request_url, shell=True, stdout=subprocess.DEVNULL)
+        return cfg.RETURN_CODE.SUCCESS
 
     def start_vlc(self, path=None):
-        """Initializes and launches the VLC process."""
-        if path is None:
-            path = Ctes.playlist["default"]
-            
-        self.is_initialized = True
-        self.is_playing = True
-        self.current_path = path
-        
-        if self.process:
-            return RETURN_CODE.SUCCESS
+        if self.process and self.process.poll() is None:
+            return cfg.RETURN_CODE.SUCCESS
 
-        # Construction des arguments de la commande
-        sout_param = f"#standard{{access=http,mux=ogg,dst={Ctes.local_ip}:{self.port_stream}}}"
+        path = path if path else self.playlist_map["touhou"]
+        sout_param = f"#standard{{access=http,mux=ogg,dst={cfg.INTERFACE_IP}:{self.port_stream}}}"
+
         args = [
-            "vlc",
-            "--loop",
-            "--playlist-enqueue",
-            path,
-            f"--http-port={self.port_ctrl}",
-            "--sout", sout_param,
-            "-I", "dummy",
-            "--extraintf", "http",
-            "--http-password", Ctes.cfg.pwd_vlc
+            "vlc", "--loop", "--playlist-enqueue", path,
+            f"--http-port={self.port_ctrl}", "--sout", sout_param,
+            "-I", "dummy", "--extraintf", "http", "--http-password", cfg.VLC_PWD
         ]
-        
+
         try:
-            self.process = subprocess.Popen(
-                args, 
-                stdout=subprocess.DEVNULL, 
-                stderr=subprocess.DEVNULL
-            )
-            print("VLC process started")
-            return RETURN_CODE.SUCCESS
-        except Exception as e:
-            print(f"Error starting VLC: {e}")
-            return RETURN_CODE.ERR
-        
+            self.process = subprocess.Popen(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            self.is_initialized = True
+            self.is_playing = True
+            return cfg.RETURN_CODE.SUCCESS
+        except:
+            return cfg.RETURN_CODE.ERR
+
     def kill_vlc(self):
-        """Terminates the VLC process and ensures all states are reset."""
+        """Terminates the VLC process and ensures all states are reset (Original Logic)."""
         if self.process:
             try:
                 if self.process.poll() is None:
@@ -134,9 +100,8 @@ class VLControl:
                 self.process.kill()
             finally:
                 self.process = None
-        
+
         self.is_initialized = False
         self.is_playing = False
         self.current_path = ""
-        return RETURN_CODE.SUCCESS
-    # endregion
+        return cfg.RETURN_CODE.SUCCESS

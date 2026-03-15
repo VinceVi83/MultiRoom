@@ -1,4 +1,4 @@
-# MultiRoom
+
 
 All modules developed during my student period was pushed, the cleaning will be now, little by little.
 Next step is to fill this file for description (Aim, planning, specification, etc...).
