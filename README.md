@@ -4,7 +4,7 @@
 
 **A.L.I.S.U. (Assistant LLM Interface System Unit)** is a functional interface designed to pilot home automation and various digital services within a **Multiroom** infrastructure.
 
-The goal is to simplify service execution (music, domotics, agenda, shopping list) through a central orchestrator, replacing repetitive manual/physical tasks with an intelligent service layer.
+The goal is to simplify service execution (music, home automation, agenda, shopping list) through a central orchestrator, replacing repetitive manual/physical tasks with an intelligent service layer.
 
 ## Demo & Performance
 To showcase the real-time capabilities of **A.L.I.S.U.**, a video demonstration is available. It highlights the full pipeline: Voice Capture ➔ Whisper Transcription ➔ LLM Intent Extraction ➔ Service Execution.
@@ -71,7 +71,7 @@ The project centralizes multiple tools through a **Hub-and-Spoke** architecture:
 1. **The Hub (Central Server)**: Managed by `core_orchestrator.py`, it receives secure commands (SSL) and dispatches them to specialized agents.
 2. **A.L.I.S.U. (Interface Layer)**: Uses a local LLM to interpret natural language requests and routes execution to dedicated Python scripts.
 3. **Integrated Services**:
-    * **Domotics**: Control of Home Assistant entities (Lights, plug, etc.).
+    * **Home Automation**: Control of Home Assistant entities (Lights, plug, etc.).
     * **Music**: Full control of VLC via the **Lua HTTP interface***.
 	* **Library**: Management of local music libraries.
     * **Utilities**: Web search (via SearXNG), calendar management, weather, and automated email reporting.
@@ -120,7 +120,7 @@ python core_orchestrator.py
 - [ ] **Automated Routing**: Intent detection via local LLM (Core logic operational, continuous refinement).
 - [ ] **Env Initialization**: Automatically create a default `.env` in `~/Documents/ALISU_DATA/` if it's missing or empty.
 - [ ] **Config Simplification**: Strict validation and isolation of unconfigured services.
-- [ ] **Manage Error**: Dynamic deactivation of offline services during startup (Fail-Safe).
+- [ ] **Resilience & Fail-safe**: Dynamic deactivation of offline services during startup (Fail-Safe).
 - [ ] **Benchmarking & Regression**: Refactoring existing internal test suite.
     * *Current state:* System already records `.wav` and `.json` logs. A "Replay" system exists to compare **Expected vs Obtained** results.
 	* *Goal:* Clean up and stabilize the benchmark code to ensure consistent response times and prevent logic regressions.
@@ -139,20 +139,20 @@ python core_orchestrator.py
 Everything is centralized. The `Core Orchestrator` integrates the transcription engine and communicates directly with the `RouterLLM` internally.
 
 ```text
-   [ Users ]          [ Core Orchestrator ]       [ RouterLLM ]      [ SERVICES ]
-    (Voice)           (Transcription + Hub)         (Module)     (VLC / Domotics / Other )
-      |                         |                       |                  |
-      |----(1) Audio PTT ------>|                       |                  |
-      |                         |----(2) Whisper ------>|                  |
-      |                         |      (Text)           |                  |
-      |                         |                       |                  |
-      |                         |----(3) LLM Analysis-->|                  |
-      |                         |    (Intent/Loc)       |                  |
-      |                         |                       |                  |
-      |                         |<---(4) Cleaned Order--|                  |
-      |                         |                       |                  |
-      |                         |----(5) Execute async ------------------->|
-      |                         |                                   (vlc play)
+   [ Users ]          [ Core Orchestrator ]                [ RouterLLM ]       [ SERVICES ]
+    (Voice)           (Transcription + Hub)                  (Module)    (VLC / Home Automation / Other )
+      |                         |                                |                  |
+      |----(1) Audio PTT ------>|                                |                  |
+      |                         |-------- (2) Whisper ---------->|                  |
+      |                         |            (Text)              |                  |
+      |                         |                                |                  |
+      |                         |-------(3) LLM Analysis-------->|                  |
+      |                         |         (Intent/Loc)           |                  |
+      |                         |                                |                  |
+      |                         |<-(4) Structured Intent (JSON)->|                  |
+      |                         |                                |                  |
+      |                         |----(5) Execute async----------------------------->|
+      |                         |                                |              (vlc play)
 ```
 ## Development Note
 This project was developed using a "Human-in-the-loop" LLM-assisted workflow.
