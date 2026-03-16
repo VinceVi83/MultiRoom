@@ -1,0 +1,20 @@
+# AI and LLM
+ollama
+faster-whisper
+
+# Network and APIs
+requests
+python-dotenv
+
+# Data Processing & Scraping
+trafilatura
+vobject
+mutagen
+PyYAML
+rapidfuzz
+
+# Audio and System
+pyaudio
+sounddevice
+numpy
+

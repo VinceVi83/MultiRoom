@@ -1,4 +1,4 @@
-import os, yaml, socket, getpass, psutil
+import os, yaml, socket, getpass
 from pathlib import Path
 from types import SimpleNamespace
 from enum import Enum

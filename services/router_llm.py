@@ -40,7 +40,6 @@ class RouterLLM:
 
     def dispatch_request(self, context):
         start_total = time.time()
-        context.user_input = context.user_input.replace("vais", "veux")
         category_res = llm.execute(context.user_input, cfg.RouterLLM.router_thematic)
         context.category = cfg.DICO_THEME_MAPPING.get(category_res.get('result'))
         config = cfg.routing_table.get(context.category)
