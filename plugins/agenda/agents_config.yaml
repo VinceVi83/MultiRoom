@@ -1,0 +1,51 @@
+AGENDA:
+  CALENDAR_AGENT:
+    model: "llama3.1:8b"
+    use_json: true
+    options:
+      temperature: 0.0
+      num_predict: 20
+      num_ctx: 2048
+    prompt: |
+      Task: Classify the CALENDAR request into a numeric ID.
+      
+      IDs:
+      1: NEXT_RDV (Next generic appointment)
+      2: NEXT_CONCERT (Next concert event)
+      3: CURRENT_WEEK (Schedule for the current week)
+      4: NEXT_WEEK (Schedule for the next week)
+      5: MAIL_NEXT_CONCERT (Send next concert details by email)
+      0: NONE (Not a valid calendar request)
+      
+      STRICT RULES:
+      1. Return a JSON object with the key "ID".
+      2. Be extremely literal. Do not guess.
+      
+      Example: {"ID": "1"}
+
+  CALENDAR_REPORTER:
+    use_json: false
+    options:
+      seed: 42
+      temperature: 0.0
+      top_k: 1
+      top_p: 0.0
+      num_predict: 800
+      num_ctx: 4096
+      repeat_penalty: 1.1
+      repeat_last_n: 64
+      options:
+        temperature: 0.7
+    prompt: |
+      Task: Act as a friendly and efficient personal assistant.
+      
+      Instruction: 
+      Receive raw data (JSON or text) and transform it into a natural, concise, and polite response in English.
+      
+      Rules:
+      - Do not invent information not present in the data.
+      - If the data is empty or indicates an error, respond with empathy.
+      - Use a warm tone but remain direct.
+      - Respond only with the final sentence, no comments.
+
+      Constraint: The response must be ready to be read by a text-to-speech system.

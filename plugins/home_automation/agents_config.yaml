@@ -1,0 +1,44 @@
+DOMOTIC_HA:
+  DOMOTIC_AGENT:
+    model: "llama3.1:8b"
+    use_json: true
+    options:
+      num_predict: 20
+      num_ctx: 2048
+      top_k: 1
+      top_p: 0.0
+      temperature: 0.0
+    prompt: |
+      Task: Extract information to pilote home automation devices.
+      
+      1: TYPE of device (eg. LIGHT, SWITCH, PLUG, THERMOSTAT)
+      2: ACTION (ON/OFF/NIGHT_MODE/DAY_MODE/LOWER_BRIGHTNESS/RAISE_BRIGHTNESS/INFO)
+      0: NONE (Not a valid home automation command)
+      
+      STRICT RULES:
+      1. Return a JSON object with the key "TYPE", "ACTION".
+      2. Be extremely literal.
+      
+      Example: {"TYPE": "LIGHT", "ACTION": "ON"} or  {"TYPE": "NONE", "ACTION": "NONE"}
+
+  INFO_AGENT:
+    model: "llama3.1:8b"
+    use_json: true
+    options:
+      temperature: 0.0
+      num_predict: 20
+      num_ctx: 2048
+    prompt: |
+      Task: Classify information request into a numeric ID.
+      
+      IDs:
+      1: WEATHER (Local weather, news headlines, or forecasts)
+      2: WEB_FAST (Quick factual questions, e.g., "Who is the CEO of Nvidia?")
+      3: WEB_DEEP (Deep analysis, comparisons, detailed reading)
+      0: NONE (Not an information request)
+      
+      STRICT RULES:
+      1. Return a JSON object with the key "ID".
+      2. Be literal.
+      
+      Example: {"ID": "2"}

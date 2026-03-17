@@ -1,8 +1,11 @@
-import os, yaml, socket, getpass
-from pathlib import Path
-from types import SimpleNamespace
+import shutil
+import yaml
+import os
+import socket
 from enum import Enum
+from pathlib import Path
 from dotenv import load_dotenv, dotenv_values
+from types import SimpleNamespace
 
 class ReturnCode(Enum):
     SUCCESS = 1
@@ -15,124 +18,194 @@ class ReturnCode(Enum):
     ERR_NOT_CONFIGURED = 8
     NULL = 9
 
+class PluginConfig(SimpleNamespace):
+    """Container for a single plugin's env vars and yaml structure."""
+    pass
+
 class AlisuConfig:
     def __init__(self):
         self.ROOT = Path(__file__).resolve().parent
         self.DATA_DIR = Path.home() / "Documents" / "ALISU_DATA"
-        self.ENV_PATH = self.DATA_DIR / ".env"
-        self.YAML_PATH = self.ROOT / 'agents_config.yaml'
+        self.plugins_ROOT = self.DATA_DIR / "plugins"
         
         self.cfg = SimpleNamespace()
+        self.cfg.DATA_DIR = self.DATA_DIR
+        self.cfg.LOADED_PLUGINS = []
+        self.cfg.RETURN_CODE = ReturnCode
+
+        self._sync_and_freeze_plugins()
         
-        self._load_environment()
-        self._load_agents_yaml()
+        setattr(self.cfg, "sys", PluginConfig())
+        for name in self.cfg.LOADED_PLUGINS:
+            setattr(self.cfg, name, PluginConfig())
+        self._load_env_only() 
+
+        self._generate_plugin_description_list()
+
+        self._load_all_yaml_and_payloads()
+
         self._setup_system_info()
-        self._map_playlists()
-        self._finalize_prompts()
-
-    def _load_environment(self):
-        load_dotenv(self.ENV_PATH)
-        env_vars = dotenv_values(self.ENV_PATH)
-        
-        for k, v in env_vars.items():
-            if v is None: continue
-            key, val = k.upper(), v.strip()
-            
-            if ',' in val:
-                if ':' in val:
-                    parsed = {i.split(':')[0].strip(): i.split(':')[1].strip() for i in val.split(',') if ':' in i}
-                else:
-                    parsed = [i.strip() for i in val.split(',') if i.strip()]
-            else:
-                parsed = val
-            
-            setattr(self.cfg, key, parsed)
-
-    def _dict_to_ns(self, d):
-        if not isinstance(d, dict): return d
-        defaults = {"model": os.getenv("MODEL_NAME_MAIN"), "use_json": True}
-        merged = {**defaults, **d}
-        return SimpleNamespace(**{k: (self._dict_to_ns(v) if k != "options" else v) for k, v in merged.items()})
-
-    def _load_agents_yaml(self):
-        if not self.YAML_PATH.exists():
-            raise FileNotFoundError(f"CRITICAL: YAML config missing at {self.YAML_PATH}")
-
-        with open(self.YAML_PATH, 'r', encoding='utf-8') as f:
-            try:
-                data = yaml.safe_load(f) or {}
-            except yaml.YAMLError as exc:
-                print(f"\n[!!!] YAML SYNTAX ERROR in {self.YAML_PATH}")
-                raise exc 
-            
-            if not data:
-                raise ValueError(f"CRITICAL: {self.YAML_PATH} is empty!")
-
-            for k, v in data.items():
-                setattr(self.cfg, k, self._dict_to_ns(v))
 
     def _setup_system_info(self):
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         try:
             s.connect(("8.8.8.8", 80))
-            self.cfg.INTERFACE_IP = s.getsockname()[0]
+            self.cfg.sys.INTERFACE_IP = s.getsockname()[0]
         except:
-            self.cfg.INTERFACE_IP = "127.0.0.1"
+            self.cfg.sys.INTERFACE_IP = "127.0.0.1"
         finally:
             s.close()
         self.cfg.RETURN_CODE = ReturnCode
-        
-    def _map_playlists(self):
-        p_dir = Path(getattr(self.cfg, 'DIR_DOCS', self.DATA_DIR)) / "Playlists"
-        self.cfg.PLAYLIST_DIR = p_dir
-        self.cfg.PLAYLIST_LIST = {i.name: i for i in p_dir.iterdir()} if p_dir.exists() else {}
 
-    def _finalize_prompts(self):
-        playlists_str = "\n".join([f"- {name}" for name in self.cfg.PLAYLIST_LIST])
-        self.cfg.RouterLLM_SUB.PLAYLIST_AGENT.prompt = \
-            self.cfg.RouterLLM_SUB.PLAYLIST_AGENT.prompt.replace("REPLACE", playlists_str)
-
-        loc_val = self.cfg.REPLACE_LOCATION
-        
-        if isinstance(loc_val, list):
-            loc_val = ", ".join(loc_val)
+    def _generate_plugin_description_list(self):
+        all_lines = ""
+        for i, name in enumerate(self.cfg.LOADED_PLUGINS, start=1):
+            plugin_obj = getattr(self.cfg, name)
             
-        self.cfg.GlobalLLM.location_agent.prompt = \
-            self.cfg.GlobalLLM.location_agent.prompt.replace("REPLACE_LOCATIONS", loc_val)
+            description = getattr(plugin_obj, "DESCRIPTION", "No description provided")
 
-        self.cfg.routing_table = {
-            "DOMOTIC_AGENT": {
-                "agent": self.cfg.RouterLLM_SUB.DOMOTIC_AGENT,
-                "mapping": getattr(self.cfg, 'DICO_SUB_DOMOTIC', {}),
-                "labels": list(getattr(self.cfg, 'DICO_SUB_DOMOTIC', {}).values())
-            },
-            "INFO_AGENT": {
-                "agent": self.cfg.RouterLLM_SUB.INFO_AGENT,
-                "mapping": getattr(self.cfg, 'DICO_SUB_INFO', {}),
-                "labels": list(getattr(self.cfg, 'DICO_SUB_INFO', {}).values())
-            },
-            "CALENDAR_AGENT": {
-                "agent": self.cfg.RouterLLM_SUB.CALENDAR_AGENT,
-                "mapping": getattr(self.cfg, 'DICO_SUB_CALENDAR', {}),
-                "labels": list(getattr(self.cfg, 'DICO_SUB_CALENDAR', {}).values())
-            },
-            "DAILY_AGENT": {
-                "agent": self.cfg.RouterLLM_SUB.DAILY_AGENT,
-                "mapping": getattr(self.cfg, 'DICO_SUB_DAILY', {}),
-                "labels": list(getattr(self.cfg, 'DICO_SUB_DAILY', {}).values())
-            },
-            "MUSIC_AGENT": {
-                "agent": self.cfg.RouterLLM_SUB.MUSIC_AGENT,
-                "mapping": getattr(self.cfg, 'DICO_SUB_MUSIC', {}),
-                "labels": list(getattr(self.cfg, 'DICO_SUB_MUSIC', {}).values())
-            },
-            "VLC_AGENT": {
-                "agent": self.cfg.RouterLLM_SUB.VLC_AGENT,
-                "mapping": getattr(self.cfg, 'DICO_SUB_VLC', {}),
-                "labels": list(getattr(self.cfg, 'DICO_SUB_VLC', {}).values())
-            }
+            all_lines += f"{i}: {name.upper()} ({description})\n"
+        
+        all_lines +="0: NONE (Nonsense, philosophy, or no clear action)"
+        return all_lines
+
+    def _sync_and_freeze_plugins(self):
+        """Creates folders and copies .env templates."""
+        self.DATA_DIR.mkdir(parents=True, exist_ok=True)
+        self.plugins_ROOT.mkdir(parents=True, exist_ok=True)
+        
+        source_plugins = self.ROOT / "plugins"
+        if not source_plugins.exists():
+            print(f"DEBUG: Source folder 'plugins' not found at {source_plugins}")
+            return
+
+        folders = sorted([p for p in source_plugins.iterdir() if p.is_dir() and not p.name.startswith("__")])
+
+        for folder in folders:
+            name = folder.name
+            self.cfg.LOADED_PLUGINS.append(name)
+            setattr(self.cfg, name, PluginConfig())
+            target_plugin_dir = self.plugins_ROOT / name
+            target_plugin_dir.mkdir(parents=True, exist_ok=True)
+            template_file = folder / ".env_template"
+            target_env = target_plugin_dir / ".env"
+
+            if template_file.exists() and not target_env.exists():
+                shutil.copy(template_file, target_env)
+                print(f"[SUCCESS] Created: {target_env}")
+
+  
+    def _load_env_only(self):
+        global_env = self.DATA_DIR / ".env"
+        if global_env.exists():
+            self._parse_to_obj(global_env, self.cfg.sys)
+        
+        for name in self.cfg.LOADED_PLUGINS:
+            env_path = self.plugins_ROOT / name / ".env"
+            if env_path.exists():
+                self._parse_to_obj(env_path, getattr(self.cfg, name))
+
+    def _generate_plugin_description_list(self):
+        all_lines = ""
+        for i, name in enumerate(self.cfg.LOADED_PLUGINS, start=1):
+            plugin_obj = getattr(self.cfg, name)
+            description = getattr(plugin_obj, "DESCRIPTION", "No description provided")
+            all_lines += f"{i}: {name.upper()} ({description})\n"
+        
+        all_lines += "0: NONE (Nonsense, philosophy, or no clear action)"
+        
+        self.cfg.sys.REPLACE_PLUGINS = all_lines
+
+    def _load_all_yaml_and_payloads(self):
+        self._process_yaml_config(self.ROOT / "agents_config.yaml", self.cfg.sys)
+        
+        for name in self.cfg.LOADED_PLUGINS:
+            yaml_path = self.ROOT / "plugins" / name / "agents_config.yaml"
+            self._process_yaml_config(yaml_path, getattr(self.cfg, name))
+
+    def _process_yaml_config(self, yaml_path, parent_obj):
+        if not yaml_path.exists(): return
+
+        with open(yaml_path, 'r', encoding='utf-8') as f:
+            data = yaml.safe_load(f) or {}
+            
+            replacements = {k: v for k, v in vars(parent_obj).items() if k.startswith("REPLACE_")}
+
+            for key, value in data.items():
+                ns_value = self._dict_to_namespace(value)
+                setattr(parent_obj, key, ns_value)
+                self._apply_logic_to_agents(ns_value, replacements)
+
+    def _apply_logic_to_agents(self, obj, replacements):
+        if hasattr(obj, 'prompt') and isinstance(obj.prompt, str):
+            for r_key, r_val in replacements.items():
+                obj.prompt = obj.prompt.replace(r_key, str(r_val))
+            self._create_payload(obj)
+            return
+
+        if isinstance(obj, SimpleNamespace):
+            for k in vars(obj):
+                self._apply_logic_to_agents(getattr(obj, k), replacements)
+
+    def _dict_to_namespace(self, data):
+        """Recursively converts dict to SimpleNamespace for dot notation."""
+        if isinstance(data, dict):
+            return SimpleNamespace(**{k: self._dict_to_namespace(v) for k, v in data.items()})
+        elif isinstance(data, list):
+            return [self._dict_to_namespace(i) for i in data]
+        return data
+
+    def _parse_to_obj(self, path, obj):
+        """Parses .env into the provided object correctly."""
+        values = dotenv_values(path)
+        for k, v in values.items():
+            if not v: continue
+            
+            val = v
+            if k == "DESCRIPTION":
+                val = v
+            elif k.startswith("LIST") or k == "AGENT_FEATURES":
+                val = [i.strip() for i in v.split(',')]
+            elif k.startswith("DICO"):
+                val = {i.split(':')[0].strip(): i.split(':')[1].strip() for i in v.split(',') if ':' in i}
+            
+            setattr(obj, k, val)
+    def _process_yaml_config(self, yaml_path, parent_obj):
+        if not yaml_path.exists():
+            return
+
+        with open(yaml_path, 'r', encoding='utf-8') as f:
+            data = yaml.safe_load(f) or {}
+            
+            replacements = {k: v for k, v in vars(parent_obj).items() if k.startswith("REPLACE_")}
+
+            for key, value in data.items():
+                ns_value = self._dict_to_namespace(value)
+                setattr(parent_obj, key, ns_value)
+                
+                self._apply_logic_to_agents(ns_value, replacements)
+
+    def _apply_logic_to_agents(self, obj, replacements):
+        if hasattr(obj, 'prompt') and isinstance(obj.prompt, str):
+            for r_key, r_val in replacements.items():
+                if r_val:
+                    obj.prompt = obj.prompt.replace(r_key, str(r_val))
+            
+            self._create_payload(obj)
+            return
+
+        if isinstance(obj, SimpleNamespace):
+            for k in vars(obj):
+                self._apply_logic_to_agents(getattr(obj, k), replacements)
+
+    def _create_payload(self, agent):
+        agent._payload = {
+            "model": getattr(agent, 'model', self.cfg.sys.MODEL_NAME_MAIN),
+            "format": "json" if getattr(agent, 'use_json', False) else "",
+            "options": vars(agent.options) if hasattr(agent, 'options') else {},
+            "messages": [
+                {'role': 'system', 'content': agent.prompt}
+            ]
         }
-        self.cfg.SUB_MAPPINGS = {k: v["mapping"] for k, v in self.cfg.routing_table.items()}
 
-alisu_loader = AlisuConfig()
-cfg = alisu_loader.cfg
+cfg = AlisuConfig().cfg

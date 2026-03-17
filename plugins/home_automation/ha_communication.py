@@ -2,10 +2,10 @@ import requests
 import json
 import os
 from config_loader import cfg
-from tools.ha_entities import DeviceCollection
+from plugins.home_automation.ha_mapping import DeviceCollection
 
 
-class HAService:
+class CommunicationHA:
     """Home Assistant Service - Manages interactions with Home Assistant.
 
     Methods:
@@ -14,27 +14,28 @@ class HAService:
         call_action(domain, service, entity_id, data=None) : Calls an action on a Home Assistant entity.
         smart_toggle(action) : Toggles lights based on current state.
         set_brightness_percent_all(level_percent) : Sets brightness level for all lights.
-        handle_request(raw_data, location) : Interprets and executes a command based on raw data and location.
+        handle_request(context.label, context.location) : Interprets and executes a command based on raw data and context.
+        get_state(entity_id) : Retrieves the state of a specific entity.
     """
 
     _instance = None
 
     def __new__(cls, *args, **kwargs):
         if not cls._instance:
-            cls._instance = super(HAService, cls).__new__(cls)
+            cls._instance = super(CommunicationHA, cls).__new__(cls)
             cls._instance._initialized = False
         return cls._instance
 
     def __init__(self):
         if not hasattr(self, 'initialized'):
-            self.url = f"http://{cfg.HA_HOSTNAME}:8123/api"
+            self.url = f"http://{cfg.home_automation.HA_HOSTNAME}:8123/api"
             self.headers = {
-                "Authorization": f"Bearer {cfg.HA_TOKEN}",
+                "Authorization": f"Bearer {cfg.home_automation.HA_TOKEN}",
                 "Content-Type": "application/json"
             }
             self.initialized = True
 
-            registry_file = os.path.join(cfg.DIR_DOCS, "ha_device_list.json")
+            registry_file = os.path.join(cfg.sys.DIR_DOCS, "ha_device_list.json")
             with open(registry_file, 'r', encoding='utf-8') as f:
                 data = json.load(f)
 
@@ -88,25 +89,25 @@ class HAService:
             return self.call_action("light", "turn_on", all_ids, data=data)
         return cfg.RETURN_CODE.ERR_INVALID_ARGUMENT
 
-    def handle_request(self, raw_data, location):
-        if location == "NONSENSE":
+    def handle_request(self, context):
+        if context.location == "NONSENSE":
             return cfg.RETURN_CODE.ERR_INVALID_ARGUMENT
 
         try:
-            params = dict(item.split(":") for item in raw_data.split(","))
+            params = dict(item.split(":") for item in context.label.split(","))
             device_type = params.get("TYPE", "").lower()
             action = params.get("ACTION", "").upper()
 
-            if location == "ALL":
+            if context.location == "ALL":
                 if action == "ON":
                     return self.smart_toggle(action)
                 elif action == "OFF":
                     return self.smart_toggle(action)
                 return cfg.RETURN_CODE.ERR_INVALID_ARGUMENT
 
-            target = self.devices.search(location, device_type)
+            target = self.devices.search(context.location, device_type)
             if not target:
-                print(f"[!] {device_type} not found at: {location}")
+                print(f"[!] {device_type} not found at: {context.location}")
                 return cfg.RETURN_CODE.ERR_UNKNOWN_DEVICE
             if action == "OFF":
                 return target.turn_off()
@@ -125,19 +126,10 @@ class HAService:
             return cfg.RETURN_CODE.ERR
 
     def get_state(self, entity_id):
-        """
-        Retrieves the state of a Home Assistant entity.
-
-        Args:
-        - entity_id: The ID of the entity.
-
-        Returns:
-        - The state of the entity or None if an error occurs.
-        """
         try:
             response = requests.get(f"{self.url}/states/{entity_id}", headers=self.headers)
             response.raise_for_status()
             return response.json()
         except Exception as e:
-            print(f"Erreur API (Get State {entity_id}): {e}")
+            print(f"API Error (Get State {entity_id}): {e}")
             return None

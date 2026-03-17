@@ -29,7 +29,7 @@ class ShoppingService:
     def __init__(self):
         if self._initialized:
             return
-        self.file_path = Path(cfg.DIR_DOCS) / "shopping_list.json"
+        self.file_path = Path(cfg.sys.DIR_DOCS) / "ALISU_DATA" / "plugins" / "daily" / "shopping_list.json"
         self._initialized = True
         self.mailer_proton = MailerProton()
 
@@ -79,7 +79,7 @@ class ShoppingService:
         success = self.mailer_proton.send_mail(
             subject="Shopping List",
             body=body,
-            to_email=f"course@{cfg.DOMAIN}"
+            to_email=f"course@{cfg.sys.DOMAIN}"
         )
         return "Email sent successfully" if success else "Failed to send email"
 

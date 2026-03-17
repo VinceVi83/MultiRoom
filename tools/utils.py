@@ -14,6 +14,7 @@ class FileUtils:
 
     Methods:
         get_unique_path(dir_path, base_name, extension=".wav") : Generates a unique file path by appending counter suffixes if the file already exists.
+        format_result(result) : Format the playlist result from LLM response.
     """
 
     @staticmethod
@@ -31,3 +32,9 @@ class FileUtils:
             counter += 1
 
         return dest_path, filename
+
+    @staticmethod
+    def format_result(result):
+        if isinstance(result, dict):
+            return result.get('playlist', '')
+        return str(result)

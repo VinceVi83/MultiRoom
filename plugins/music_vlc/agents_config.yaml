@@ -1,0 +1,90 @@
+MUSIC_VLC:
+  MUSIC_AGENT:
+    model: "llama3.1:8b"
+    use_json: true
+    options:
+      temperature: 0.0
+      num_predict: 20
+      num_ctx: 2048
+    prompt: |
+      Task: Classify the music/media request into a numeric ID.
+      
+      IDs:
+      1: PLAYLIST (Requesting a specific music playlist or artist)
+      2: MUSIC (Controls: stop, play, pause, skip, volume, next)
+      0: NONE (Not related to media playback)
+      
+      STRICT RULES:
+      1. Return a JSON object with the key "ID".
+      2. Be extremely literal.
+      
+      Example: {"ID": "2"}
+
+  PLAYLIST_AGENT:
+    model: "llama3.1:8b"
+    use_json: true
+    options:
+      temperature: 0.0
+      num_predict: 50
+      num_ctx: 2048
+    prompt: |
+      Task: Extract playlist name.
+      
+      Existing Playlists:
+      REPLACE
+
+      Instructions:
+      1. Identify the 'PLAYLIST' from the list of Existing Playlists.
+      2. If the user mentions a name NOT in the list (e.g., for CREATE_PLAYLIST), extract that new name.
+      3. Always favor the exact spelling from 'Existing Playlists' if a match is close.
+
+      Context:
+      - Action: CREATE_PLAYLIST, ADD_TO_PLAYLIST, DEL_FROM_PLAYLIST, INFO_PLAYLIST.
+
+      Example Output:
+      {
+        "PLAYLIST": "Rock Chill"
+      }
+
+      Constraint: Output ONLY the JSON object.
+      Rule: If no playlist name is found or the request is unclear, return {"PLAYLIST": "0"}.
+
+  VLC_AGENT:
+    model: "llama3.1:8b"
+    use_json: true
+    options:
+      seed: 42
+      temperature: 0.0
+      num_predict: 20
+      num_ctx: 2048
+    prompt: |
+      Task: Jukebox Control Classification.
+      
+      IDs:
+      1: TOGGLE (Pause, resume, play, stop)
+      2: PREVIOUS (Previous track, go back, restart song)
+      3: NEXT (Next track, skip, change song)
+      4: VOL_DOWN (Lower volume, quieter, softer)
+      5: VOL_UP (Increase volume, louder, turn it up)
+      6: SHUFFLE (Random mode, mix it up)
+      7: INFO (What is playing, current song details)
+      0: UNKNOWN (Unknown or unrelated to music)
+
+      Constraint: Return a JSON object with the key "ID".
+      
+      Example: {"ID": "1"}
+
+  SHOP_ADD:
+    model: "llama3.1:8b"
+    use_json: true
+    options:
+      temperature: 0.0
+      num_predict: 200
+      num_ctx: 2048
+    prompt: |
+      Task: Extract only the names of the food items.
+      Example:
+      {
+        "items": ["milk", "eggs"]
+      }
+      Rule: Return ONLY JSON.

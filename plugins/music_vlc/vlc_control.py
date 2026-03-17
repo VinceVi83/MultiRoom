@@ -44,12 +44,12 @@ class VLControl:
         }
 
         self.playlist_map = {
-            "touhou": f"{cfg.DIR_DOCS}/Playlists/touhou",
-            "rock": f"{cfg.DIR_DOCS}/Playlists/rock",
+            "touhou": f"{cfg.sys.DIR_DOCS}/Playlists/touhou",
+            "rock": f"{cfg.sys.DIR_DOCS}/Playlists/rock",
         }
 
         self.base_request = (
-            f"curl -s --user :test 'http://{cfg.INTERFACE_IP}:{self.port_ctrl}/"
+            f"curl -s --user :test 'http://{cfg.sys.INTERFACE_IP}:{self.port_ctrl}/"
             f"requests/status.xml?command="
         )
         self.start_vlc()
@@ -85,12 +85,12 @@ class VLControl:
             return cfg.RETURN_CODE.SUCCESS
 
         path = path if path else self.playlist_map["touhou"]
-        sout_param = f"#standard{{access=http,mux=ogg,dst={cfg.INTERFACE_IP}:{self.port_stream}}}"
+        sout_param = f"#standard{{access=http,mux=ogg,dst={cfg.sys.INTERFACE_IP}:{self.port_stream}}}"
 
         args = [
             "vlc", "--loop", "--playlist-enqueue", path,
             f"--http-port={self.port_ctrl}", "--sout", sout_param,
-            "-I", "dummy", "--extraintf", "http", "--http-password", cfg.DICO_USERS[cfg.LIST_USERS[0]]
+            "-I", "dummy", "--extraintf", "http", "--http-password", cfg.sys.DICO_USERS[cfg.sys.LIST_USERS[0]]
         ]
 
         try:

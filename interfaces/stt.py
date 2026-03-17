@@ -18,12 +18,12 @@ class STT:
     """Speech-to-Text (STT) system for capturing and processing voice commands.
 
     Methods:
-        __init__(http_port, json_path): Initializes the STT system.
-        get_hardware_signature(): Generates a unique hardware signature.
-        test_microphone(): Tests the microphone level.
-        _serve_file(): Starts a one-shot HTTP server for the Hub.
-        record_audio(): Records audio from the microphone.
-        send_link_to_hub(): Sends the recorded audio link to the Hub.
+        __init__(http_port, json_path): Initializes the STT system with audio configuration.
+        get_hardware_signature(): Generates a unique hardware signature using platform info.
+        test_microphone(): Tests the microphone level and reports signal strength.
+        _serve_file(): Starts a one-shot HTTP server for the Hub file transfer.
+        record_audio(): Records audio from the microphone until silence threshold.
+        send_link_to_hub(): Sends the recorded audio link to the Hub with signature.
         run(): Starts the STT system in continuous listening mode.
     """
 
@@ -136,8 +136,8 @@ class STT:
             threading.Thread(target=self._serve_file, daemon=True).start()
             time.sleep(0.2)
 
-            with socket.create_connection((cfg.HUB_IP, 28888), timeout=5) as sock:
-                with context.wrap_socket(sock, server_hostname=cfg.HUB_IP) as ssock:
+            with socket.create_connection((cfg.sys.HUB_IP, 28888), timeout=5) as sock:
+                with context.wrap_socket(sock, server_hostname=cfg.sys.HUB_IP) as ssock:
                     ssock.sendall(secure_packet.encode('utf-8'))
                     print(f"[OK] Signal sent to Hub : {url}")
                     response = ssock.recv(1024).decode('utf-8')

@@ -6,7 +6,7 @@ from tools.whisper_engine import WhisperEngine
 from config_loader import cfg
 
 MICRO_GAIN, TRIGGER_THRESHOLD = 3.0, 0.05
-WSL_IP, PORT = cfg.HUB_IP, 5000
+WSL_IP, PORT = cfg.sys.HUB_IP, 5000
 
 
 def init_cuda():
@@ -17,20 +17,23 @@ def init_cuda():
             os.add_dll_directory(path)
             os.environ['PATH'] = path + os.pathsep + os.environ['PATH']
 
+
 class AudioBuffer:
     """Manages an audio buffer for capturing and processing audio data.
 
     Methods:
-    - __init__(): Initializes the audio buffer with empty state.
-    - push(chunk, vol) : Adds audio data to the buffer and checks for activity.
-    - pull() : Retrieves and clears the audio data from the buffer.
+    - __init__(self) : Initializes the audio buffer with empty state.
+    - push(self, chunk, vol) : Adds audio data to the buffer and checks for activity.
+    - pull(self) : Retrieves and clears the audio data from the buffer.
     """
+
     def __init__(self):
         self.buffer, self.active, self.silence = [], False, 0
 
     def push(self, chunk, vol):
         self.buffer.append(chunk)
-        if not self.active and len(self.buffer) > 20: self.buffer.pop(0)
+        if not self.active and len(self.buffer) > 20:
+            self.buffer.pop(0)
 
         if vol > TRIGGER_THRESHOLD:
             self.active, self.silence = True, 0
@@ -46,7 +49,8 @@ class AudioBuffer:
 
 
 def send(text):
-    if not text: return
+    if not text:
+        return
     try:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.settimeout(2.0)
@@ -58,16 +62,12 @@ def send(text):
 
 
 def run_mic_test(duration=5):
-    """Runs a microphone test for a specified duration to validate hardware.
-
-    Args:
-    - duration: Duration of the test in seconds.
-    """
-    print("\n" + "="*40)
+    print("\n" + "=" * 40)
     print(f"--- INITIAL MIC TEST ({duration}s) ---")
-    print("="*40)
+    print("=" * 40)
 
     test_q = queue.Queue()
+
     def test_cb(indata, f, t, s):
         amp = np.clip(indata.copy() * MICRO_GAIN, -1.0, 1.0)
         test_q.put(np.max(np.abs(amp)))
@@ -121,3 +121,4 @@ if __name__ == "__main__":
         main()
     except KeyboardInterrupt:
         print("\nShutdown.")
+

@@ -10,7 +10,7 @@ from services.router_llm import RouterLLM
 from tools.scraper import ScraperService
 from tools.whisper_engine import WhisperEngine
 from config_loader import cfg
-from services.user_session import UserSession
+from user_session import UserSession
 from tools.task_context import TaskContext
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -32,9 +32,9 @@ class SessionManager:
     """
 
     def __init__(self):
-        self.host = cfg.INTERFACE_IP
-        self.port = int(cfg.HUB_PORT)
-        self.allowed_sigs = cfg.LIST_ALLOWED_SIGS
+        self.host = cfg.sys.INTERFACE_IP
+        self.port = int(cfg.sys.HUB_PORT)
+        self.allowed_sigs = cfg.sys.LIST_ALLOWED_SIGS
         self.user_count = 0
         self.active_sessions = {}
 
@@ -86,7 +86,7 @@ class SessionManager:
         if text:
             print(f"[*] Transcription [{session.username}]: {text}")
             context = TaskContext(user_input=text, session=session)
-            self.router.command_queue.put(context)
+            self.router.add_to_queue(context)
 
     def _handle_stt_request(self, session, url):
         temp_file = f"/tmp/temp_{session.index}_{threading.get_ident()}.wav"
@@ -107,7 +107,7 @@ class SessionManager:
             print(temp_file)
 
     def _handle_auth(self, sock, username, password):
-        stored_password = cfg.DICO_USERS.get(username)
+        stored_password = cfg.sys.DICO_USERS.get(username)
         if stored_password and stored_password == password:
             if username in self.active_sessions.keys():
                 self.active_sessions[username].socks.append(sock)
@@ -166,7 +166,7 @@ class SessionManager:
     def run_server(self):
         """Starts the SSL-secured Hub Server"""
         context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-        dir_cert = Path(cfg.DIR_DOCS) / "Certification"
+        dir_cert = Path(cfg.sys.DIR_DOCS) / "Certification"
         context.load_cert_chain(certfile=dir_cert/"cert.pem", keyfile=dir_cert/"key.pem")
         context.verify_mode = ssl.CERT_NONE
         context.check_hostname = False
@@ -189,6 +189,7 @@ class SessionManager:
             print("[*] Server shutting down...")
         finally:
             server_sock.close()
+
 
 if __name__ == "__main__":
     manager = SessionManager()

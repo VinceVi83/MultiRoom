@@ -14,6 +14,7 @@ from http.server import SimpleHTTPRequestHandler, HTTPServer
 from config_loader import cfg
 from pathlib import Path
 
+
 class STTSimulator:
     """
     Simulates a text-to-speech system for testing purposes.
@@ -34,7 +35,7 @@ class STTSimulator:
 
     def __init__(self):
         self.http_port = 8090
-        self.json_path = Path(cfg.DIR_DOCS) / "Recording/record.json"
+        self.json_path = Path(cfg.sys.DIR_DOCS) / "Recording/record.json"
         self.records = []
         self.current_idx = 0
         self.signature = self.get_hardware_signature()
@@ -108,7 +109,7 @@ class STTSimulator:
 
         print(f"[*] Verifying {len(self.records)} entries...")
         for entry in self.records:
-            fname = Path(cfg.DIR_DOCS) / "Recording" / entry.get('Filename')
+            fname = Path(cfg.sys.DIR_DOCS) / "Recording" / entry.get('Filename')
             if fname and not os.path.exists(fname):
                 print(f"[!] Missing audio file : {fname}")
 
@@ -117,8 +118,8 @@ class STTSimulator:
         context.check_hostname = False
         context.verify_mode = ssl.CERT_NONE
         try:
-            raw_sock = socket.create_connection((cfg.HUB_IP, cfg.HUB_PORT), timeout=timeout)
-            self.client_socket = context.wrap_socket(raw_sock, server_hostname=cfg.HUB_IP)
+            raw_sock = socket.create_connection((cfg.sys.HUB_IP, cfg.sys.HUB_PORT), timeout=timeout)
+            self.client_socket = context.wrap_socket(raw_sock, server_hostname=cfg.sys.HUB_IP)
             return True
         except Exception as e:
             print(f"[!] Connection error: {e}")
@@ -132,8 +133,6 @@ class STTSimulator:
             response = self.client_socket.recv(4096).decode('utf-8')
             if self.debug:
                 print(f"[{label}] Hub Response : {response}")
-            if response != "AUTH_SUCCESS":
-                self.check_result(response)
             return response
         except Exception as e:
             print(f"[!] Transmission error : {e}")
@@ -141,7 +140,7 @@ class STTSimulator:
             return None
 
     def authenticate(self):
-        auth_packet = f"{self.signature}:Auth:{cfg.LIST_USERS[0]}:{cfg.DICO_USERS[cfg.LIST_USERS[0]]}"
+        auth_packet = f"{self.signature}:Auth:{cfg.sys.LIST_USERS[0]}:{cfg.sys.DICO_USERS[cfg.sys.LIST_USERS[0]]}"
         if self._send_packet(auth_packet, "AUTH"):
             self.authenticated = True
 

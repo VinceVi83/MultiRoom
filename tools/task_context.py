@@ -70,7 +70,7 @@ class TaskContext:
             timestamp = int(time.time())
             base = f"{timestamp}_{self.category}_{self.label}"
 
-            archive_dir = Path(cfg.DIR_DOCS) / "Archive"
+            archive_dir = Path(cfg.sys.DIR_DOCS) / "Archive"
             dest_path, new_name = FileUtils.get_unique_path(archive_dir, base, ".wav")
 
             self.display_report(new_name)

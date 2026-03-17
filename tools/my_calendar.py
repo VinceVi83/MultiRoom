@@ -14,16 +14,17 @@ class CalendarService:
     """Manages calendar events and provides functionalities to fetch and send concert tickets.
 
     Methods:
-        __new__(cls) : Singleton pattern to ensure only one instance of CalendarService.
-        __init__() : Initializes the service and runs a health check.
-        _run_health_check() : Checks the health of the service by verifying the existence of a JSON file and the availability of an iCal URL.
-        is_healthy() : Returns the health status of the service.
-        _get_calendar_events() : Fetches and parses the remote iCal file.
-        fetch_calendar_events(keyword, month, limit) : Filters the iCal events based on optional keyword and month.
-        get_next_concert_data() : Analyzes the JSON dictionary of tickets to find the next concert.
-        mail_me_next_concert() : Sends the next concert details by email with its attached file.
-        get_week_events(offset) : Fetches events for the current or next week.
+        __new__(cls) -> CalendarService : Singleton pattern to ensure only one instance of CalendarService.
+        __init__() -> None : Initializes the service and runs a health check.
+        _run_health_check() -> dict : Checks the health of the service by verifying the existence of a JSON file and the availability of an iCal URL.
+        is_healthy() -> tuple : Returns the health status of the service.
+        _get_calendar_events() -> list : Fetches and parses the remote iCal file.
+        fetch_calendar_events(keyword, month, limit) -> list : Filters the iCal events based on optional keyword and month.
+        get_next_concert_data() -> dict : Analyzes the JSON dictionary of tickets to find the next concert.
+        mail_me_next_concert() -> str : Sends the next concert details by email with its attached file.
+        get_week_events(offset) -> list : Fetches events for the current or next week.
     """
+
     _instance = None
 
     def __new__(cls):
@@ -36,7 +37,7 @@ class CalendarService:
         if self._initialized:
             return
 
-        self.index_path = Path(cfg.DIR_DOCS) / "concert_tickets/concerts.json"
+        self.index_path = Path(cfg.sys.DIR_DOCS) / "concert_tickets/concerts.json"
         self.status = self._run_health_check()
         self._initialized = True
         self.mailer_proton = MailerProton()
@@ -47,7 +48,7 @@ class CalendarService:
         if self.index_path.exists():
             checks["json_file"] = True
         try:
-            r = requests.head(cfg.LINK_CALENDAR, timeout=5)
+            r = requests.head(cfg.sys.LINK_CALENDAR, timeout=5)
             if r.status_code == 200:
                 checks["ical_url"] = True
         except:
@@ -58,7 +59,7 @@ class CalendarService:
         return all(self.status.values()), "All systems GO" if all(self.status.values()) else f"Issues detected: {', '.join([k for k, v in self.status.items() if not v])}"
 
     def _get_calendar_events(self):
-        response = requests.get(cfg.LINK_CALENDAR, timeout=10)
+        response = requests.get(cfg.sys.LINK_CALENDAR, timeout=10)
         response.raise_for_status()
         calendar = vobject.readOne(response.text)
 
@@ -148,11 +149,11 @@ class CalendarService:
                 f"Enjoy the show!"
             )
 
-            attachment = Path(cfg.DIR_DOCS) / "concert_tickets" / pdf_file
+            attachment = Path(cfg.sys.DIR_DOCS) / "concert_tickets" / pdf_file
             success = self.mailer_proton.send_mail(
                 subject=subject,
                 body=body,
-                to_email=f"concert@{cfg.DOMAIN}",
+                to_email=f"concert@{cfg.sys.DOMAIN}",
                 attachment_path=str(attachment) if attachment.exists() else None
             )
             return f"Success ({summary})" if success else "Failed to send email"

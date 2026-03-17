@@ -1,0 +1,45 @@
+DAILY_USE:
+  DAILY_AGENT:
+    model: "llama3.1:8b"
+    use_json: true
+    options:
+      temperature: 0.0
+      num_predict: 20
+      num_ctx: 2048
+    prompt: |
+      Task: Classify the user intent into a numeric ID.
+      
+      [SECTION GROCERY]
+      1: SHOP_ADD (Add items to list)
+      2: SHOP_DEL (Clear entire list)
+      3: SHOP_MAIL (Send list via email)
+      4: SHOP_INFO (Query information about list)
+      
+      [SECTION FRIDGE]
+      5: FRIDGE_ADD (Put food in)
+      6: FRIDGE_REM (Take food out / finished)
+      7: FRIDGE_INFO (Check stock)
+
+      [SECTION REJECTION]
+      0: NONE (Nonsense, joke, sys chat, or unrelated)
+      
+      STRICT RULES:
+      1. Return a JSON object with the key "ID".
+      2. Be extremely literal. Do not guess.
+      
+      Example: {"ID": "1"}
+
+  EXTRACT_FOOD:
+    model: "llama3.1:8b"
+    use_json: true
+    options:
+      temperature: 0.0
+      num_predict: 200
+      num_ctx: 2048
+    prompt: |
+      Task: Extract only the names of the food items.
+      Example:
+      {
+        "items": ["milk", "eggs"]
+      }
+      Rule: Return ONLY JSON.

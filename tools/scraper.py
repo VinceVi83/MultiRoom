@@ -160,5 +160,5 @@ class ScraperService:
 if __name__ == "__main__":
     scraper = ScraperService()
     query = " ".join(sys.argv[1:]) if len(sys.argv) > 1 else "Weather Paris"
-    report = scraper.get_web_summary(query, cfg.GlobalLLM.weather_forecast)
+    report = scraper.get_web_summary(query, cfg.sys.Global.weather_forecast)
     scraper.print_weather_report(report)
