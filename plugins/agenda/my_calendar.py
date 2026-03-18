@@ -7,8 +7,7 @@ from datetime import datetime
 from pathlib import Path
 from datetime import timedelta
 from config_loader import cfg
-from tools.mailer_proton import MailerProton
-
+from plugins.agenda.mailer_proton import MailerProton
 
 class CalendarService:
     """Manages calendar events and provides functionalities to fetch and send concert tickets.
@@ -37,7 +36,7 @@ class CalendarService:
         if self._initialized:
             return
 
-        self.index_path = Path(cfg.sys.DIR_DOCS) / "concert_tickets/concerts.json"
+        self.index_path = Path(cfg.agenda.DATA_DIR) / "concert_tickets/concerts.json"
         self.status = self._run_health_check()
         self._initialized = True
         self.mailer_proton = MailerProton()
@@ -48,7 +47,7 @@ class CalendarService:
         if self.index_path.exists():
             checks["json_file"] = True
         try:
-            r = requests.head(cfg.sys.LINK_CALENDAR, timeout=5)
+            r = requests.head(cfg.agenda.LINK_CALENDAR, timeout=5)
             if r.status_code == 200:
                 checks["ical_url"] = True
         except:
@@ -59,7 +58,7 @@ class CalendarService:
         return all(self.status.values()), "All systems GO" if all(self.status.values()) else f"Issues detected: {', '.join([k for k, v in self.status.items() if not v])}"
 
     def _get_calendar_events(self):
-        response = requests.get(cfg.sys.LINK_CALENDAR, timeout=10)
+        response = requests.get(cfg.agenda.LINK_CALENDAR, timeout=10)
         response.raise_for_status()
         calendar = vobject.readOne(response.text)
 
@@ -149,11 +148,11 @@ class CalendarService:
                 f"Enjoy the show!"
             )
 
-            attachment = Path(cfg.sys.DIR_DOCS) / "concert_tickets" / pdf_file
+            attachment = Path(cfg.agenda.DATA_DIR) / "concert_tickets" / pdf_file
             success = self.mailer_proton.send_mail(
                 subject=subject,
                 body=body,
-                to_email=f"concert@{cfg.sys.DOMAIN}",
+                to_email=f"system@{cfg.agenda.DOMAIN}",
                 attachment_path=str(attachment) if attachment.exists() else None
             )
             return f"Success ({summary})" if success else "Failed to send email"
@@ -176,3 +175,22 @@ class CalendarService:
             if start_of_target_week <= e["dt"] <= end_of_target_week
         ]
         return filtered
+
+"""
+        fetch_calendar_events(keyword, month, limit) -> list : Filters the iCal events based on optional keyword and month.
+        get_next_concert_data() -> dict : Analyzes the JSON dictionary of tickets to find the next concert.
+        mail_me_next_concert() -> str : Sends the next concert details by email with its attached file.
+        get_week_events(offset) -> list : Fetches events for the current or next week.
+"""
+if __name__ == "__main__":
+    calendar = CalendarService()
+    result = calendar.fetch_calendar_events(limit=1)
+    print(result)
+    result = calendar.fetch_calendar_events(limit=2)
+    print(result)
+    result = calendar.get_next_concert_data()
+    print(result)
+    result = calendar.mail_me_next_concert()
+    print(result)
+    result = calendar.get_week_events(1)
+    print(result)

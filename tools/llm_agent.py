@@ -91,7 +91,6 @@ class OllamaClient:
         params["messages"] = params["messages"] + [{"role": "user", "content": user_input}]
         return params
 
-
 def create_agent_config(prompt, model=None, use_json=True, **custom_options):
     """Generates an agent config using MODEL_NAME_MAIN by default"""
     base_options = {

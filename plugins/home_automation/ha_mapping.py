@@ -106,7 +106,7 @@ class LightEntity(BaseEntity):
     def turn_off(self):
         if self.get_state() == 'on':
             return self.service.call_action("light", "toggle", self.id)
-        return cfg.RETURN_CODE.ERR_ALREADY_DONE
+        return cfg.RETURN_CODE.NOTHING_TO_DO
 
     def set_brightness_percent(self, percent: int):
         data = {"brightness_pct": min(max(percent, 0), 100)}

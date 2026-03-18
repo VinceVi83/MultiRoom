@@ -16,7 +16,7 @@ class HADomoticsCapabilities:
     def __init__(self):
         self.url = f"http://{cfg.home_automation.HA_HOSTNAME}:8123/api"
         self.headers = {
-            "Authorization": f"Bearer {cfg.HA_TOKEN}",
+            "Authorization": f"Bearer {cfg.home_automation.HA_TOKEN}",
             "Content-Type": "application/json"
         }
 
@@ -64,7 +64,7 @@ class HADomoticsCapabilities:
 if __name__ == "__main__":
     registry = HADomoticsCapabilities()
     data = registry.get_actionable_devices()
-    output_file = os.path.join(cfg.sys.DIR_DOCS, "ha_device_list.json")
+    output_file = os.path.join(cfg.home_automation.DATA_DIR, "ha_device_list.json")
     
     with open(output_file, "w", encoding="utf-8", newline='\n') as f:
         json.dump(data, f, indent=2, ensure_ascii=False)

@@ -49,3 +49,31 @@ AGENDA:
       - Respond only with the final sentence, no comments.
 
       Constraint: The response must be ready to be read by a text-to-speech system.
+
+  EXTRACT_ARTIST_AGENT:
+    model: "llama3.1:8b"
+    use_json: true
+    options:
+      temperature: 0.0
+    prompt: |
+      Extract the main artist name. 
+      Respond with JSON format: {"artist": "NAME"}
+  
+  EXTRACT_VENUE_AGENT:
+    model: "llama3.1:8b"
+    use_json: true
+    options:
+      temperature: 0.0
+    prompt: |
+      Extract the venue and city.
+      Respond with JSON format: {"location": "VENUE, CITY"}
+
+  EXTRACT_DATE_AGENT:
+    model: "llama3.1:8b"
+    use_json: true
+    options:
+      temperature: 0.0
+    prompt: |
+      Extract date of the event, be careful it may have date of creation of ticket, brought dates.
+      date must be in this format : 20260317T185300
+      Respond with JSON format: {"date": "20260317T185300"}

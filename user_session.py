@@ -29,6 +29,22 @@ class UserSession:
         self.index = index
         self.socks = []
         self.last_seen = 0
+        self.services = {}
+
+    def add_new_service(self, service_name, service):
+        nouveau_type = type(service)
+        
+        if any(isinstance(s, nouveau_type) for s in self.services.values()):
+            print(f"Refusé : Un service de type {nouveau_type.__name__} est déjà présent.")
+            return cfg.RETURN_CODE.DUPLICATE
+        
+        if service_name in self.services:
+            print(f"Refusé : Le nom '{service_name}' est déjà utilisé.")
+            return cfg.RETURN_CODE.DUPLICATE
+
+        self.services[service_name] = service
+        service.attached = True
+        return cfg.RETURN_CODE.SUCCESS
 
     def send_to_all_socks(self, text):
         for sock in self.socks:

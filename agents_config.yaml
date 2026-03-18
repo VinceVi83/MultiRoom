@@ -39,9 +39,10 @@ Global:
       }
 
       Rules:
-      1. Identify which room from the list is mentioned.
-      2. If no room from the list is found, return "Unknown".
-      3. Return ONLY the JSON object.
+      1. Search for a mention of one of the Locations in the input text.
+      2. If NO location from the list is mentioned, you MUST return {"location": "Unknown"}.
+      3. If a location is found, return its exact name from the list.
+      4. Strictly return ONLY the JSON object.
 
-      Example input: "Turn off everything in the kitchen please"
-      Example output: {"location": "Kitchen"}
+      Input: "Éteins la lumière" -> {"location": "Unknown"}
+      Input: "Allume la cuisine" -> {"location": "Cuisine"}

@@ -12,11 +12,14 @@ class ReturnCode(Enum):
     ERR = 2
     ERR_NOT_CONNECTED = 3
     ERR_NOT_IMPLEMENTED = 4
-    ERR_ALREADY_DONE = 5
+    SUCCESS_NOTHING_TO_DO = 5
     ERR_UNKNOWN_DEVICE = 6
     ERR_INVALID_ARGUMENT = 7
     ERR_NOT_CONFIGURED = 8
-    NULL = 9
+    ERR_MISSING_FILE = 9
+    SUCESS_NONSENSE = 10
+    NULL = 11
+    DUPLICATE = 12
 
 class PluginConfig(SimpleNamespace):
     """Container for a single plugin's env vars and yaml structure."""
@@ -35,9 +38,6 @@ class AlisuConfig:
 
         self._sync_and_freeze_plugins()
         
-        setattr(self.cfg, "sys", PluginConfig())
-        for name in self.cfg.LOADED_PLUGINS:
-            setattr(self.cfg, name, PluginConfig())
         self._load_env_only() 
 
         self._generate_plugin_description_list()
@@ -73,7 +73,8 @@ class AlisuConfig:
         """Creates folders and copies .env templates."""
         self.DATA_DIR.mkdir(parents=True, exist_ok=True)
         self.plugins_ROOT.mkdir(parents=True, exist_ok=True)
-        
+        setattr(self.cfg, "sys", PluginConfig())
+
         source_plugins = self.ROOT / "plugins"
         if not source_plugins.exists():
             print(f"DEBUG: Source folder 'plugins' not found at {source_plugins}")
@@ -84,17 +85,19 @@ class AlisuConfig:
         for folder in folders:
             name = folder.name
             self.cfg.LOADED_PLUGINS.append(name)
-            setattr(self.cfg, name, PluginConfig())
             target_plugin_dir = self.plugins_ROOT / name
             target_plugin_dir.mkdir(parents=True, exist_ok=True)
             template_file = folder / ".env_template"
             target_env = target_plugin_dir / ".env"
 
+            plugin_obj = PluginConfig()
+            plugin_obj.DATA_DIR = target_plugin_dir
+            setattr(self.cfg, name, plugin_obj)
+
             if template_file.exists() and not target_env.exists():
                 shutil.copy(template_file, target_env)
                 print(f"[SUCCESS] Created: {target_env}")
 
-  
     def _load_env_only(self):
         global_env = self.DATA_DIR / ".env"
         if global_env.exists():
@@ -162,7 +165,7 @@ class AlisuConfig:
             if not v: continue
             
             val = v
-            if k == "DESCRIPTION":
+            if k in "DESCRIPTION" or k.startswith("LINK_"):
                 val = v
             elif k.startswith("LIST") or k == "AGENT_FEATURES":
                 val = [i.strip() for i in v.split(',')]

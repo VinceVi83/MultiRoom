@@ -35,7 +35,7 @@ class CommunicationHA:
             }
             self.initialized = True
 
-            registry_file = os.path.join(cfg.sys.DIR_DOCS, "ha_device_list.json")
+            registry_file = os.path.join(cfg.home_automation.DATA_DIR, "ha_device_list.json")
             with open(registry_file, 'r', encoding='utf-8') as f:
                 data = json.load(f)
 
@@ -61,7 +61,8 @@ class CommunicationHA:
             return cfg.RETURN_CODE.ERR_NOT_CONNECTED
 
     def smart_toggle(self, action):
-        my_entity_ids = [l.entity_id for l in self.lights]
+        my_entity_ids = [l.id for l in self.devices.lights]
+        print(my_entity_ids)
         response = requests.get(f"{self.url}/states", headers=self.headers)
         all_states = response.json()
         lights_on = []
@@ -83,7 +84,7 @@ class CommunicationHA:
     def set_brightness_percent_all(self, level_percent):
         brightness_255 = int((level_percent / 100) * 255)
         data = {"brightness": brightness_255}
-        all_ids = [light.entity_id for light in self.lights]
+        all_ids = [l.id for l in self.devices.lights]
 
         if brightness_255 > 0:
             return self.call_action("light", "turn_on", all_ids, data=data)

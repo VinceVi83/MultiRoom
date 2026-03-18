@@ -4,7 +4,7 @@ import shutil
 from pathlib import Path
 from dataclasses import dataclass, fields, asdict, field
 from config_loader import cfg, ReturnCode
-from tools.utils import FileUtils
+from tools.utils import Utils
 
 
 @dataclass
@@ -30,8 +30,10 @@ class TaskContext:
     duration: int = 0
     location: str = "NONSENSE"
     start: float = field(default_factory=time.time)
+    return_code: ReturnCode = cfg.RETURN_CODE.ERR
 
     def clone_safe(self):
+        self.return_code = Utils.format_result(self.return_code)
         if isinstance(self.result, ReturnCode):
             self.result = self.result.name
         data = {f.name: getattr(self, f.name) for f in fields(self) if f.name != 'session'}
@@ -48,9 +50,6 @@ class TaskContext:
         return data
 
     def display_report(self, new_audio_name="None"):
-        result = self.result
-        if isinstance(self.result, ReturnCode):
-            result = self.result.name
         print("\n" + "="*50)
         print(f"{'DISPATCH REPORT':^50}")
         print("="*50)
@@ -60,18 +59,22 @@ class TaskContext:
         print(f"{'Location:':<15} {self.location}")
         print(f"{'Category:':<15} {self.category}")
         print(f"{'Label:':<15} {self.label}")
-        print(f"{'Result:':<15} {result}")
+        print(f"{'Result:':<15} {Utils.format_result(self.result)}")
+        print(f"{'Return code:':<15} {Utils.format_result(self.return_code)}")
         print(f"{'Duration:':<15} {self.duration}s")
         print(f"{'DurationLLM:':<15} {self.duration_llm}s")
         print("="*50 + "\n")
 
     def _archive_and_rename(self):
         try:
+            if "NONSENSE" in self.result:
+                return self.clone_safe()
+
             timestamp = int(time.time())
             base = f"{timestamp}_{self.category}_{self.label}"
 
-            archive_dir = Path(cfg.sys.DIR_DOCS) / "Archive"
-            dest_path, new_name = FileUtils.get_unique_path(archive_dir, base, ".wav")
+            archive_dir = Path(cfg.DATA_DIR) / "Archive"
+            dest_path, new_name = Utils.get_unique_path(archive_dir, base, ".wav")
 
             self.display_report(new_name)
 

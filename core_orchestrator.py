@@ -6,7 +6,7 @@ import os
 import requests
 import time
 import json
-from services.router_llm import RouterLLM
+from router_llm import RouterLLM
 from tools.scraper import ScraperService
 from tools.whisper_engine import WhisperEngine
 from config_loader import cfg
@@ -82,7 +82,6 @@ class SessionManager:
                 self.task_queue.task_done()
 
     def _handle_direct_command(self, session, text):
-        print(text)
         if text:
             print(f"[*] Transcription [{session.username}]: {text}")
             context = TaskContext(user_input=text, session=session)
@@ -166,7 +165,7 @@ class SessionManager:
     def run_server(self):
         """Starts the SSL-secured Hub Server"""
         context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-        dir_cert = Path(cfg.sys.DIR_DOCS) / "Certification"
+        dir_cert = Path(cfg.DATA_DIR) / "Certification"
         context.load_cert_chain(certfile=dir_cert/"cert.pem", keyfile=dir_cert/"key.pem")
         context.verify_mode = ssl.CERT_NONE
         context.check_hostname = False

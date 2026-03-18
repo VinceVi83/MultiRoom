@@ -6,7 +6,7 @@ import importlib
 from config_loader import cfg
 from tools.llm_agent import llm
 from tools.task_context import TaskContext
-
+from tools.utils import Utils
 
 class RouterLLM:
     """AI Router module that orchestrates intent detection, interactive web research, and service dispatching.
@@ -31,7 +31,6 @@ class RouterLLM:
         self.start()
 
     def add_to_queue(self, context):
-        print("New request")
         if isinstance(context, TaskContext):
             self.command_queue.put(context)
 
@@ -69,17 +68,10 @@ class RouterLLM:
         if choice != '0' and choice.isdigit():
             context.category = cfg.LOADED_PLUGINS[int(choice)-1].upper()
 
-        print(self.service_registry)
-        service_instance = self.service_registry.get(choice)
-
-        if service_instance and hasattr(service_instance, 'execute'):
-            if self.debug:
-                print(f"[Router] Dispatching to ID {choice}")
-            service_instance.execute(context)
-        else:
-            if self.debug:
-                print(f"[Router] No service or execute() method for ID {choice}")
-            context.output = "Sorry, I don't know how to handle this request."
+            service_instance = self.service_registry.get(choice)
+            if service_instance and hasattr(service_instance, 'execute'):
+                return_code = service_instance.execute(context)
+                context.return_code = Utils.format_result(return_code)
 
         context.duration_llm = time.time() - start_total
         context.duration = time.time() - context.start

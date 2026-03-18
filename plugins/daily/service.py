@@ -1,7 +1,7 @@
 from config_loader import cfg
 from plugins.daily.shopping import ShoppingService
 from tools.llm_agent import llm
-from tools.utils import FileUtils
+from tools.utils import Utils
 
 class DailyService:
     """
@@ -23,37 +23,23 @@ class DailyService:
     def execute(self, context):
         shopping = ShoppingService()
         result = llm.execute(context.user_input, cfg.daily.DAILY_USE.DAILY_AGENT)
-        print(f"DEBUG LLM Output: {result}") 
-
-        raw_id = result.get('ID', 'ERROR')
-        try:
-            res = int(raw_id)
-        except (ValueError, TypeError):
-            res = 0
-            
-        print(f"DailyService Index: {res}")
-        print("DailyService", cfg.daily.AGENT_FEATURES, res, result)
+        res = int(result.get('ID', '0'))
         context.label = cfg.daily.AGENT_FEATURES[res]
-
-        print("DailyService", context.label)
-
-        result = cfg.RETURN_CODE.ERR
+        result = "NONSENSE"
         if context.label == "SHOP_ADD":
             new_items = llm.execute(context.user_input, cfg.daily.DAILY_USE.EXTRACT_FOOD)
             result = shopping.update_shopping_list(new_items)
         elif context.label == "SHOP_DEL":
             result = shopping.delete_shopping_list()
-
         elif context.label == "SHOP_INFO":
             result = shopping.report_shopping_list()
-
         elif context.label == "SHOP_MAIL":
             result = shopping.mail_shopping_list()
-        else:
-            result = "NONSENSE"
 
-        context.result = FileUtils.format_result(new_items)
-        return result
+        context.result = Utils.format_result(result)
+        if result == "NONSENSE":
+            return cfg.RETURN_CODE.ERR
+        return cfg.RETURN_CODE.SUCCESS
 
     def get_status(self):
         print("OK")

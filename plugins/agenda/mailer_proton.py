@@ -26,8 +26,8 @@ class MailerProton:
     def send_mail(self, subject, body, to_email=None, attachment_path=None, debug=False):
         start_time = time.time()
 
-        target_ip = cfg.IP_MAIL
-        smtp_port = int(cfg.PORT_SMTP_MAIL)
+        target_ip = cfg.agenda.IP_MAIL
+        smtp_port = int(cfg.agenda.PORT_SMTP_MAIL)
 
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.settimeout(3)
@@ -37,8 +37,8 @@ class MailerProton:
                 return False
 
         msg = MIMEMultipart()
-        msg['From'] = f"{cfg.USERNAME} <{cfg.USER_MAIL}>"
-        msg['To'] = to_email or cfg.USER_MAIL
+        msg['From'] = f"{cfg.agenda.USERNAME} <{cfg.agenda.USER_MAIL}>"
+        msg['To'] = to_email or cfg.agenda.USER_MAIL
         msg['Subject'] = subject
         msg['Date'] = utils.formatdate(localtime=True)
         msg['Message-ID'] = utils.make_msgid()
@@ -61,7 +61,7 @@ class MailerProton:
 
             with smtplib.SMTP(target_ip, smtp_port, timeout=10) as server:
                 server.starttls(context=context)
-                server.login(cfg.USER_MAIL, cfg.PWD_MAIL)
+                server.login(cfg.agenda.USER_MAIL, cfg.agenda.PWD_MAIL)
                 server.send_message(msg)
 
             if debug:

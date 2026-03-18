@@ -1,9 +1,8 @@
 import os
 import json
-from tools.mailer_proton import MailerProton
+from plugins.agenda.mailer_proton import MailerProton
 from pathlib import Path
 from config_loader import cfg
-
 
 class ShoppingService:
     """Shopping list management service (Singleton).
@@ -29,7 +28,7 @@ class ShoppingService:
     def __init__(self):
         if self._initialized:
             return
-        self.file_path = Path(cfg.sys.DIR_DOCS) / "ALISU_DATA" / "plugins" / "daily" / "shopping_list.json"
+        self.file_path = Path(cfg.daily.DATA_DIR) / "shopping_list.json"
         self._initialized = True
         self.mailer_proton = MailerProton()
 
@@ -58,12 +57,12 @@ class ShoppingService:
     def delete_shopping_list(self):
         if self.file_path.exists():
             os.remove(self.file_path)
-            return True
-        return False
+            return cfg.RETURN_CODE.SUCCESS
+        return cfg.RETURN_CODE.ERR
 
     def report_shopping_list(self):
         if not self.file_path.exists():
-            return None
+            return cfg.RETURN_CODE.ERR_MISSING_FILE
 
         with open(self.file_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
@@ -73,15 +72,15 @@ class ShoppingService:
     def mail_shopping_list(self):
         items = self.report_shopping_list()
         if not items:
-            return "The list is empty, nothing to send."
+            return cfg.RETURN_CODE.NOTHING_TO_DO
 
         body = "Here is your shopping list:\n- " + "\n- ".join(items)
         success = self.mailer_proton.send_mail(
             subject="Shopping List",
             body=body,
-            to_email=f"course@{cfg.sys.DOMAIN}"
+            to_email=f"system@{cfg.agenda.DOMAIN}"
         )
-        return "Email sent successfully" if success else "Failed to send email"
+        return cfg.RETURN_CODE.SUCCESS if success else cfg.RETURN_CODE.ERR
 
 if __name__ == "__main__":
     print("Running shopping service tests...")

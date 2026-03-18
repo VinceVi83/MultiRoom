@@ -5,7 +5,7 @@ from pathlib import Path
 from config_loader import cfg
 
 
-class FileUtils:
+class Utils:
     """Utility class for file operations.
 
     Summary:
@@ -36,5 +36,5 @@ class FileUtils:
     @staticmethod
     def format_result(result):
         if isinstance(result, dict):
-            return result.get('playlist', '')
+            return ",".join([f"{k}:{v}" for k, v in result.items()])
         return str(result)

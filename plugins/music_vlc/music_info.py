@@ -28,9 +28,7 @@ class AlisuConfig:
         self.cfg.LOADED_PLUGINS = []
         
         self._sync_and_freeze_plugins()
-        
         self._load_global_configs()
-        
         self._load_all_plugins()
 
     def _sync_and_freeze_plugins(self):

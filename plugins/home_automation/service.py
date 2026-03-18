@@ -1,7 +1,8 @@
 from config_loader import cfg
 from plugins.home_automation.ha_communication import CommunicationHA
+from plugins.home_automation.ha_weather import MeteoHaApi, WeatherStatus
 from tools.llm_agent import llm
-
+from tools.utils import Utils
 
 class HomeAutomationService:
     """Home Automation Service for daily operations.
@@ -13,20 +14,33 @@ class HomeAutomationService:
     """
 
     def __init__(self):
-        self.plugin_name = "Daily" 
+        self.plugin_name = "Home Automation" 
         self.config = cfg.home_automation
         self.ha_service = CommunicationHA()
+        self.meteo = MeteoHaApi()
         
         if not self.config:
             print(f"[!] Error: Configuration for {self.plugin_name} not found.")
 
     def execute(self, context):
         location_res = llm.execute(context.user_input, cfg.sys.Global.location_agent)
-        context.label = llm.execute(context.user_input, cfg.home_automation.DOMOTIC_HA.DOMOTIC_AGENT)
-        
+        result = llm.execute(context.user_input, cfg.home_automation.DOMOTIC_HA.DOMOTIC_AGENT)
+        context.label = Utils.format_result(result)
         context.location = location_res.get('location', 'NONSENSE')
-        print("VNG HomeAutomationService", context.label, context.location)
-        return self.ha_service.handle_request(context)
+
+        if "WEATHER" in context.label:
+            result = self.meteo.fetch_current_status()
+            if isinstance(result, WeatherStatus):
+                context.result = result.display()
+                return cfg.RETURN_CODE.SUCCESS
+        else:
+            result = self.ha_service.handle_request(context)
+
+        if result == cfg.RETURN_CODE.SUCCESS:
+            context.result = "Executed"
+        else:
+            context.result = "Failed"
+        return result
 
     def get_status(self):
         """Utility function to check if the service responds."""

@@ -35,7 +35,7 @@ class STTSimulator:
 
     def __init__(self):
         self.http_port = 8090
-        self.json_path = Path(cfg.sys.DIR_DOCS) / "Recording/record.json"
+        self.json_path = Path(cfg.DATA_DIR) / "Recording/record.json"
         self.records = []
         self.current_idx = 0
         self.signature = self.get_hardware_signature()
@@ -109,7 +109,7 @@ class STTSimulator:
 
         print(f"[*] Verifying {len(self.records)} entries...")
         for entry in self.records:
-            fname = Path(cfg.sys.DIR_DOCS) / "Recording" / entry.get('Filename')
+            fname = Path(cfg.DATA_DIR) / "Recording" / entry.get('Filename')
             if fname and not os.path.exists(fname):
                 print(f"[!] Missing audio file : {fname}")
 

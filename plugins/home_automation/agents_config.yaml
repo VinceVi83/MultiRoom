@@ -11,7 +11,7 @@ DOMOTIC_HA:
     prompt: |
       Task: Extract information to pilote home automation devices.
       
-      1: TYPE of device (eg. LIGHT, SWITCH, PLUG, THERMOSTAT)
+      1: TYPE of device (eg. LIGHT, SWITCH, PLUG, THERMOSTAT, WHEATHER)
       2: ACTION (ON/OFF/NIGHT_MODE/DAY_MODE/LOWER_BRIGHTNESS/RAISE_BRIGHTNESS/INFO)
       0: NONE (Not a valid home automation command)
       

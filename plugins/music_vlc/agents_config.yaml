@@ -31,7 +31,7 @@ MUSIC_VLC:
       Task: Extract playlist name.
       
       Existing Playlists:
-      REPLACE
+      REPLACE_PLAYLISTS
 
       Instructions:
       1. Identify the 'PLAYLIST' from the list of Existing Playlists.
@@ -39,15 +39,18 @@ MUSIC_VLC:
       3. Always favor the exact spelling from 'Existing Playlists' if a match is close.
 
       Context:
-      - Action: CREATE_PLAYLIST, ADD_TO_PLAYLIST, DEL_FROM_PLAYLIST, INFO_PLAYLIST.
+      - Action: PLAY, CREATE, ADD, DEL, INFO.
+      - NAME of playlist if present in Existing Playlists, if action is CREATE extract NAME
 
       Example Output:
       {
-        "PLAYLIST": "Rock Chill"
+        "PLAY": "Rock Chill"
       }
-
+      {
+        "ADD": "Touhou"
+      }
       Constraint: Output ONLY the JSON object.
-      Rule: If no playlist name is found or the request is unclear, return {"PLAYLIST": "0"}.
+      Rule: If no playlist name is found or the request is unclear, return {"0" : "0"}.
 
   VLC_AGENT:
     model: "llama3.1:8b"
