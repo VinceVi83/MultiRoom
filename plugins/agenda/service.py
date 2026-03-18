@@ -6,6 +6,8 @@ from tools.utils import Utils
 class AgendaService:
     """Agenda Service Plugin
     
+    Role: Manages calendar agenda operations including fetching events, concerts, and mailing next concert notifications.
+    
     Methods:
         __init__(self) : Initialize the service with configuration.
         execute(self, context) : Execute the agenda service logic and return status.
@@ -45,4 +47,3 @@ class AgendaService:
     def get_status(self):
         print("OK")
         return {"status": "online", "plugin": self.plugin_name}
-

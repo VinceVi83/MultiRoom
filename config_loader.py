@@ -37,13 +37,10 @@ class AlisuConfig:
         self.cfg.RETURN_CODE = ReturnCode
 
         self._sync_and_freeze_plugins()
-        
         self._load_env_only() 
-
         self._generate_plugin_description_list()
 
         self._load_all_yaml_and_payloads()
-
         self._setup_system_info()
 
     def _setup_system_info(self):

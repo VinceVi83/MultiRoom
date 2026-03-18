@@ -13,7 +13,6 @@ import subprocess
 from http.server import SimpleHTTPRequestHandler, HTTPServer
 from config_loader import cfg
 
-
 class STT:
     """Speech-to-Text (STT) system for capturing and processing voice commands.
 

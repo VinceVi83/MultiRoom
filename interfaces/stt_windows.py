@@ -8,7 +8,6 @@ from config_loader import cfg
 MICRO_GAIN, TRIGGER_THRESHOLD = 3.0, 0.05
 WSL_IP, PORT = cfg.sys.HUB_IP, 5000
 
-
 def init_cuda():
     base = os.path.join(os.environ['LOCALAPPDATA'], 'Python', 'pythoncore-3.14-64', 'Lib', 'site-packages')
     for d in ['cublas', 'cudnn', 'cuda_runtime']:
@@ -16,7 +15,6 @@ def init_cuda():
         if os.path.exists(path):
             os.add_dll_directory(path)
             os.environ['PATH'] = path + os.pathsep + os.environ['PATH']
-
 
 class AudioBuffer:
     """Manages an audio buffer for capturing and processing audio data.
@@ -121,4 +119,3 @@ if __name__ == "__main__":
         main()
     except KeyboardInterrupt:
         print("\nShutdown.")
-

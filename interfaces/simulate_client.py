@@ -14,7 +14,6 @@ from http.server import SimpleHTTPRequestHandler, HTTPServer
 from config_loader import cfg
 from pathlib import Path
 
-
 class STTSimulator:
     """
     Simulates a text-to-speech system for testing purposes.

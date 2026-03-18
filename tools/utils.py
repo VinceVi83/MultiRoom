@@ -4,7 +4,6 @@ import shutil
 from pathlib import Path
 from config_loader import cfg
 
-
 class Utils:
     """Utility class for file operations.
 
@@ -16,7 +15,7 @@ class Utils:
         get_unique_path(dir_path, base_name, extension=".wav") : Generates a unique file path by appending counter suffixes if the file already exists.
         format_result(result) : Format the playlist result from LLM response.
     """
-
+    
     @staticmethod
     def get_unique_path(dir_path, base_name, extension=".wav"):
         directory = Path(dir_path)

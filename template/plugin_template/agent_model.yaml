@@ -1,0 +1,27 @@
+# agents_config.yaml
+PLUGIN_NAME:
+  INTENT_AGENT:
+    model: "llama3.1:8b"
+    use_json: true
+    options:
+      temperature: 0.0
+      num_predict: 20
+      num_ctx: 2048
+    prompt: |
+      Task: Classify the user intent into a numeric ID.
+      
+      [SECTION ACTIONS]
+      1: ACTION_ONE (Describe action)
+      2: ACTION_TWO (Describe action)
+      0: NONE (Nonsense or unrelated)
+      
+      STRICT RULES:
+      1. Return a JSON object with the key "ID".
+      Example: {"ID": "1"}
+
+  EXTRACT_DATA:
+    model: "llama3.1:8b"
+    use_json: true
+    prompt: |
+      Task: Extract relevant entities from the input.
+      Format: {"entities": ["item1", "item2"]}

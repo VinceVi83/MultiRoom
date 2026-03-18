@@ -1,3 +1,7 @@
+# Agent Configuration File
+# This YAML file defines agent configurations for the routing and location systems.
+# Each section contains an agent with model settings, options, and prompts.
+
 Global:
   router_agent:
     model: "llama3.1:8b"
@@ -44,5 +48,5 @@ Global:
       3. If a location is found, return its exact name from the list.
       4. Strictly return ONLY the JSON object.
 
-      Input: "Éteins la lumière" -> {"location": "Unknown"}
-      Input: "Allume la cuisine" -> {"location": "Cuisine"}
+      Input: "Turn off the light" -> {"location": "Unknown"}
+      Input: "Turn on the kitchen" -> {"location": "Kitchen"}

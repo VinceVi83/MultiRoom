@@ -35,11 +35,11 @@ class UserSession:
         nouveau_type = type(service)
         
         if any(isinstance(s, nouveau_type) for s in self.services.values()):
-            print(f"Refusé : Un service de type {nouveau_type.__name__} est déjà présent.")
+            print(f"Rejected: A service of type {nouveau_type.__name__} is already present.")
             return cfg.RETURN_CODE.DUPLICATE
         
         if service_name in self.services:
-            print(f"Refusé : Le nom '{service_name}' est déjà utilisé.")
+            print(f"Rejected: The name '{service_name}' is already used.")
             return cfg.RETURN_CODE.DUPLICATE
 
         self.services[service_name] = service

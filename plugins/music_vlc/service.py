@@ -10,8 +10,8 @@ def format_result(result):
 
 class MusicVlcService:
     """
-    MusicVLC Service Class
-    
+    MusicVLC Service Class, manages music playback services using VLC with LLM integration for playlist and media control.
+
     Methods:
         __init__(self) : Initialize the MusicVLC service.
         execute(self, context) : Execute the main service logic with given context.
@@ -83,4 +83,3 @@ class MusicVlcService:
     def get_status(self):
         print("OK")
         return {"status": "online", "plugin": self.plugin_name}
-        

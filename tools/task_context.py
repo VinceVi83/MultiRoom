@@ -6,7 +6,6 @@ from dataclasses import dataclass, fields, asdict, field
 from config_loader import cfg, ReturnCode
 from tools.utils import Utils
 
-
 @dataclass
 class TaskContext:
     """

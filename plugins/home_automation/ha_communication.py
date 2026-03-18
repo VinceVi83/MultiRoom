@@ -8,6 +8,10 @@ from plugins.home_automation.ha_mapping import DeviceCollection
 class CommunicationHA:
     """Home Assistant Service - Manages interactions with Home Assistant.
 
+    Summary:
+        Provides communication and control functionality for Home Assistant devices,
+        including light toggling, brightness control, and command handling based on context.
+
     Methods:
         __new__(cls, *args, **kwargs) : Singleton pattern to ensure only one instance of HAService.
         __init__() : Initializes the service with the necessary URL and headers.
@@ -62,7 +66,6 @@ class CommunicationHA:
 
     def smart_toggle(self, action):
         my_entity_ids = [l.id for l in self.devices.lights]
-        print(my_entity_ids)
         response = requests.get(f"{self.url}/states", headers=self.headers)
         all_states = response.json()
         lights_on = []

@@ -7,17 +7,10 @@ from email.mime.text import MIMEText
 from email.mime.application import MIMEApplication
 from email import utils
 from pathlib import Path
-
 from config_loader import cfg
-
 
 class MailerProton:
     """Class to handle email sending via Proton Bridge on the Windows Host from WSL.
-
-    Summary of Role:
-        Handles email transmission through Proton Bridge SMTP service, supporting plain text
-        messages with optional file attachments. Manages SSL/TLS connections and handles
-        network connectivity checks for reliable mail delivery.
 
     Methods:
         send_mail(subject, body, to_email=None, attachment_path=None, debug=False) : Sends an email message with optional attachment via Proton Bridge SMTP server.

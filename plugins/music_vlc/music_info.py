@@ -8,14 +8,13 @@ from types import SimpleNamespace
 class AlisuConfig:
     """Container for plugin configuration management.
     
-    Methods
-    -----
-    __init__(self) : Initialize the AlisuConfig instance with paths and load configs.
-    _sync_and_freeze_plugins(self) : Create necessary directories and copy plugin templates.
-    _load_global_configs(self) : Load global .env and config.yaml files into self.cfg.
-    _load_all_plugins(self) : Load individual plugin configurations from .env and yaml files.
-    _dict_to_namespace(self, data) : Recursively convert dict to SimpleNamespace for dot notation.
-    _parse_to_obj(self, path, obj) : Parse .env variables into a specific object.
+    Methods:
+        __init__(self) : Initialize the AlisuConfig instance with paths and load configs.
+        _sync_and_freeze_plugins(self) : Create necessary directories and copy plugin templates.
+        _load_global_configs(self) : Load global .env and config.yaml files into self.cfg.
+        _load_all_plugins(self) : Load individual plugin configurations from .env and yaml files.
+        _dict_to_namespace(self, data) : Recursively convert dict to SimpleNamespace for dot notation.
+        _parse_to_obj(self, path, obj) : Parse .env variables into a specific object.
     """
 
     def __init__(self):
@@ -81,7 +80,6 @@ class AlisuConfig:
                         setattr(plugin_obj, key, self._dict_to_namespace(value))
 
     def _dict_to_namespace(self, data):
-        """Recursively converts dict to SimpleNamespace for dot notation."""
         if isinstance(data, dict):
             return SimpleNamespace(**{k: self._dict_to_namespace(v) for k, v in data.items()})
         elif isinstance(data, list):
@@ -89,7 +87,6 @@ class AlisuConfig:
         return data
 
     def _parse_to_obj(self, path, obj):
-        """Helper to parse .env variables into a specific object."""
         values = dotenv_values(path)
         for k, v in values.items():
             if v:

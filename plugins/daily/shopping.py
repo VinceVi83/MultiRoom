@@ -5,7 +5,7 @@ from pathlib import Path
 from config_loader import cfg
 
 class ShoppingService:
-    """Shopping list management service (Singleton).
+    """Shopping :A singleton-based service for managing shopping lists with file persistence and email notifications.
 
     Methods:
         __new__(cls) : Singleton pattern to ensure only one instance of ShoppingService.

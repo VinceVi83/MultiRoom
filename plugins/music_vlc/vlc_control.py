@@ -12,13 +12,13 @@ class VLControl:
     Manages VLC media player control and playlist management.
 
     Methods:
-        __init__(index) : Initializes the VLC control instance.
-        _escape_path(text) : Escapes special characters in a path string.
-        interpret_vlc_command(cmd_tokens) : Interprets and executes VLC commands.
-        handle_simple_command(action) : Handles simple VLC commands.
-        change_playlist(target) : Changes the current playlist.
-        start_vlc(path=None) : Starts the VLC media player.
-        kill_vlc() : Terminates the VLC media player.
+        __init__(self, index) : Initializes the VLC control instance.
+        _escape_path(self, text) : Escapes special characters in a path string.
+        interpret_vlc_command(self, cmd_tokens) : Interprets and executes VLC commands.
+        handle_simple_command(self, action) : Handles simple VLC commands.
+        change_playlist(self, target) : Changes the current playlist.
+        start_vlc(self, path=None) : Starts the VLC media player.
+        kill_vlc(self) : Terminates the VLC media player.
     """
 
     def __init__(self, index):

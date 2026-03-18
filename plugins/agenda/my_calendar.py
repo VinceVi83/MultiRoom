@@ -176,12 +176,6 @@ class CalendarService:
         ]
         return filtered
 
-"""
-        fetch_calendar_events(keyword, month, limit) -> list : Filters the iCal events based on optional keyword and month.
-        get_next_concert_data() -> dict : Analyzes the JSON dictionary of tickets to find the next concert.
-        mail_me_next_concert() -> str : Sends the next concert details by email with its attached file.
-        get_week_events(offset) -> list : Fetches events for the current or next week.
-"""
 if __name__ == "__main__":
     calendar = CalendarService()
     result = calendar.fetch_calendar_events(limit=1)

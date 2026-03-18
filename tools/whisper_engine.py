@@ -1,7 +1,5 @@
 from faster_whisper import WhisperModel
 from config_loader import cfg
-import os
-
 
 class WhisperEngine:
     """Manages the Whisper model for speech recognition tasks.

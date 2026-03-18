@@ -4,6 +4,17 @@ from pathlib import Path
 import os
 
 class VLCUserManager:
+    """
+    Manages VLC instance and playlist operations for a specific user session.
+    
+    Methods:
+        __init__(session, user_index) : Initialize the manager with session and user index
+        _start_vlc_if_needed() : Start VLC instance if not already running
+        build_playlist_map() : Build mapping of playlist names to file paths
+        interpret_vlc_command(context) : Interpret and execute VLC commands from context
+        __del__() : Cleanup resources when object is destroyed
+    """
+
     def __init__(self, session, user_index):
         self.user_index = user_index
         self.user_session = session
@@ -11,8 +22,7 @@ class VLCUserManager:
         self.vlc_instance = None
         self.playlists = {}
         self.build_playlist_map()
-        
-    
+
     def _start_vlc_if_needed(self):
         if self.vlc_instance is None:
             from plugins.music_vlc.vlc_control import VLControl
@@ -28,19 +38,9 @@ class VLCUserManager:
                     self.playlists[name] = entry.path
             print(base_dir, self.playlists)
         except FileNotFoundError:
-            print(f"[!] Erreur : Dossier {base_dir} introuvable.")
+            print(f"[!] Error: Directory {base_dir} not found.")
 
     def interpret_vlc_command(self, context):
-        """
-        "PAUSE": "pl_pause",
-        "PREV": "pl_previous",
-        "NEXT": "pl_next",
-        "VOL_DOWN": "volume&val=-30",
-        "VOL_UP": "volume&val=+30",
-        "SHUFFLE": "pl_random",
-        "INFO": "status.xml",
-        """
-
         self._start_vlc_if_needed()
         if context.label == "PLAYLIST_AGENT":
             command = context.result.split(":")
