@@ -27,6 +27,7 @@ class RouterLLM:
         self.service_registry = {}
         self.is_running = True
         self.debug = False
+        self.test = True
         self._initialize_service_registry()
         self.start()
 
@@ -64,7 +65,6 @@ class RouterLLM:
         start_total = time.time()
 
         category_res = llm.execute(context.user_input, cfg.sys.Global.router_agent)
-        print("Debug RouterLLM:", category_res)
         choice = str(category_res.get('ID', '0'))
         if choice != '0' and choice.isdigit():
             context.category = cfg.LOADED_PLUGINS[int(choice)-1].upper()
@@ -83,13 +83,27 @@ class RouterLLM:
     def inference_loop(self):
         llm.execute("Be ready", cfg.sys.Global.router_agent)
         print("--- [Router] Inference Engine Ready ---")
+        last_activity = time.time()
+        keep_alive_threshold = 240
+
         while self.is_running:
             try:
                 context = self.command_queue.get(timeout=1.0)
                 if context is None:
                     break
-
-                response_context = self.select_and_execute(context)
+                last_activity = time.time()
+                
+                response_context = {}
+                if self.test:
+                    result = llm.execute(context.user_input, cfg.sys.Global.pre_process_agent)
+                    print("Experience:", result)
+                    if result.get('valid', 0):
+                        response_context = self.select_and_execute(context)
+                    else:
+                        print("--- [Router] Input rejected: Does not meet criteria ---")
+                        continue
+                else:
+                    response_context = self.select_and_execute(context)
 
                 json_output = json.dumps(response_context.to_dict())
                 socks = getattr(context.session, 'socks', [])
@@ -102,6 +116,12 @@ class RouterLLM:
                 self.command_queue.task_done()
 
             except queue.Empty:
+                if time.time() - last_activity >= keep_alive_threshold:
+                    try:
+                        self.llm.execute("Be ready", cfg.sys.Global.router_agent)
+                    except:
+                        pass
+                    last_activity = time.time()
                 continue
             except Exception as e:
                 print(f"SERVER_ERROR in Inference Loop: {e}")
