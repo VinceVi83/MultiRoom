@@ -21,6 +21,8 @@ Global:
       STRICT RULES:
       1. Be extremely literal. Do not guess.
       2. Return a JSON object with the key "ID".
+      3. If an input matches multiple IDs or is ambiguous, you MUST return ID "0".
+      4. Do not attempt to overlap categories.
       
       Example: {"ID": "1"}
 

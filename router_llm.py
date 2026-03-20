@@ -81,6 +81,7 @@ class RouterLLM:
         return context._archive_and_rename()
 
     def inference_loop(self):
+        llm.execute("Be ready", cfg.sys.Global.router_agent)
         print("--- [Router] Inference Engine Ready ---")
         while self.is_running:
             try:
