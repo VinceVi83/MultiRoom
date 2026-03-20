@@ -23,10 +23,16 @@ class VLCUserManager:
         self.playlists = {}
         self.build_playlist_map()
 
-    def _start_vlc_if_needed(self):
+    def _start_vlc_if_needed(self, playlist=""):
         if self.vlc_instance is None:
-            from plugins.music_vlc.vlc_control import VLControl
-            self.vlc_instance = VLControl(self.user_index)
+            playlist_path = ""
+            if playlist == "" and len(self.playlists.keys()):
+                playlist_path = list(self.playlists.keys())[0]
+            elif playlist in self.playlists.keys():
+                playlist_path = self.playlists.get(playlist)
+            self.vlc_instance = VLControl(self.user_index, playlist)
+            return True
+        return False
 
     def build_playlist_map(self):
         base_dir = Path(cfg.music_vlc.DATA_DIR) / "Playlists"
@@ -36,22 +42,24 @@ class VLCUserManager:
                 for entry in entries:
                     name = Path(entry.name).stem.lower()
                     self.playlists[name] = entry.path
-            print(base_dir, self.playlists)
         except FileNotFoundError:
             print(f"[!] Error: Directory {base_dir} not found.")
 
     def interpret_vlc_command(self, context):
-        self._start_vlc_if_needed()
         if context.label == "PLAYLIST_AGENT":
             command = context.result.split(":")
+            playlist = self.playlists.get(command[1].lower())
             if command[0] == "PLAY":
-                target = self.playlists.get(command[1].lower(), self.playlists.get("default"))
-                self.vlc_instance.change_playlist(target)
+                if not self._start_vlc_if_needed(playlist):
+                    self.vlc_instance.change_playlist(playlist)
+                return cfg.RETURN_CODE.SUCCESS
             else:
                 return cfg.RETURN_CODE.ERR_NOT_IMPLEMENTED
 
         elif context.label == "VLC_AGENT":
-            return self.vlc_instance.handle_simple_command(context.result)
+            if not self._start_vlc_if_needed():
+                self.vlc_instance.handle_simple_command(context.result)
+            return cfg.RETURN_CODE.SUCCESS
         
         return cfg.RETURN_CODE.ERR_INVALID_ARGUMENT
 

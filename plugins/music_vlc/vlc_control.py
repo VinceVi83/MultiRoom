@@ -21,7 +21,7 @@ class VLControl:
         kill_vlc(self) : Terminates the VLC media player.
     """
 
-    def __init__(self, index):
+    def __init__(self, index, playlist=""):
         self.is_initialized = False
         self.is_playing = False
         self.process = None
@@ -32,7 +32,7 @@ class VLControl:
         self.current_path = ""
 
         self.vlc_commands = {
-            "PAUSE": "pl_pause",
+            "TOGGLE": "pl_pause",
             "PREVIOUS": "pl_previous",
             "NEXT": "pl_next",
             "VOL_DOWN": "volume&val=-60",
@@ -47,7 +47,7 @@ class VLControl:
             f"curl -s --user :test 'http://{cfg.sys.INTERFACE_IP}:{self.port_ctrl}/"
             f"requests/status.xml?command="
         )
-        self.start_vlc()
+        self.start_vlc(playlist)
 
     def _escape_path(self, text):
         return re.escape(text)

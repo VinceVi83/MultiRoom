@@ -38,6 +38,8 @@ class DailyService:
         context.result = Utils.format_result(result)
         if result == "NONSENSE":
             return cfg.RETURN_CODE.ERR
+        elif type(result) is type(cfg.RETURN_CODE.SUCCESS):
+            return result
         return cfg.RETURN_CODE.SUCCESS
 
     def get_status(self):

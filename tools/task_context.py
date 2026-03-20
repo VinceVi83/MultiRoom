@@ -59,14 +59,41 @@ class TaskContext:
         print(f"{'Category:':<15} {self.category}")
         print(f"{'Label:':<15} {self.label}")
         print(f"{'Result:':<15} {Utils.format_result(self.result)}")
-        print(f"{'Return code:':<15} {Utils.format_result(self.return_code)}")
+        print(f"{'ReturnCode:':<15} {Utils.format_result(self.return_code)}")
         print(f"{'Duration:':<15} {self.duration}s")
         print(f"{'DurationLLM:':<15} {self.duration_llm}s")
         print("="*50 + "\n")
 
+    def update_record(self, name=""):
+        record_path = Path(cfg.DATA_DIR) / "Archive/record.json"
+        record_path.parent.mkdir(parents=True, exist_ok=True)
+
+        records = []
+        if record_path.exists():
+            try:
+                with open(record_path, 'r', encoding='utf-8') as f:
+                    records = json.load(f)
+            except:
+                records = []
+
+        current_data = {
+            "Success":     "True",
+            "Command":     str(Utils.format_result(self.user_input)),
+            "Category":    str(Utils.format_result(self.category)),
+            "Subcategory": str(Utils.format_result(self.label)),
+            "Location":    str(Utils.format_result(self.location)),
+            "Result":      str(Utils.format_result(self.result)),
+            "ReturnCode":  str(Utils.format_result(self.return_code)),
+            "audio_path":  str(Utils.format_result(name))
+        }
+
+        records.append(current_data)
+        with open(record_path, 'w', encoding='utf-8') as f:
+            json.dump(records, f, indent=4, ensure_ascii=False)
+
     def _archive_and_rename(self):
         try:
-            if "NONSENSE" in self.result:
+            if "NONSENSE" in [self.category, self.label]:
                 return self.clone_safe()
 
             timestamp = int(time.time())
@@ -80,6 +107,8 @@ class TaskContext:
             if self.audio_path and Path(self.audio_path).exists():
                 shutil.move(self.audio_path, dest_path)
                 self.audio_path = str(dest_path)
+                self.update_record(new_name)
+                print("Recorded")
 
             return self.clone_safe()
 

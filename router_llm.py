@@ -64,7 +64,8 @@ class RouterLLM:
         start_total = time.time()
 
         category_res = llm.execute(context.user_input, cfg.sys.Global.router_agent)
-        choice = str(category_res.get('result', '0'))
+        print("Debug RouterLLM:", category_res)
+        choice = str(category_res.get('ID', '0'))
         if choice != '0' and choice.isdigit():
             context.category = cfg.LOADED_PLUGINS[int(choice)-1].upper()
 
@@ -72,6 +73,8 @@ class RouterLLM:
             if service_instance and hasattr(service_instance, 'execute'):
                 return_code = service_instance.execute(context)
                 context.return_code = Utils.format_result(return_code)
+        else:
+            print("NONSENSE")
 
         context.duration_llm = time.time() - start_total
         context.duration = time.time() - context.start
@@ -116,5 +119,5 @@ class RouterLLM:
         self.is_running = False
         self.thread.join()
 
-
-engine = RouterLLM()
+if __name__ == "__main__":
+    engine = RouterLLM()

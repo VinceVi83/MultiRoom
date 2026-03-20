@@ -19,7 +19,7 @@ class WhisperEngine:
         self.vad_params = dict(threshold=0.35, min_speech_duration_ms=250)
 
     def transcribe(self, audio):
-        segments, _ = self.model.transcribe(audio, language=cfg.LANGUAGE, vad_filter=True, vad_parameters=self.vad_params,
+        segments, _ = self.model.transcribe(audio, language=cfg.sys.LANGUAGE, vad_filter=True, vad_parameters=self.vad_params,
                                        initial_prompt="Alisu, Command, VLC, Playlist, Jukebox, Touhou, Japanese.")
 
         return "".join([s.text for s in segments]).strip()

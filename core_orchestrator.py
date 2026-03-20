@@ -99,7 +99,7 @@ class SessionManager:
                 if text:
                     print(f"[*] Transcription [{session.username}]: {text}")
                     context = TaskContext(user_input=text, session=session, audio_path=temp_file)
-                    self.router.command_queue.put(context)
+                    self.router.add_to_queue(context)
         except Exception as e:
             print(f"[!] STT Error: {e}")
         finally:
@@ -188,7 +188,6 @@ class SessionManager:
             print("[*] Server shutting down...")
         finally:
             server_sock.close()
-
 
 if __name__ == "__main__":
     manager = SessionManager()

@@ -72,7 +72,7 @@ class ShoppingService:
     def mail_shopping_list(self):
         items = self.report_shopping_list()
         if not items:
-            return cfg.RETURN_CODE.NOTHING_TO_DO
+            return cfg.RETURN_CODE.SUCCESS_NOTHING_TO_DO
 
         body = "Here is your shopping list:\n- " + "\n- ".join(items)
         success = self.mailer_proton.send_mail(

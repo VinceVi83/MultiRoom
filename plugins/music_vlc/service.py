@@ -27,7 +27,7 @@ class MusicVlcService:
             print(f"[!] Error: Configuration for {self.plugin_name} not found.")
 
     def _get_free_index(self):
-        occupied_indexes = {inst.index for inst in self.active_instances.values()}
+        occupied_indexes = {inst.user_index for inst in self.active_instances.values()}
         for i in range(5):
             if i not in occupied_indexes:
                 return i
@@ -39,7 +39,7 @@ class MusicVlcService:
         
         idx = self._get_free_index()
         if idx is None:
-            return cfg.RETURN_CODE.NOTHING_TO_DO
+            return cfg.RETURN_CODE.SUCCESS_NOTHING_TO_DO
         
         self.cleanup_inactive_services()
         user_mgr = VLCUserManager(context.session.services, context.session.index)

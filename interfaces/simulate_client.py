@@ -32,9 +32,9 @@ class STTSimulator:
         auto_mode(mode) : Automatically iterates through all available test records sequentially.
     """
 
-    def __init__(self):
+    def __init__(self, path):
         self.http_port = 8090
-        self.json_path = Path(cfg.DATA_DIR) / "Recording/record.json"
+        self.json_path = Path(path)
         self.records = []
         self.current_idx = 0
         self.signature = self.get_hardware_signature()
@@ -54,28 +54,38 @@ class STTSimulator:
             actual_sub = context.label
             actual_loc = context.location
             actual_res = context.result
+            actual_code = context.return_code
 
             exp_cat = exp.get('Category', 'NONSENSE')
             exp_sub = exp.get('Subcategory', 'NONSENSE')
             exp_loc = exp.get('Location', 'NONSENSE')
             exp_res = exp.get('Result', 'NONSENSE')
+            exp_code = exp.get('ReturnCode', 'ReturnCode.ERR')
 
             data_match = (
                 actual_cat == exp_cat and
                 actual_sub == exp_sub and
                 actual_loc.lower() == exp_loc.lower() and
-                actual_res.lower() == exp_res.lower()
+                actual_res.lower() == exp_res.lower() and
+                actual_code == exp_code
             )
 
             if data_match:
                 print(f"   [OK] Perfect match : {actual_cat} | {actual_sub} | {actual_loc} | {actual_res}")
                 return True
             else:
-                print("-" * 30)
-                print(f"\n   [X] Match failure for: '{context.user_input}'")
-                print(f"       Expected: {exp_cat} | {exp_sub} | {exp_loc} | {exp_res}")
-                print(f"       Obtained: {actual_cat} | {actual_sub} | {actual_loc} | {actual_res}")
-                print("-" * 30)
+                sep = "─" * 80
+                header = f"{'TYPE':<12} | {'CATEGORY':<15} | {'SUBCAT':<15} | {'LOC':<15} | {'CODE':<15} | {'RES'}"
+
+                print(f"\n! MISMATCH DETECTED")
+                print(f"Input: '{context.user_input}'")
+                print(sep)
+                print(header)
+                print(sep)
+
+                print(f"{'OBTAINED':<12} | {actual_cat:<15} | {actual_sub:<15} | {actual_loc:<15} | {actual_code:<15} | {actual_res:<15}")
+                print(f"{'EXPECTED':<12} | {exp_cat:<15} | {exp_sub:<15} | {exp_loc:<15} | {exp_code:<15} | { exp_res:<15}")
+                print(sep)
                 return False
 
         except Exception as e:
@@ -108,7 +118,7 @@ class STTSimulator:
 
         print(f"[*] Verifying {len(self.records)} entries...")
         for entry in self.records:
-            fname = Path(cfg.DATA_DIR) / "Recording" / entry.get('Filename')
+            fname = self.json_path
             if fname and not os.path.exists(fname):
                 print(f"[!] Missing audio file : {fname}")
 
@@ -147,6 +157,8 @@ class STTSimulator:
         class QuietHandler(SimpleHTTPRequestHandler):
             def log_message(self, format, *args): pass
         try:
+            base_path = str(Path(self.json_path).resolve().parent)
+            os.chdir(base_path)
             server = HTTPServer(('0.0.0.0', self.http_port), QuietHandler)
             server.handle_request()
         except: pass
@@ -156,14 +168,16 @@ class STTSimulator:
 
         if mode == "audio":
             local_ip = socket.gethostbyname(socket.gethostname())
-            url = f"http://{local_ip}:{self.http_port}/{entry['Filename']}"
+            url = f"http://127.0.0.1:{self.http_port}/{entry['Filename']}"
             packet = f"{self.signature}:PTT:{url}"
             threading.Thread(target=self._serve_file, daemon=True).start()
         else:
             packet = f"{self.signature}:test:{entry['Command']}"
         if self.debug:
             print(f"\n>> [{self.current_idx}] SEND : {entry['Command']}")
-        self._send_packet(packet, mode.upper())
+        response = self._send_packet(packet, mode.upper())
+        if response:
+            self.check_result(response)
 
     def interactive_mode(self, mode):
         print(f"\n--- INTERACTIVE MODE ({mode.upper()}) ---")
@@ -192,6 +206,7 @@ class STTSimulator:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+    parser.add_argument("path", type=str, nargs='?', default=".", help="Principal path to data")
     parser.add_argument("-i", "--interactive", action="store_true")
     parser.add_argument("-a", "--audio", action="store_true")
     parser.add_argument("-d", "--debug", action="store_true")
@@ -199,7 +214,7 @@ if __name__ == "__main__":
 
     mode = "audio" if args.audio else "text"
     
-    sim = STTSimulator()
+    sim = STTSimulator(args.path)
     sim.debug = args.debug
     sim.load_and_verify()
 
