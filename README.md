@@ -83,9 +83,9 @@ The project centralizes multiple tools through a **Hub-and-Spoke** architecture:
 .
 ├── core_orchestrator.py   # Main service hub
 ├── config_loader.py       # Configuration loading & validation
-├── agents_config.yaml     # LLM Prompts for routing & information extraction
-├── services/              # Logic: Home Assistant, VLC, Shopping, Sessions
-├── tools/                 # Engines: Whisper, Scraper, Mailer, Calendar
+├── agents_config.yaml     # Global routing
+├── plugins/               # Modular Extensions (VLC, HA, Agenda, Mail etc.)
+├── tools/                 # Engines: Whisper, Scraper
 └── interfaces/            # Control nodes (PC, Voice, Simulators)
 ```
 
@@ -116,9 +116,89 @@ The project centralizes multiple tools through a **Hub-and-Spoke** architecture:
 python core_orchestrator.py
 ```
 
-## Roadmap
+## Operational Flow: Order, Execution & Feedback
+Everything is centralized. The `Core Orchestrator` integrates the transcription engine and communicates directly with the `RouterLLM` internally.
+
+
+```text
+ [ DEVICES/Users ]     [ CORE ORCHESTRATOR ]        [ ROUTER LLM ]             [ PLUGIN ]
+ (Text/PTT/Stream)    (Hardware Gateway)          (Order Dispatcher)       (Intelligence & Logic)
+      |                       |                            |                         |
+      |-- (1) Triple Input -->|                            |                         |
+      |   a. Direct Text      |                            |                         |
+      |   b. PTT (Audio File) |                            |                         |
+      |   c. Audio Stream     |                            |                         |
+      |                       |                            |                         |
+      | [IF PTT: NO WAIT] ----> (Close connection/Ack)     |                         |
+      |                       |                            |                         |
+      |                       |---(2) Whisper (Text) ----->|                         |
+      |                       |                            |                         |
+      |                 [ IDLE / LISTENING ]       [ Command Queue ]                 |
+      |                       |                            |                         |
+      |                       |                    (3) Router Agent                  |
+      |                       |                    (Selects Plugin ID)               |
+      |                       |                            |                         |
+      |                       |                    (4) SEND ORDER                    |
+      |                       |                            |---- execute(context) -->|
+      |                       |                            |                         |
+      |                       |                            |                 [ INSIDE PLUGIN ]
+      |                       |                            |                  (5) Sub-Agents 
+      |                       |                            |                 (6) Plugin Logic
+      |                       |                            |                (7) UPDATE CONTEXT
+      |                       |                            |                         |
+      |                       |                            |                         |
+      |                       |                            |<--(8) RETURN CODE ------|
+      |                       |                            |                         |
+      |                       |                    (9) FORMAT CONTEXT                |
+      |                       |                        (To JSON)                     |
+      |                       |                            |                         |
+      |<---(11) Result -------| <---(10) Enriched JSON ----|                         |
+      |    (If persistent)    |                            |                         |
+```
+
+# Tutorial: Plugin Integration 
+To ensure project compatibility and maintainability, every new plugin must strictly follow the directory structure and naming conventions defined below.
+
+Directory Architecture
+Create a new folder within the **`plugins/`** directory. Use lowercase and underscores (**`snake_case`**) exclusively for the folder name.
+```text
+plugins/
+└── my_new_plugin/
+    ├── .env_template         # Environment variables & metadata
+    ├── agents_config.yaml    # LLM system prompts and model settings
+    ├── logic_module.py       # Core backend logic and processing
+    └── service.py            # Gateway class/API bridge
+```
+
+
+## ConfigFile: **`.env_template`**
+
+This file serves as a blueprint for local configuration. It contains the environment variables required for the plugin to function without exposing sensitive data.
+
+* **Deployment**: Automatically copied to DATA_DIR/ALISU_DATA/plugins/ at startup.
+* **Action**: Edit the copied file in the data directory, not the template.
+* **Custom Config**: You can define your own settings here, they become accessible in your code via cfg.plugin_name.
+* **Mandatory**: The **`DESCRIPTION`** field is **required**, it is injected into the router prompt to trigger your plugin.
+* **Note**: Contains API keys and secrets. Never commit the final .env file.
+
+## LLM configuration: **`agents_config.yaml`**
+* **Role**: Defines System Prompts, temperature, and model selection.
+* **Utility**: Essential if you want to use a router architecture or orchestrate multiple specialized agents within the plugin.
+
+## Functional Core: **`logic_module.py`**
+* **Role**: Implementation of specific features, internal workflows, and integration with third-party tools or APIs.
+* **Focus**: This is where you code your custom tools and specific logic rules.
+
+## Plugin Controller: **`service.py`**
+The system's bridge to your logic.
+
+* **Router Link**: The Router LLM matches your .env description to trigger the execute method.
+* **Execution**: Central entry point for all incoming requests routed to your plugin.
+* **Integration**: Orchestrates the flow between agents_config and logic_module.
+
+# Roadmap
 - [ ] **Automated Routing**: Intent detection via local LLM (Core logic operational, continuous refinement).
-- [ ] **Env Initialization**: Automatically create a default `.env` in `~/Documents/ALISU_DATA/` if it's missing or empty.
+- [*] **Env Initialization**: Automatically create a default `.env` in `~/Documents/ALISU_DATA/` if it's missing or empty.
 - [ ] **Config Simplification**: Strict validation and isolation of unconfigured services.
 - [ ] **Resilience & Fail-safe**: Dynamic deactivation of offline services during startup (Fail-Safe).
 - [ ] **Benchmarking & Regression**: Refactoring existing internal test suite.
@@ -133,28 +213,7 @@ python core_orchestrator.py
 - [ ] **Physical PTT Nodes**: Use of Bluetooth/WiFi devices (e.g., shutter buttons) as remote Push-To-Talk triggers for command input.
 - [ ] **Future Optimization**: Experimenting with lighter models (Phi-3, Gemma) for lower hardware requirements.
 
-## Project Architecture
-
-### Workflow Diagrams (ASCII)
-Everything is centralized. The `Core Orchestrator` integrates the transcription engine and communicates directly with the `RouterLLM` internally.
-
-```text
-   [ Users ]          [ Core Orchestrator ]                [ RouterLLM ]       [ SERVICES ]
-    (Voice)           (Transcription + Hub)                  (Module)    (VLC / Home Automation / Other )
-      |                         |                                |                  |
-      |----(1) Audio PTT ------>|                                |                  |
-      |                         |-------- (2) Whisper ---------->|                  |
-      |                         |            (Text)              |                  |
-      |                         |                                |                  |
-      |                         |-------(3) LLM Analysis-------->|                  |
-      |                         |         (Intent/Loc)           |                  |
-      |                         |                                |                  |
-      |                         |<-(4) Structured Intent (JSON)->|                  |
-      |                         |                                |                  |
-      |                         |----(5) Execute async----------------------------->|
-      |                         |                                |              (vlc play)
-```
-## Development Note
+# Development Note
 This project was developed using a "Human-in-the-loop" LLM-assisted workflow.
 
-While **A.L.I.S.U.** is designed to be 100% local and sovereign in production, various LLMs were used as development tools to accelerate coding, refactoring, and documentation. I treat these LLM tools as advanced assistants, but always strictly guided to ensure the final architecture remains local-first and fully under my control.
+While **A.L.I.S.U.** is designed to be 100% local and sovereign in production, various LLMs were used as development tools to accelerate coding, refactoring, and documentation. I treat these LLM tools as advanced assistants, but always strictly guided to ensure the final architecture remains local-first and fully under control.
