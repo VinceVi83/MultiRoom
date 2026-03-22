@@ -13,34 +13,35 @@ from tools.task_context import TaskContext
 from http.server import SimpleHTTPRequestHandler, HTTPServer
 from config_loader import cfg
 from pathlib import Path
+from interfaces.voice_node import UnifiedSpeechSystem
 
-class STTSimulator:
-    """
-    Simulates a text-to-speech system for testing purposes.
-
+class STTSimulator(UnifiedSpeechSystem):
+    """STTSimulator
+    
+    Role: Simulates a text-to-speech system for testing purposes including authentication, packet transmission, and audio file serving.
+    
     Methods:
-        __init__(http_port, json_path) : Initializes the simulator instance and sets default attributes.
-        check_result(response) : Validates if the received response matches expected task context data.
-        get_hardware_signature() : Generates a unique hardware signature for authentication.
-        load_and_verify() : Loads JSON records and verifies existence of associated audio files.
-        connect_hub(timeout=60) : Establishes a secure SSL connection to the central hub.
-        _send_packet(message, label) : Encodes and transmits data packets to the hub, handling responses.
-        authenticate() : Performs initial authentication with the hub using the signature.
-        _serve_file() : Starts a temporary HTTP server to serve audio files for recording.
-        send_to_hub(entry, mode) : Constructs and sends PTT or text commands to the hub.
-        interactive_mode(mode) : Runs the simulator allowing manual selection of test records.
-        auto_mode(mode) : Automatically iterates through all available test records sequentially.
+        __init__(self, path, mode, is_linux) : Initialize the simulator instance with configuration parameters.
+        check_result(self, response) : Validate if received response matches expected task context data.
+        load_and_verify(self) : Load JSON records and verify existence of associated audio files.
+        send_to_hub(self, entry) : Construct and send PTT or text commands to the hub.
+        interactive_mode(self) : Run simulator allowing manual selection of test records.
+        auto_mode(self) : Automatically iterate through all available test records sequentially.
     """
 
-    def __init__(self, path):
+    def __init__(self, path, mode, is_linux=False):
         self.http_port = 8090
         self.json_path = Path(path)
         self.records = []
+        self.mode = mode
         self.current_idx = 0
-        self.signature = self.get_hardware_signature()
+        self.debug = True
         self.client_socket = None
         self.authenticated = False
         self.current_object = None
+        self.ssock = None
+        self.running = True
+        self.hw_signature = self._get_hw_sign()
 
     def check_result(self, response):
         try:
@@ -84,7 +85,7 @@ class STTSimulator:
                 print(sep)
 
                 print(f"{'OBTAINED':<12} | {actual_cat:<15} | {actual_sub:<15} | {actual_loc:<15} | {actual_code:<15} | {actual_res:<15}")
-                print(f"{'EXPECTED':<12} | {exp_cat:<15} | {exp_sub:<15} | {exp_loc:<15} | {exp_code:<15} | { exp_res:<15}")
+                print(f"{'EXPECTED':<12} | {exp_cat:<15} | {exp_sub:<15} | {exp_loc:<15} | {exp_code:<15} | {exp_res:<15}")
                 print(sep)
                 return False
 
@@ -92,23 +93,8 @@ class STTSimulator:
             print(f"   [!] Error check_result : {e}")
             return False
 
-    def get_hardware_signature(self):
-        try:
-            cmd = ['wmic.exe', 'csproduct', 'get', 'uuid']
-            if platform.system() != "Windows" and subprocess.run(['which', 'wmic.exe'], capture_output=True).returncode != 0:
-                with open("/etc/machine-id", "r") as f:
-                    os_id = f.read().strip()
-            else:
-                os_id = subprocess.check_output(cmd, stderr=subprocess.DEVNULL)
-                os_id = os_id.decode('utf-8').split('\n')[1].strip().replace('\r', '')
-
-            raw_signature = f"{platform.node()}-{os_id}"
-            return hashlib.sha256(raw_signature.encode()).hexdigest()
-        except Exception:
-            return hashlib.sha256(platform.node().encode()).hexdigest()
-
     def load_and_verify(self):
-        if not os.path.exists(self.json_path):
+        if not self.json_path.exists():
             print(f"[!] Error : {self.json_path} not found."); sys.exit(1)
         try:
             with open(self.json_path, 'r', encoding='utf-8') as f:
@@ -117,70 +103,49 @@ class STTSimulator:
             print(f"[!] JSON Error : {e}"); sys.exit(1)
 
         print(f"[*] Verifying {len(self.records)} entries...")
+        base_path = self.json_path.parent
+        
         for entry in self.records:
-            fname = self.json_path
-            if fname and not os.path.exists(fname):
-                print(f"[!] Missing audio file : {fname}")
+            fname = entry.get('audio_path')
+            if fname:
+                full_path = base_path / fname
+                if not full_path.exists():
+                    print(f" [!] Missing audio file : {fname}")
 
-    def connect_hub(self, timeout=60):
-        context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-        context.check_hostname = False
-        context.verify_mode = ssl.CERT_NONE
-        try:
-            raw_sock = socket.create_connection((cfg.sys.HUB_IP, cfg.sys.HUB_PORT), timeout=timeout)
-            self.client_socket = context.wrap_socket(raw_sock, server_hostname=cfg.sys.HUB_IP)
-            return True
-        except Exception as e:
-            print(f"[!] Connection error: {e}")
-            return False
-
-    def _send_packet(self, message, label):
-        if not self.client_socket:
-            if not self.connect_hub(): return None
-        try:
-            self.client_socket.sendall(message.encode('utf-8'))
-            response = self.client_socket.recv(4096).decode('utf-8')
-            if self.debug:
-                print(f"[{label}] Hub Response : {response}")
-            return response
-        except Exception as e:
-            print(f"[!] Transmission error : {e}")
-            self.client_socket = None
-            return None
-
-    def authenticate(self):
-        auth_packet = f"{self.signature}:Auth:{cfg.sys.LIST_USERS[0]}:{cfg.sys.DICO_USERS[cfg.sys.LIST_USERS[0]]}"
-        if self._send_packet(auth_packet, "AUTH"):
-            self.authenticated = True
-
-    def _serve_file(self):
-        class QuietHandler(SimpleHTTPRequestHandler):
-            def log_message(self, format, *args): pass
-        try:
-            base_path = str(Path(self.json_path).resolve().parent)
-            os.chdir(base_path)
-            server = HTTPServer(('0.0.0.0', self.http_port), QuietHandler)
-            server.handle_request()
-        except: pass
-
-    def send_to_hub(self, entry, mode):
+    def send_to_hub(self, entry):
         self.current_object = entry
+        
+        if self.mode == "ptt":
+            filename = entry.get('audio_path') 
+            if not filename: return
 
-        if mode == "audio":
-            local_ip = socket.gethostbyname(socket.gethostname())
-            url = f"http://127.0.0.1:{self.http_port}/{entry['Filename']}"
-            packet = f"{self.signature}:PTT:{url}"
-            threading.Thread(target=self._serve_file, daemon=True).start()
+            audio_dir = self.json_path.parent
+            os.chdir(audio_dir) 
+
+            url = f"https://127.0.0.1:{self.http_port}/{filename}"
+            print(f"[*] Serving: {url}")
+
+            threading.Timer(0.5, lambda: self.send_packet("PTT", url)).start()
+
+            try:
+                server_address = ('0.0.0.0', self.http_port)
+                httpd = HTTPServer(server_address, SimpleHTTPRequestHandler)
+                ctx = self._get_https_server_context() 
+                httpd.socket = ctx.wrap_socket(httpd.socket, server_side=True)
+                
+                httpd.handle_request()
+                httpd.server_close()
+            except Exception as e:
+                print(f"[!] Error : {e}")
+        
         else:
-            packet = f"{self.signature}:test:{entry['Command']}"
-        if self.debug:
-            print(f"\n>> [{self.current_idx}] SEND : {entry['Command']}")
-        response = self._send_packet(packet, mode.upper())
-        if response:
-            self.check_result(response)
+            if self._ensure_stt_connection():
+                response = self.send_packet("test", entry['Command'])
+                if response:
+                    self.check_result(response)
 
-    def interactive_mode(self, mode):
-        print(f"\n--- INTERACTIVE MODE ({mode.upper()}) ---")
+    def interactive_mode(self):
+        print(f"\n--- INTERACTIVE MODE ({self.mode.upper()}) ---")
         self.current_object = self.records[self.current_idx]
 
         while self.current_idx < len(self.records):
@@ -189,37 +154,33 @@ class STTSimulator:
             elif choice == 'n':
                 self.current_idx += 1
                 if self.current_idx < len(self.records):
-                    self.send_to_hub(self.records[self.current_idx], mode)
-            elif choice == '': self.send_to_hub(self.records[self.current_idx], mode)
+                    self.send_to_hub(self.records[self.current_idx])
+            elif choice == '': self.send_to_hub(self.records[self.current_idx])
             else:
                 try:
                     self.current_idx = int(choice)
-                    self.send_to_hub(self.records[self.current_idx], mode)
+                    self.send_to_hub(self.records[self.current_idx])
                 except: pass
 
-    def auto_mode(self, mode):
+    def auto_mode(self):
         for i, entry in enumerate(self.records):
             self.current_idx = i
             self.current_object = entry
-            self.send_to_hub(entry, mode)
+            self.send_to_hub(entry)
             time.sleep(1.5)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("path", type=str, nargs='?', default=".", help="Principal path to data")
     parser.add_argument("-i", "--interactive", action="store_true")
-    parser.add_argument("-a", "--audio", action="store_true")
-    parser.add_argument("-d", "--debug", action="store_true")
-    args = parser.parse_args()
-
-    mode = "audio" if args.audio else "text"
+    parser.add_argument("-m", "--mode", choices=['stt', 'ptt'], required=True, help="Mode: stt (Whisper) or ptt (WAV)")
+    parser.add_argument("-L", "--linux", action="store_true", help="Force Linux mode")
     
-    sim = STTSimulator(args.path)
-    sim.debug = args.debug
+    args = parser.parse_args()
+    
+    sim = STTSimulator(args.path, mode=args.mode, is_linux=args.linux)
     sim.load_and_verify()
 
-    if sim.connect_hub():
-        sim.authenticate()
-        if args.interactive: sim.interactive_mode(mode)
-        else:
-            sim.auto_mode(mode)
+    if args.interactive: sim.interactive_mode()
+    else:
+        sim.auto_mode()

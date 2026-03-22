@@ -6,6 +6,8 @@ import os
 import requests
 import time
 import json
+from requests.adapters import HTTPAdapter
+from urllib3.util.ssl_ import create_urllib3_context
 from router_llm import RouterLLM
 from tools.scraper import ScraperService
 from tools.whisper_engine import WhisperEngine
@@ -72,7 +74,7 @@ class SessionManager:
         while True:
             session, payload = self.task_queue.get()
             try:
-                if payload.startswith("http"):
+                if payload.startswith("https"):
                     self._handle_stt_request(session, payload)
                 else:
                     self._handle_direct_command(session, payload)
@@ -90,7 +92,7 @@ class SessionManager:
     def _handle_stt_request(self, session, url):
         temp_file = f"/tmp/temp_{session.index}_{threading.get_ident()}.wav"
         try:
-            response = requests.get(url, timeout=10)
+            response = requests.get(url, timeout=10, verify=False)
             if response.status_code == 200:
                 with open(temp_file, "wb") as f:
                     f.write(response.content)
