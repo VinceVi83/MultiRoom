@@ -12,14 +12,15 @@ DAILY_USE:
       [SECTION GROCERY]
       1: SHOP_ADD (Add items to list)
       2: SHOP_DEL (Clear entire list)
-      3: SHOP_MAIL (Send list via email)
-      4: SHOP_INFO (Query information about list)
+      3: SHOP_INFO -> User wants to SEE the list ONLY on the screen (No email).
+      4: SHOP_MAIL -> User explicitly wants to RECEIVE/SEND the list via email.
       
       [SECTION FRIDGE]
       5: FRIDGE_ADD (Put food in)
       6: FRIDGE_REM (Take food out / finished)
-      7: FRIDGE_INFO (Check stock)
-
+      7: FRIDGE_INFO -> User wants to SEE the list ONLY on the screen (No email).
+      8: FRIDGE_MAIL -> User explicitly wants to RECEIVE/SEND the list via email.
+      
       [SECTION REJECTION]
       0: NONE (Nonsense, joke, sys chat, or unrelated)
       
@@ -34,12 +35,18 @@ DAILY_USE:
     use_json: true
     options:
       temperature: 0.0
-      num_predict: 200
+      num_predict: 100
       num_ctx: 2048
     prompt: |
-      Task: Extract only the names of the food items.
-      Example:
-      {
-        "items": ["milk", "eggs"]
-      }
-      Rule: Return ONLY JSON.
+      Task: Extract food items from the user input into a JSON list.
+      
+      Rules:
+      - If the user lists items, extract them exactly.
+      - If the user doesn't mention any specific food (e.g., "I'm going shopping"), return {"items": []}.
+      - Output MUST be valid JSON.
+      
+      Input: "I need milk and bread"
+      Output: {"items": ["milk", "bread"]}
+      
+      Input: "Je vais faire les courses."
+      Output: {"items": []}
