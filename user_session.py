@@ -49,3 +49,14 @@ class UserSession:
     def send_to_all_socks(self, text):
         for sock in self.socks:
             sock.send(text.encode())
+
+    def cleanup_services(self):
+        to_delete = []
+        for name, service in self.services.items():
+            if hasattr(service, 'is_alive'):
+                if not service.is_alive():
+                    to_delete.append(name)
+        
+        for name in to_delete:
+            print(f"Nettoyage du service : {name}")
+            del self.services[name]

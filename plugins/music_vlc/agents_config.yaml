@@ -34,13 +34,13 @@ MUSIC_VLC:
       REPLACE_PLAYLISTS
 
       Instructions:
-      1. Identify the 'PLAYLIST' from the list of Existing Playlists.
+      1. Identify the "PLAYLIST" from the list of Existing Playlists.
       2. If the user mentions a name NOT in the list (e.g., for CREATE_PLAYLIST), extract that new name.
       3. Always favor the exact spelling from 'Existing Playlists' if a match is close.
 
       Context:
-      - Action: PLAY, CREATE, ADD, DEL, INFO.
-      - NAME of playlist if present in Existing Playlists, if action is CREATE extract NAME
+      - Action: "PLAY", "CREATE", "ADD", "DEL", "INFO".
+      - "NAME" of playlist if present in Existing Playlists, if action is "CREATE" extract "NAME"
 
       Example Output:
       {

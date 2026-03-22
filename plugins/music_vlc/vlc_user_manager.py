@@ -23,14 +23,20 @@ class VLCUserManager:
         self.playlists = {}
         self.build_playlist_map()
 
+    def is_alive(self):
+        if self.vlc_instance and self.vlc_instance.process:
+            return self.vlc_instance.process.poll() is None
+        return False
+
     def _start_vlc_if_needed(self, playlist=""):
-        if self.vlc_instance is None:
+        if not self.is_alive():
             playlist_path = ""
-            if playlist == "" and len(self.playlists.keys()):
-                playlist_path = list(self.playlists.keys())[0]
-            elif playlist in self.playlists.keys():
+            if playlist == "" and self.playlists:
+                playlist_path = list(self.playlists.values())[0]
+            elif playlist in self.playlists:
                 playlist_path = self.playlists.get(playlist)
-            self.vlc_instance = VLControl(self.user_index, playlist)
+            
+            self.vlc_instance = VLControl(self.user_index, playlist_path)
             return True
         return False
 

@@ -26,33 +26,38 @@ class MusicVlcService:
         if not self.config:
             print(f"[!] Error: Configuration for {self.plugin_name} not found.")
 
-    def _get_free_index(self):
-        occupied_indexes = {inst.user_index for inst in self.active_instances.values()}
+    def _get_free_index(self, context):
+        occupied_indexes = []
+        
+        current_manager = context.session.services.get(self.plugin_name)
+        if current_manager and hasattr(current_manager, 'is_alive'):
+            if current_manager.is_alive():
+                occupied_indexes.append(current_manager.user_index)
+
         for i in range(5):
             if i not in occupied_indexes:
                 return i
         return None
 
     def check_user_use_service(self, context):
-        if self.plugin_name in context.session.services:
-            return context.session.services[self.plugin_name]
+        existing_mgr = context.session.services.get(self.plugin_name)
         
-        idx = self._get_free_index()
+        if existing_mgr and isinstance(existing_mgr, VLCUserManager):
+            if existing_mgr.is_alive():
+                return existing_mgr
+            else:
+                del context.session.services[self.plugin_name]
+        
+        idx = self._get_free_index(context)
         if idx is None:
-            return cfg.RETURN_CODE.SUCCESS_NOTHING_TO_DO
+            return cfg.RETURN_CODE.ERR
         
-        self.cleanup_inactive_services()
-        user_mgr = VLCUserManager(context.session.services, context.session.index)
+        user_mgr = VLCUserManager(context.session.services, idx)
         res = context.session.add_new_service(self.plugin_name, user_mgr)
-        if res == cfg.RETURN_CODE.SUCCESS:
-            self.active_instances[id(user_mgr)] = user_mgr
-            return user_mgr
         
+        if res == cfg.RETURN_CODE.SUCCESS:
+            return user_mgr
         return cfg.RETURN_CODE.ERR
-
-    def cleanup_inactive_services(self):
-        self.active_instances = {k: v for k, v in self.active_instances.items() 
-                                if v.process and v.process.poll() is None}
 
     def execute(self, context):
         location = llm.execute(context.user_input, cfg.sys.Global.location_agent)
