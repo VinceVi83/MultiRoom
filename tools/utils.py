@@ -75,6 +75,6 @@ class SimpleStore:
             self.save()
 
     def delete(self):
-        self.store.data = self.store.default.copy() 
-        self.store.save() 
+        self.data = self.default.copy() 
+        self.save() 
         return cfg.RETURN_CODE.SUCCESS
