@@ -27,7 +27,7 @@ class RouterLLM:
         self.service_registry = {}
         self.is_running = True
         self.debug = False
-        self.test = True
+        self.test = False
         self._initialize_service_registry()
         self.start()
 

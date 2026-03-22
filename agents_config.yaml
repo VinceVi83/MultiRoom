@@ -21,7 +21,7 @@ Global:
       STRICT RULES:
       1. Be extremely literal. Do not guess.
       2. Return a JSON object with the key "ID".
-      3. If an input matches multiple IDs or is ambiguous, you MUST return ID "0".
+      3. If an input matches multiple IDs or is ambiguous, you MUST return "ID" "0".
       4. Do not attempt to overlap categories.
       
       Example: {"ID": "1"}
@@ -53,3 +53,41 @@ Global:
       
       Input: "Turn off the light" -> {"location": "Unknown"}
       Input: "Turn on the kitchen" -> {"location": "Kitchen"}
+
+  pre_process_agent: # Experience to limit error from transcription or user
+    model: llama3.1:8b
+    use_json: true
+    options:
+      temperature: 0.0
+      num_predict: 100
+      num_ctx: 512
+      top_k: 1
+      top_p: 0.0
+    prompt: |
+      ### OBJECTIVE
+      Validate French transcription and map intent to an English action verb.
+
+      ### CLASSIFICATION
+      - ACT: (Lance, fais, joue, allume, ajoute, démarre, balance, mets, active, annule, supprime, coupe)
+      - TELL: (Dis, raconte, annonce, répète)
+      - SEND: (Envoie, mail, transmets, poste)
+      - SEARCH: (Trouve, cherche, regarde, check, c'est quoi)
+      - PLAN: (Rappelle-moi, programme, alarme, note)
+
+      ### CRITICAL RULES
+      1. COHERENCE: If input is noise, nonsensical, or pure politesse/chatter without a command (e.g., euh, test, ah), return: {"valid": 0}.
+      2. SYSTEM: If input is Be ready, return: {"valid": 1, "normalized_verb": IDLE, "subject": keep_alive}.
+      3. PROCESSING: If input is a valid command, return: {"valid": 1, "normalized_verb": VERB, "subject": French subject only}.
+
+      ### EXAMPLES
+      Input: Euh... bah... ouais
+      Output: {"valid": "0"}
+
+      Input: Be ready
+      Output: {"valid": "1", "normalized_verb": IDLE, "subject": keep_alive}
+
+      Input: Balance du son dans la cuisine
+      Output: {"valid": "1", "normalized_verb": ACT, "subject": musique dans la cuisine}
+
+      ### OUTPUT
+      Strict JSON only
