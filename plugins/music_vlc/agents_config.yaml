@@ -10,8 +10,9 @@ MUSIC_VLC:
       Task: Classify the music/media request into a numeric ID.
       
       IDs:
-      1: PLAYLIST (Requesting a specific music playlist or artist)
-      2: MUSIC (Controls: stop, play, pause, skip, volume, next)
+      1: DISCOVER (listen some albums, discover library)
+      2: PLAYLIST (Requesting a specific music playlist or artist)
+      3: MUSIC (Controls: stop, play, pause, skip, volume, next)
       0: NONE (Not related to media playback)
       
       STRICT RULES:
@@ -28,29 +29,31 @@ MUSIC_VLC:
       num_predict: 50
       num_ctx: 2048
     prompt: |
-      Task: Extract playlist name.
+      Act as a Playlist Extraction API.
+      Task: Extract action and playlist name.
       
       Existing Playlists:
       REPLACE_PLAYLISTS
 
-      Instructions:
-      1. Identify the "PLAYLIST" from the list of Existing Playlists.
-      2. If the user mentions a name NOT in the list (e.g., for CREATE_PLAYLIST), extract that new name.
-      3. Always favor the exact spelling from 'Existing Playlists' if a match is close.
+      STRICT RULES:
+      1. FULL SCAN: Analyze the entire user input to find a match in 'Existing Playlists' OR a new name if the action is 'CREATE'.
+      2. MATCHING PRIORITIES: - If a name from 'Existing Playlists' is detected (even with extra words like "Lance la..."), extract it.
+      3. If the action is "CREATE", extract the new name following the command.
+      4. NO GUESSING: If NO playlist name is explicitly mentioned in the input, return {"0": "0"}.
+      5. GENERIC FALLBACK: Return {"0": "0"} only for vague requests without a specific target (e.g., "Joue de la musique", "Lance la playlist").
 
       Context:
-      - Action: "PLAY", "CREATE", "ADD", "DEL", "INFO".
-      - "NAME" of playlist if present in Existing Playlists, if action is "CREATE" extract "NAME"
+      Actions: "PLAY", "CREATE", "ADD", "DEL", "INFO".
 
       Example Output:
       {
-        "PLAY": "Rock Chill"
+        "ACTION": "NAME"
       }
       {
-        "ADD": "Touhou"
+        "PLAY": "Touhou"
       }
-      Constraint: Output ONLY the JSON object.
-      Rule: If no playlist name is found or the request is unclear, return {"0" : "0"}.
+
+      Constraint: Output ONLY the JSON object. No prose. No explanations.
 
   VLC_AGENT:
     model: "llama3.1:8b"

@@ -6,19 +6,19 @@ from config_loader import cfg
 from pathlib import Path
 
 
-class VLControl:
-    """VLC Media Player Control Service.
-
-    Manages VLC media player control and playlist management.
-
+class VLCControl:
+    """VLC Media Player Control Service
+    
+    Role: Manages VLC media player control and playlist management.
+    
     Methods:
-        __init__(self, index) : Initializes the VLC control instance.
-        _escape_path(self, text) : Escapes special characters in a path string.
-        interpret_vlc_command(self, cmd_tokens) : Interprets and executes VLC commands.
-        handle_simple_command(self, action) : Handles simple VLC commands.
-        change_playlist(self, target) : Changes the current playlist.
-        start_vlc(self, path=None) : Starts the VLC media player.
-        kill_vlc(self) : Terminates the VLC media player.
+        __init__(self, index, playlist='') : Initialize VLC control instance.
+        _escape_path(self, text) : Escape special characters in a path string.
+        interpret_vlc_command(self, cmd_tokens) : Interpret and execute VLC commands.
+        handle_simple_command(self, action) : Handle simple VLC commands.
+        change_playlist(self, target) : Change the current playlist.
+        start_vlc(self, path=None) : Start the VLC media player.
+        kill_vlc(self) : Terminate the VLC media player.
     """
 
     def __init__(self, index, playlist=""):
@@ -27,7 +27,6 @@ class VLControl:
         self.process = None
         self.index = index
         self.port_ctrl = str(9000 + index)
-        print(self.port_ctrl)
         self.port_stream = str(19000 + index)
         self.current_path = ""
 
