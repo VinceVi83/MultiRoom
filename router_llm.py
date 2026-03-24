@@ -10,7 +10,9 @@ from tools.utils import Utils
 
 class RouterLLM:
     """AI Router module that orchestrates intent detection, interactive web research, and service dispatching.
-
+    
+    Role: Manages LLM routing, plugin registration, and command queue processing.
+    
     Methods:
         __init__(self) : Initializes the RouterLLM instance with command queue, threading, and service instances.
         add_to_queue(self, context) : Adds a TaskContext to the command queue for processing.
@@ -36,12 +38,8 @@ class RouterLLM:
             self.command_queue.put(context)
 
     def _initialize_service_registry(self):
-        if self.debug:
-            print("\n--- [Router] Building Service Registry ---")
-
         for i, plugin_name in enumerate(cfg.LOADED_PLUGINS, start=1):
             try:
-
                 module_path = f"plugins.{plugin_name}.service"
                 module = importlib.import_module(module_path)
                 class_name = "".join([x.capitalize() for x in plugin_name.split('_')]) + "Service"
@@ -82,7 +80,6 @@ class RouterLLM:
 
     def inference_loop(self):
         llm.execute("Be ready", cfg.sys.Global.router_agent)
-        print("--- [Router] Inference Engine Ready ---")
         last_activity = time.time()
         keep_alive_threshold = 240
 
@@ -92,7 +89,6 @@ class RouterLLM:
                 if context is None:
                     break
                 last_activity = time.time()
-                
                 response_context = {}
                 if self.test:
                     result = llm.execute(context.user_input, cfg.sys.Global.pre_process_agent)
@@ -126,11 +122,6 @@ class RouterLLM:
             except Exception as e:
                 print(f"SERVER_ERROR in Inference Loop: {e}")
                 time.sleep(1)
-
-    def format_result(self, result):
-        if isinstance(result, dict):
-            return ",".join([f"{k}:{v}" for k, v in result.items()])
-        return str(result)
 
     def start(self):
         self.thread = threading.Thread(target=self.inference_loop, daemon=True)

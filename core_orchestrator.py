@@ -19,18 +19,19 @@ from datetime import datetime
 from pathlib import Path
 
 class SessionManager:
-    """
-    Manages user sessions and handles incoming requests.
-
+    """Session Manager
+    
+    Role: Manages user sessions and handles incoming requests.
+    
     Methods:
-    - __init__(self) : Initializes the session manager.
-    - _cleanup_inactive_sessions(self) : Cleans up inactive sessions.
-    - _worker_loop(self) : Processes tasks from the queue.
-    - _handle_direct_command(self, session, text) : Handles direct commands.
-    - _handle_stt_request(self, session, url) : Handles speech-to-text requests.
-    - _handle_auth(self, sock, username, password) : Handles user authentication.
-    - handle_client(self, sock) : Handles client connections.
-    - run_server(self) : Starts the SSL-secured Hub Server.
+        __init__(self) : Initializes the session manager.
+        _cleanup_inactive_sessions(self) : Cleans up inactive sessions.
+        _worker_loop(self) : Processes tasks from the queue.
+        _handle_direct_command(self, session, text) : Handles direct commands.
+        _handle_stt_request(self, session, url) : Handles speech-to-text requests.
+        _handle_auth(self, sock, username, password) : Handles user authentication.
+        handle_client(self, sock) : Handles client connections.
+        run_server(self) : Starts the SSL-secured Hub Server.
     """
 
     def __init__(self):
@@ -139,6 +140,8 @@ class SessionManager:
                     user, pwd = payload.split(":", 1)
                     if self._handle_auth(sock, user, pwd):
                         sock.sendall(b"AUTH_SUCCESS")
+                    else:
+                        sock.sendall(b"ERROR: Auth Failed\n")
                 elif action == "PTT":
                     self.task_queue.put((self.active_sessions["system"], payload))
 

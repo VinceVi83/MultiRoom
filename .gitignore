@@ -9,3 +9,4 @@ music_assistant.txt
 .vscode
 settings.json
 test.py
+*wav
