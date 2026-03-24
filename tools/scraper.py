@@ -13,12 +13,10 @@ from tools.llm_agent import llm
 
 
 class ScraperService:
-    """Web scraping and search aggregation service (Singleton).
-
-    Summary:
-        Orchestrates web scraping, search result scoring, content extraction, and weather reporting.
-        Manages singleton instances to ensure consistent state across the application lifecycle.
-
+    """Web scraping and search aggregation service (Singleton)
+    
+    Role: Orchestrates web scraping, search result scoring, content extraction, and weather reporting.
+    
     Methods:
         __new__(cls) : Singleton pattern implementation to ensure only one instance exists.
         __init__(self, debug=False) : Initializes service configuration and debug mode.

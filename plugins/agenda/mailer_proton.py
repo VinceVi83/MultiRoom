@@ -10,10 +10,12 @@ from pathlib import Path
 from config_loader import cfg
 
 class MailerProton:
-    """Class to handle email sending via Proton Bridge on the Windows Host from WSL.
-
+    """Mailer Proton Service Plugin
+    
+    Role: Handles email sending via Proton Bridge on Windows Host from WSL.
+    
     Methods:
-        send_mail(subject, body, to_email=None, attachment_path=None, debug=False) : Sends an email message with optional attachment via Proton Bridge SMTP server.
+        send_mail(self, subject, body, to_email=None, attachment_path=None, debug=False) : Sends an email message with optional attachment via Proton Bridge SMTP server.
     """
 
     def send_mail(self, subject, body, to_email=None, attachment_path=None, debug=False):

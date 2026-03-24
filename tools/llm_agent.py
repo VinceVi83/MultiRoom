@@ -8,12 +8,10 @@ from types import SimpleNamespace
 
 
 class OllamaClient:
-    """
-    A thread-safe singleton client to manage Ollama interactions and VRAM optimization.
-
-    This class ensures that only one LLM inference runs at a time using a threading lock
-    and handles automatic model unloading to prevent GPU memory overflow.
-
+    """Ollama Client
+    
+    Role: Thread-safe singleton client to manage Ollama interactions and VRAM optimization.
+    
     Methods:
         __init__(self) : Initializes the client using centralized configuration.
         execute(self, user_input, agent_cfg=None, debug=False, verbose=False) : Executes a synchronized LLM request for a specific agent.
@@ -90,6 +88,7 @@ class OllamaClient:
         params = c._payload.copy()
         params["messages"] = params["messages"] + [{"role": "user", "content": user_input}]
         return params
+
 
 def create_agent_config(prompt, model=None, use_json=True, **custom_options):
     """Generates an agent config using MODEL_NAME_MAIN by default"""

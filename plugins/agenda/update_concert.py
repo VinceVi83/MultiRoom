@@ -16,7 +16,7 @@ KEYWORDS = [w.strip().upper() for w in cfg.agenda.ADDR_KEYWORDS.split(",")]
 def create_tmp_ics(pdf_name, info):
     """
     1. Input: PDF filename and extracted dictionary (date, location, artist).
-    2. Format: Converts info into iCalendar f²ormat (RFC 5545).
+    2. Format: Converts info into iCalendar format (RFC 5545).
     3. Output: Saves a .ics file in TICKETS_DIR
     """
     artist = info.get("artist", "Unknown")
@@ -34,6 +34,7 @@ def create_tmp_ics(pdf_name, info):
     current_dir = Path(__file__).resolve().parent
     template_path = current_dir / "template_concert.ics"
     if not template_path.is_absolute():
+        ROOT = Path(__file__).resolve().parent
         template_path = ROOT / template_path
 
     try:
@@ -44,7 +45,7 @@ def create_tmp_ics(pdf_name, info):
         with open(ics_path, "w", encoding="utf-8") as f:
             f.write(template_content.format(**params))
     except Exception as e:
-        print(f"Erreur lors de la lecture du template ICS: {e}")
+        print(f"Error reading ICS template: {e}")
 
 def clean_pdf_text(raw_text):
     price_pattern = re.compile(r"\b\d+([,.]\d{2})?\s*(?:EUR|EURO|€)\b", re.IGNORECASE)
@@ -174,9 +175,9 @@ def sync_tickets_to_calendar(verbose=False):
         infos["date"] = ai_date
         if verbose:
             print(f"\n--- Processing: {pdf_path.name} ---")
-            print(f"  Artiste  : {ticket_artist}")
+            print(f"  Artist  : {ticket_artist}")
             print(f"  Date     : {infos['date']}")
-            print(f"  Lieu     : {infos['location']}")
+            print(f"  Location : {infos['location']}")
 
         best_match, highest_score = None, 0
         for event in events:
@@ -192,12 +193,12 @@ def sync_tickets_to_calendar(verbose=False):
             
             result["added_tickets"].append({event_key: pdf_path.name})
             
-            if verbose: print(f"Match trouvé : {event_key}")
+            if verbose: print(f"Match found: {event_key}")
         else:
             create_tmp_ics(pdf_path.name, {"artist": ticket_artist, "date": infos["date"], "location": infos["location"]})
             
             result["created_ics"].append(pdf_path.name)
-            if verbose: print(f"Aucun match (score: {highest_score}). ICS temporaire créé.")
+            if verbose: print(f"No match (score: {highest_score}). Temporary ICS created.")
 
     with open(INDEX_FILE, "w", encoding="utf-8") as f:
         json.dump(index, f, indent=4, ensure_ascii=False)

@@ -71,11 +71,10 @@ def main():
             
             with open(file_path, 'w', encoding='utf-8') as f:
                 json.dump(new_data, f, indent=4, ensure_ascii=False)
-            print("\nSuccess: File updated. Items removed.")
         else:
-            print("\nCancelled: No changes were made to the file.")
+            pass
     else:
-        print("\nFinished: No items were marked for deletion.")
+        pass
 
 if __name__ == "__main__":
     main()

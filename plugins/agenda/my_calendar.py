@@ -10,8 +10,10 @@ from config_loader import cfg
 from plugins.agenda.mailer_proton import MailerProton
 
 class CalendarService:
-    """Manages calendar events and provides functionalities to fetch and send concert tickets.
-
+    """Calendar Service
+    
+    Role: Manages calendar events and provides functionalities to fetch and send concert tickets.
+    
     Methods:
         __new__(cls) -> CalendarService : Singleton pattern to ensure only one instance of CalendarService.
         __init__() -> None : Initializes the service and runs a health check.
@@ -175,6 +177,7 @@ class CalendarService:
             if start_of_target_week <= e["dt"] <= end_of_target_week
         ]
         return filtered
+
 
 if __name__ == "__main__":
     calendar = CalendarService()

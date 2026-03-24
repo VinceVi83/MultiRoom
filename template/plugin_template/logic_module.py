@@ -4,6 +4,15 @@ from pathlib import Path
 from config_loader import cfg
 
 class PluginLogic:
+    """Plugin Logic Module
+    
+    Role: Singleton plugin logic handler for action execution.
+    
+    Methods:
+        __new__(cls) : Implement singleton pattern.
+        __init__(self) : Initialize plugin instance.
+        perform_action(self, data=None) : Execute plugin actions.
+    """
     _instance = None
 
     def __new__(cls):
@@ -16,9 +25,7 @@ class PluginLogic:
         if self._initialized:
             return
         self._initialized = True
-        # Setup paths or connections here
-        # self.data_path = Path(cfg.plugin.DATA_DIR) / "data.json"
+        self.data_path = Path(cfg.plugin.DATA_DIR) / "data.json"
 
     def perform_action(self, data=None):
-        # Implementation logic here
         return "Result of action"
