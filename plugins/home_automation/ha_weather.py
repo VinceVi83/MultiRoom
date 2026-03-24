@@ -7,7 +7,13 @@ from config_loader import cfg
 
 @dataclass
 class WeatherHour:
-    """Represents an hourly weather forecast."""
+    """Weather Hour Plugin
+    
+    Role: Represents an hourly weather forecast with timestamp, condition, temperature, humidity, wind speed and precipitation.
+    
+    Methods:
+        __init__(self, timestamp, condition, temperature, humidity, wind_speed, precipitation) : Initialize the hourly weather data.
+    """
     timestamp: datetime
     condition: str
     temperature: float
@@ -15,18 +21,33 @@ class WeatherHour:
     wind_speed: float
     precipitation: float
 
+
 @dataclass
 class WeatherDay:
-    """Represents a daily weather forecast."""
+    """Weather Day Plugin
+    
+    Role: Represents a daily weather forecast with timestamp, condition, max temperature, min temperature and precipitation probability.
+    
+    Methods:
+        __init__(self, timestamp, condition, temp_max, temp_min, precipitation_probability) : Initialize the daily weather data.
+    """
     timestamp: datetime
     condition: str
     temp_max: float
     temp_min: float
     precipitation_probability: Optional[int]
 
+
 @dataclass
 class WeatherStatus:
-    """Represents the current weather status."""
+    """Weather Status Plugin
+    
+    Role: Represents the current weather status with status, temperature, humidity and last update time.
+    
+    Methods:
+        __init__(self, status, temperature, humidity, last_update) : Initialize the current weather status.
+        display(self) : Display the weather report as formatted string.
+    """
     status: str
     temperature: float
     humidity: int
@@ -44,15 +65,18 @@ class WeatherStatus:
             f"--------------\n"
         )
 
-class MeteoHaApi:
-    """API to interact with Home Assistant for weather data.
 
+class MeteoHaApi:
+    """Meteo Home Automation API Plugin
+    
+    Role: API to interact with Home Assistant for weather data including current status, hourly and daily forecasts.
+    
     Methods:
-        __init__(city) : Initializes the API with the entity ID.
-        fetch_current_status() -> WeatherStatus : Fetches the current weather status.
-        fetch_hourly_forecast() -> List[WeatherHour] : Fetches the hourly weather forecast.
-        fetch_daily_forecast() -> List[WeatherDay] : Fetches the daily weather forecast.
-        base_url_services() -> str : Returns the base URL for the weather services.
+        __init__(self, city) : Initializes the API with the entity ID.
+        fetch_current_status(self) -> WeatherStatus : Fetches the current weather status.
+        fetch_hourly_forecast(self) -> List[WeatherHour] : Fetches the hourly weather forecast.
+        fetch_daily_forecast(self) -> List[WeatherDay] : Fetches the daily weather forecast.
+        base_url_services(self) -> str : Returns the base URL for the weather services.
     """
 
     def __init__(self, city=cfg.home_automation.HA_WEATHER_LOCATION):

@@ -6,20 +6,18 @@ from plugins.home_automation.ha_mapping import DeviceCollection
 
 
 class CommunicationHA:
-    """Home Assistant Service - Manages interactions with Home Assistant.
-
-    Summary:
-        Provides communication and control functionality for Home Assistant devices,
-        including light toggling, brightness control, and command handling based on context.
-
+    """Home Assistant Service Plugin
+    
+    Role: Manages Home Assistant interactions including device control, light toggling, brightness management, and command handling.
+    
     Methods:
-        __new__(cls, *args, **kwargs) : Singleton pattern to ensure only one instance of HAService.
-        __init__() : Initializes the service with the necessary URL and headers.
-        call_action(domain, service, entity_id, data=None) : Calls an action on a Home Assistant entity.
-        smart_toggle(action) : Toggles lights based on current state.
-        set_brightness_percent_all(level_percent) : Sets brightness level for all lights.
-        handle_request(context.label, context.location) : Interprets and executes a command based on raw data and context.
-        get_state(entity_id) : Retrieves the state of a specific entity.
+        __new__(cls, *args, **kwargs) : Singleton pattern for instance creation.
+        __init__() : Initialize service with URL, headers, and device registry.
+        call_action(domain, service, entity_id, data=None) : Call action on Home Assistant entity.
+        smart_toggle(action) : Toggle lights based on current state.
+        set_brightness_percent_all(level_percent) : Set brightness for all lights.
+        handle_request(context) : Execute command based on label and context.
+        get_state(entity_id) : Retrieve state of specific entity.
     """
 
     _instance = None
@@ -39,7 +37,7 @@ class CommunicationHA:
             }
             self.initialized = True
 
-            registry_file = os.path.join(cfg.home_automation.DATA_DIR, "ha_device_list.json")
+            registry_file = os.path.join(cfg.home_automation.DATA_DIR, "ha_actuators.json")
             with open(registry_file, 'r', encoding='utf-8') as f:
                 data = json.load(f)
 

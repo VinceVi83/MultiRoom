@@ -6,8 +6,10 @@ from tools.utils import Utils
 
 
 class HomeAutomationService:
-    """Home Automation Service for daily operations.
-
+    """Home Automation Service
+    
+    Role: Manages home automation operations including weather checks and device control.
+    
     Methods:
         __init__(self) : Initialize the service with configuration and communication handlers.
         execute(self, context) : Execute home automation tasks using LLM agents to determine location and label.
@@ -44,5 +46,4 @@ class HomeAutomationService:
         return result
 
     def get_status(self):
-        print("OK")
         return {"status": "online", "plugin": self.plugin_name}

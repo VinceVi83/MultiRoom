@@ -4,10 +4,12 @@ from config_loader import cfg
 
 
 class BaseEntity(ABC):
-    """Base class for all entities in Home Assistant.
-
+    """Home Assistant Entity Plugin
+    
+    Role: Base class for all entities in Home Assistant providing common entity attributes and service integration.
+    
     Methods:
-        __init__(data, service) : Initializes the entity with data and a service.
+        __init__(self, data, service) : Initializes the entity with data and a service.
     """
     def __init__(self, data, service):
         self.id = data['id']
@@ -15,15 +17,17 @@ class BaseEntity(ABC):
         self.service = service
 
 
-class DeviceCollection:
-    """Manages collections of devices (lights and switches).
-
+class DeviceCollection(ABC):
+    """Home Assistant Device Collection Plugin
+    
+    Role: Manages collections of devices (lights and switches) with inventory listing and search capabilities.
+    
     Methods:
-        __init__(json_data=None, service=None) : Initializes the device collection with JSON data and a service.
-        _initialize(data) : Populates the collection with devices from JSON data.
-        list_inventory() : Lists all devices in the collection.
-        similarity(a, b) : Calculates the similarity score between two strings.
-        search(query_name, device_type) : Searches for a device by name and type.
+        __init__(self, json_data=None, service=None) : Initializes the device collection with JSON data and a service.
+        _initialize(self, data) : Populates the collection with devices from JSON data.
+        list_inventory(self) : Lists all devices in the collection.
+        similarity(self, a, b) : Calculates the similarity score between two strings.
+        search(self, query_name, device_type) : Searches for a device by name and type.
     """
     def __init__(self, json_data=None, service=None):
         self.lights = []
@@ -78,14 +82,16 @@ class DeviceCollection:
 
 
 class LightEntity(BaseEntity):
-    """Represents a light entity in Home Assistant.
-
+    """Home Assistant Light Entity Plugin
+    
+    Role: Represents a light entity in Home Assistant with state management, brightness control, and on/off operations.
+    
     Methods:
-        get_state() : Retrieves the current state of the light.
-        get_current_brightness() : Retrieves the current brightness level.
-        turn_on() : Turns on the light with an optional brightness level.
-        turn_off() : Turns off the light.
-        set_brightness_percent(percent) : Sets the brightness level of the light.
+        get_state(self) : Retrieves the current state of the light.
+        get_current_brightness(self) : Retrieves the current brightness level.
+        turn_on(self) : Turns on the light with an optional brightness level.
+        turn_off(self) : Turns off the light.
+        set_brightness_percent(self, percent) : Sets the brightness level of the light.
     """
     def get_state(self):
         state_data = self.service.get_state(self.id)
@@ -114,11 +120,13 @@ class LightEntity(BaseEntity):
 
 
 class SwitchEntity(BaseEntity):
-    """Represents a switch entity in Home Assistant.
-
+    """Home Assistant Switch Entity Plugin
+    
+    Role: Represents a switch entity in Home Assistant with on/off toggle operations.
+    
     Methods:
-        turn_on() : Turns on the switch.
-        turn_off() : Turns off the switch.
+        turn_on(self) : Turns on the switch.
+        turn_off(self) : Turns off the switch.
     """
     def turn_on(self):
         return self.service.call_action("switch", "turn_on", self.id)
