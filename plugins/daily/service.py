@@ -4,7 +4,9 @@ from tools.llm_agent import llm
 from tools.utils import Utils
 
 class DailyService:
-    """Daily Service Plugin - Manages daily shopping list operations.
+    """Daily Service Plugin
+    
+    Role: Manages daily shopping list operations.
     
     Methods:
         __init__(self) : Initialize the Daily Service plugin.
@@ -43,5 +45,4 @@ class DailyService:
         return cfg.RETURN_CODE.SUCCESS
 
     def get_status(self):
-        print("OK")
         return {"status": "online", "plugin": self.plugin_name}

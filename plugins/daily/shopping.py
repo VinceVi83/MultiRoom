@@ -5,12 +5,13 @@ from config_loader import cfg
 from tools.utils import SimpleStore
 
 class ShoppingService:
-    """Shopping :A singleton-based service for managing shopping lists with file persistence and email notifications.
-
+    """Shopping Service Plugin
+    
+    Role: Manages shopping lists with file persistence and email notifications.
+    
     Methods:
         __new__(cls) : Singleton pattern to ensure only one instance of ShoppingService.
         __init__() : Initializes the service with the necessary file path and mailer.
-        _ensure_file_exists() : Creates the file with an empty structure if it does not exist.
         update_shopping_list(result) : Adds new unique items to the list.
         delete_shopping_list() : Deletes the shopping list file permanently.
         report_shopping_list() : Retrieves the raw list of items (format list).
