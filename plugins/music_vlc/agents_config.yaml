@@ -12,7 +12,7 @@ MUSIC_VLC:
       IDs:
       1: DISCOVER (General requests to start playback: 'met de la musique', 'lance un album', 'joue quelque chose')
       2: PLAYLIST (Specific targets: artist names, playlist names, genres)
-      3: MUSIC (Playback control ONLY: stop, play, pause, skip, next/suivante, previous, volume)
+      3: MUSIC (Information or Playback control ONLY: stop, play, pause, skip, next/suivante, previous, volume)
       0: NONE (Not related to media playback)
       
       STRICT RULES:

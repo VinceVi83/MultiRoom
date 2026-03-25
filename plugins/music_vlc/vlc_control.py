@@ -30,9 +30,12 @@ class VLCControl:
         self.is_playing = False
         self.process = None
         self.index = index
-        self.port_ctrl = str(9000 + index)
-        self.port_stream = str(19000 + index)
-        self.current_path = ""
+        self.port_ctrl = str(int(cfg.music_vlc.VLC_PORT_START) + index)
+        self.port_stream = str(int(cfg.music_vlc.VLC_PORT_START) + 1000 + index)
+        self.current_path = playlist
+
+        self.password = cfg.music_vlc.DICO_VLC_USERS.get('test', 'test')
+        self.base_url = f"http://127.0.0.1:{self.port_ctrl}/requests"
 
         self.vlc_commands = {
             "TOGGLE": "pl_pause",
@@ -48,21 +51,37 @@ class VLCControl:
 
         self.start_vlc(playlist)
 
+    def _vlc_request(self, endpoint, params=None):
+        url = f"{self.base_url}/{endpoint}"
+        if params:
+            url += f"?{params}"
+        
+        try:
+            result = subprocess.run(
+                ["curl", "-s", "--user", f":{self.password}", url],
+                shell=False, capture_output=True, text=True, timeout=5
+            )
+            if result.returncode == 0:
+                return result.stdout
+            else:
+                print(f"VLC Error (Code {result.returncode}) on {endpoint}")
+        except Exception as e:
+            print(f"Request Exception: {e}")
+        return None
+
     def handle_simple_command(self, action):
-        cmd = self.vlc_commands[action]
-        url = f"http://{cfg.sys.INTERFACE_IP}:{self.port_ctrl}/requests/status.xml?command={cmd}"
-        subprocess.run(["curl", "-s", "--user", ":test", url], shell=False, stdout=subprocess.DEVNULL)
-        return cfg.RETURN_CODE.SUCCESS
+        cmd = self.vlc_commands.get(action)
+        if cmd:
+            return self._vlc_request("status.xml", f"command={cmd}")
+        return None
 
     def change_playlist(self, target):
-        empty_url = f"http://{cfg.sys.INTERFACE_IP}:{self.port_ctrl}/requests/status.xml?command=pl_empty"
-        subprocess.run(["curl", "-s", "--user", ":test", empty_url], shell=False, stdout=subprocess.DEVNULL)
-        
-        play_url = f"http://{cfg.sys.INTERFACE_IP}:{self.port_ctrl}/requests/status.xml?command=in_play&input={target}"
-        subprocess.run(["curl", "-s", "--user", ":test", play_url], shell=False, stdout=subprocess.DEVNULL)
-        return cfg.RETURN_CODE.SUCCESS
+        self._vlc_request("status.xml", "command=pl_empty")
+        self.current_path = target
+        return self._vlc_request("status.xml", f"command=in_play&input={target}")
 
     def start_vlc(self, path="default"):
+        self.current_path = path
         if self.process and self.process.poll() is None:
             return cfg.RETURN_CODE.SUCCESS
 
@@ -98,35 +117,31 @@ class VLCControl:
         return cfg.RETURN_CODE.SUCCESS
 
     def get_remaining_seconds(self):
-        url = f"http://{cfg.sys.INTERFACE_IP}:{self.port_ctrl}/requests/status.xml"
-        current_remaining = 0
-        try:
-            result = subprocess.run(["curl", "-s", "--user", ":test", url], 
-                                   shell=False, capture_output=True, text=True)
-            if result.returncode == 0 and result.stdout:
-                root = ET.fromstring(result.stdout)
+        xml_data = self._vlc_request("status.xml")
+        if xml_data:
+            try:
+                root = ET.fromstring(xml_data)
                 curr_time = int(root.findtext('time', '0'))
                 total_length = int(root.findtext('length', '0'))
                 return max(0, total_length - curr_time)
-        except:
-            return -1
+            except Exception:
+                return -1
+        return -1
 
     def get_total_remaining_seconds(self):
         current_remaining = self.get_remaining_seconds()
-        url = f"http://{cfg.sys.INTERFACE_IP}:{self.port_ctrl}/requests/playlist.xml"
-        try:
-            result = subprocess.run(["curl", "-s", "--user", ":test", url], 
-                                   shell=False, capture_output=True, text=True)
-            if result.returncode != 0 or not result.stdout:
-                return current_remaining
+        xml_data = self._vlc_request("playlist.xml")
+        
+        if not xml_data:
+            return current_remaining
             
-            root = ET.fromstring(result.stdout)
+        try:
+            root = ET.fromstring(xml_data)
             total_after_current = 0
             found_current = False
             
             for leaf in root.iter('leaf'):
-                is_current = leaf.get('current') == 'current'
-                if is_current:
+                if leaf.get('current') == 'current':
                     found_current = True
                     continue
                 
@@ -136,22 +151,17 @@ class VLCControl:
                         total_after_current += int(duration)
                         
             return current_remaining + total_after_current
-        except:
+        except Exception:
             return current_remaining
 
     def get_current_state(self):
-        url = f"http://{cfg.sys.INTERFACE_IP}:{self.port_ctrl}/requests/status.xml"
-        try:
-            result = subprocess.run(
-                ["curl", "-s", "--user", ":test", url], 
-                shell=False, capture_output=True, text=True
-            )
-            if result.returncode == 0 and result.stdout:
-                root = ET.fromstring(result.stdout)
-                state = root.findtext('state', 'unknown')
-                return state.lower()
-        except Exception:
-            pass
+        xml_data = self._vlc_request("status.xml")
+        if xml_data:
+            try:
+                root = ET.fromstring(xml_data)
+                return root.findtext('state', 'unknown').lower()
+            except Exception:
+                pass
         return "unknown"
 
     def __del__(self):

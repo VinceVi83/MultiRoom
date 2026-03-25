@@ -8,6 +8,7 @@ from tools.utils import SimpleStore
 from plugins.music_vlc.vlc_control import VLCControl
 from plugins.music_vlc.music_monitor import MusicMonitor
 from plugins.music_vlc.playlist_manager import PlaylistManager
+import urllib.parse
 
 class VLCUserManager:
     """VLC User Manager
@@ -30,7 +31,6 @@ class VLCUserManager:
         self.user_index = user_index
         self.user_session = session
         self.vlc_instance = None
-        
         self.auto_switch_thread = None
         self.stop_event = threading.Event()
         
@@ -46,8 +46,10 @@ class VLCUserManager:
         self.max_memory = 50 
         self.smb_base = cfg.music_vlc.SMB_MOUNT_POINT
         
+        self.current_playlist_files = {}
         self.playlists = {}
         self.build_playlist_map()
+        self.cache_timer = None
 
     def interpret_vlc_command(self, context):
         if context.label == "DISCOVERY":
@@ -66,6 +68,7 @@ class VLCUserManager:
             if not self._start_vlc_if_needed(path):
                 self.vlc_instance.change_playlist(path)
             self.manage_monitor_playlist()
+            self._schedule_cache_update()
             return cfg.RETURN_CODE.SUCCESS
         return cfg.RETURN_CODE.ERR
 
@@ -75,6 +78,11 @@ class VLCUserManager:
                 self.stop_event.set()
             else:
                 self.stop_event.clear()
+                self.music_monitor
+            if context.result in "INFO":
+                self.music_monitor.force_update()
+                self.music_monitor.print_status()
+                return cfg.RETURN_CODE.SUCCESS
 
             self.vlc_instance.handle_simple_command(context.result)
             if context.result in ["NEXT", "PREVIOUS"]:
@@ -136,8 +144,41 @@ class VLCUserManager:
 
         self.current_album_name = album_name
         self.manage_monitor_playlist()
-        
+        self._schedule_cache_update()
         return cfg.RETURN_CODE.SUCCESS
+    
+    def _schedule_cache_update(self):
+        if self.cache_timer:
+            self.cache_timer.cancel()
+        
+        self.cache_timer = threading.Timer(10.0, self._update_playlist_cache)
+        self.cache_timer.start()
+
+    def _update_playlist_cache(self, path=None):
+        if not self.vlc_instance:
+            return
+
+        self.current_playlist_files = {}
+        xml_data = self.vlc_instance._vlc_request("playlist.xml")
+        
+        if xml_data:
+            try:
+                import xml.etree.ElementTree as ET
+                import urllib.parse
+                root = ET.fromstring(xml_data)
+                
+                for leaf in root.iter('leaf'):
+                    name = leaf.get('name')
+                    uri = leaf.get('uri')
+                    
+                    if name and uri:
+                        clean_path = urllib.parse.unquote(uri.replace("file://", ""))
+                        self.current_playlist_files[name] = clean_path
+                
+                self.music_monitor.playlist_cache = self.current_playlist_files
+                
+            except Exception as e:
+                print(f"Error parsing playlist XML: {e}")
 
     def is_alive(self):
         return self.vlc_instance and self.vlc_instance.process.poll() is None
@@ -147,6 +188,7 @@ class VLCUserManager:
             if not path and self.playlists:
                 path = list(self.playlists.values())[0]
             self.vlc_instance = VLCControl(self.user_index, str(path))
+            self.music_monitor.vlc_instance = self.vlc_instance
             self.music_monitor.update_status()
             return True
         return False
