@@ -1,0 +1,82 @@
+SCHEDULER:
+  TIME_EXTRACTOR:
+    model: "llama3.1:8b"
+    use_json: true
+    options:
+      temperature: 0.0
+    prompt: |
+      Extract timing data for a Cron task. 
+      Context: Today is {{current_day_name}}.
+
+      [RULES]
+      - MODE: 
+          "DELAY" (e.g., "in 15 min", "in 2 hours") -> hour/minute = duration.
+          "FIXED" (e.g., "at 3pm", "tomorrow at 10am") -> hour/minute = target time.
+          "RECURRING" (e.g., "every monday", "daily at 8am") -> hour/minute = target time.
+      - TARGET_DAY: "today", "tomorrow", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday".
+      - TIMEFRAME: "none", "1_week", "1_month".
+
+      [STRICT JSON STRUCTURE]
+      {
+        "mode": "DELAY|FIXED|RECURRING",
+        "hour": int,
+        "minute": int,
+        "target_day": "string",
+        "timeframe": "string"
+      }
+
+      Examples:
+      - "Dans 20 min" -> {"mode": "DELAY", "hour": 0, "minute": 20, "target_day": "today", "timeframe": "none"}
+      - "Demain à 7h" -> {"mode": "FIXED", "hour": 7, "minute": 0, "target_day": "tomorrow", "timeframe": "none"}
+      - "Chaque lundi à 9h" -> {"mode": "RECURRING", "hour": 9, "minute": 0, "target_day": "monday", "timeframe": "none"}
+      - "Mardi prochain à 10h" -> {"mode": "FIXED", "hour": 10, "minute": 0, "target_day": "tuesday", "timeframe": "1_week"}
+  
+  INTENT_AGENT:
+    model: "llama3.1:8b"
+    use_json: true
+    options:
+      temperature: 0.0
+      num_predict: 100
+    prompt: |
+      Task: Extract the core ACTION from the user's request.
+      
+      [RULES]
+      1. Remove ALL timing information (e.g., "dans 10 min", "à 15h", "mardi prochain", "tous les jours").
+      2. Remove polite filler words (e.g., "peux-tu", "s'il te plaît").
+      3. Keep the action concise but complete.
+      4. Return ONLY a JSON object with the key "action".
+
+      [EXAMPLES]
+      - "Rappelle-moi de sortir le pain dans 15 min" -> {"action": "Sortir le pain"}
+      - "À 20h éteins la lumière du salon" -> {"action": "Éteindre la lumière du salon"}
+      - "Tente un truc compliqué mardi prochain" -> {"action": "Tenter un truc compliqué"}
+      - "Chaque matin à 7h lance la musique Zen" -> {"action": "Lancer la musique Zen"}
+      - "Peux-tu m'envoyer un message pour nourrir le chat demain ?" -> {"action": "Nourrir le chat"}
+
+      [STRICT JSON]
+      {"action": "string"}
+
+  SYSTEM_AGENT:
+    model: "llama3.1:8b"
+    use_json: true
+    options:
+      temperature: 0.0
+    prompt: |
+      Task: Classify the action into the correct Numeric ID.
+      
+      [IDs]
+      0: TTS (Personal reminders, human actions: "Sortir le pain", "Nourrir le chat")
+      SWITCH_FEATURE
+
+      [STRICT RULES]
+      - Use ID 0 if the action is something the USER must do (vocal alert "TTS").
+      - Use IDs 1-4 if the action is something the "SYSTEM" must execute.
+      - If unsure, default to ID 0.
+
+      [EXAMPLES]
+      - "Allumer la lumière" -> {"type": "SYSTEM"}
+      - "Nourrir le chat" -> {"type": "TTS"}
+      - "Mettre de la musique" -> {"type": "SYSTEM"}
+
+      [STRICT JSON]
+      {"type": "SYSTEM|TTS"}
