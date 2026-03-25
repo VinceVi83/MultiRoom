@@ -6,6 +6,7 @@ import mutagen
 import threading
 from dataclasses import dataclass
 from config_loader import cfg
+import uuid
 
 @dataclass
 class MusicInfo:
@@ -102,8 +103,10 @@ class MusicMonitor:
         self.vlc_url = f"http://127.0.0.1:{self.port_ctrl}/requests/status.xml"
         self.metadata_handler = MusicMetadata()
         self.timer_update = None
+        self.update_status()
 
     def update_status(self):
+        self.stop_timer() 
         try:
             response = requests.get(self.vlc_url, auth=('', cfg.music_vlc.DICO_USERS_LINUX['user']), timeout=2)
             if response.status_code == 200:
@@ -111,39 +114,32 @@ class MusicMonitor:
                 
                 new_path = ""
                 for info in root.iter('info'):
-                    if info.get('name') == 'path': 
-                        new_path = info.text
-                    if info.get('name') == 'filename': 
-                        self.current_music = info.text
+                    if info.get('name') == 'path': new_path = info.text
+                    if info.get('name') == 'filename': self.current_music = info.text
 
                 self.metadata_handler.update_metadata(new_path)
                 self.full_path = new_path 
+
                 t_node = root.find('time')
                 l_node = root.find('length')
-                self.time_remaining = int(l_node.text) - int(t_node.text) if t_node is not None else 0
+                if t_node is not None and l_node is not None:
+                    self.time_remaining = int(l_node.text) - int(t_node.text)
+                else:
+                    self.time_remaining = 0
         except Exception:
-            pass
+            self.time_remaining = 0
+        self._schedule_next_auto_update()
 
     def force_update(self):
-        if self.timer_update:
-            self.timer_update.cancel()
-        self.timer_update = threading.Timer(1.5, self._do_update)
+        self.update_status()
+
+    def _schedule_next_auto_update(self):
+        wait_time = self.time_remaining + 3 if self.time_remaining > 0 else 5
+        self.timer_update = threading.Timer(wait_time, self.update_status)
         self.timer_update.daemon = True
         self.timer_update.start()
 
-    def _do_update(self):
-        self.update_status() 
-        self._schedule_next_auto_update()
-
-    def _schedule_next_auto_update(self):
+    def stop_timer(self):
         if self.timer_update:
             self.timer_update.cancel()
-        if self.time_remaining > 0:
-            wait_time = self.time_remaining + 3
-            self.timer_update = threading.Timer(wait_time, self._do_update)
-            self.timer_update.daemon = True
-            self.timer_update.start()
-
-    def stop(self):
-        if self.timer_update:
-            self.timer_update.cancel()
+            self.timer_update = None

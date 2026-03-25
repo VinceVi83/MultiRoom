@@ -42,61 +42,101 @@ class VLCUserManager:
         self.playlist_manager = PlaylistManager()
         
         self.album_cache = []
+        self.current_album_name = ""
         self.max_memory = 50 
         self.smb_base = cfg.music_vlc.SMB_MOUNT_POINT
         
         self.playlists = {}
         self.build_playlist_map()
 
-    def _get_albums(self):
-        if not self.album_cache and os.path.exists(self.smb_base):
-            self.album_cache = [f.path for f in os.scandir(self.smb_base) if f.is_dir()]
-        return self.album_cache
+    def interpret_vlc_command(self, context):
+        if context.label == "DISCOVERY":
+            return self.play_random_album()
+        elif context.label == "PLAYLIST_AGENT":
+            return self.execute_playlist(context)
+        elif context.label == "VLC_AGENT":
+            return self.execute_vlc(context)
+        return cfg.RETURN_CODE.SUCCESS
 
-    def _auto_switch_logic(self, current_album):
-        time.sleep(5)
-        if self.stop_event.is_set(): return
-
-        duration = self.get_total_playlist_duration()
-        if duration > 0:
-            interrupted = self.stop_event.wait(timeout=duration + 5)
-            
-            if not interrupted:
-                if current_album not in self.recently_played:
-                    self.recently_played.append(current_album)
-                    if len(self.recently_played) > self.max_memory:
-                        self.recently_played.pop(0)
-                    self.store.update_and_save("recently_played", self.recently_played)
-                
-                print(f"[Jukebox] Switching from finished album: {current_album}")
-                self.play_random_album()
-        else:
-            time.sleep(5)
-
-    def play_random_album(self):
-        if self.auto_switch_thread and self.auto_switch_thread.is_alive():
+    def execute_playlist(self, context):
+        command = context.result.split(":")
+        path = self.playlists.get(command[1].lower())
+        if command[0] == "PLAY" and path:
             self.stop_event.set()
+            if not self._start_vlc_if_needed(path):
+                self.vlc_instance.change_playlist(path)
+            self.manage_monitor_playlist()
+            return cfg.RETURN_CODE.SUCCESS
+        return cfg.RETURN_CODE.ERR
+
+    def execute_vlc(self, context):
+        if not self._start_vlc_if_needed():
+            if self.vlc_instance.get_current_state() == "playing":
+                self.stop_event.set()
+            else:
+                self.stop_event.clear()
+
+            self.vlc_instance.handle_simple_command(context.result)
+            if context.result in ["NEXT", "PREVIOUS"]:
+                self.music_monitor.force_update()
+                self.manage_monitor_playlist()
+            return cfg.RETURN_CODE.SUCCESS
+        return cfg.RETURN_CODE.ERR
+
+    def manage_monitor_playlist(self, delay=2):
+        self.stop_event.set()
+        if self.auto_switch_thread and self.auto_switch_thread.is_alive():
+            if threading.current_thread() != self.auto_switch_thread:
+                self.auto_switch_thread.join(timeout=3)
         
         self.stop_event.clear()
-        all_albums = self._get_albums()
-        if not all_albums: return cfg.RETURN_CODE.ERR_FILE_NOT_FOUND
-
-        available = [a for a in all_albums if a not in self.recently_played]
-        if not available: 
-            self.recently_played = []
-            available = all_albums
-
-        selection = random.choice(available)
-
-        if not self._start_vlc_if_needed(selection):
-            self.vlc_instance.change_playlist(selection)
-
         self.auto_switch_thread = threading.Thread(
             target=self._auto_switch_logic, 
-            args=(selection,), 
+            args=[delay], 
             daemon=True
         )
         self.auto_switch_thread.start()
+
+    def _auto_switch_logic(self, initial_delay):
+        if not self.vlc_instance: return
+        if self.stop_event.wait(timeout=initial_delay):
+            return
+        remaining = self.vlc_instance.get_total_remaining_seconds()
+        if remaining > 1:
+            interrupted = self.stop_event.wait(timeout=remaining - 1)
+            if interrupted:
+                return
+
+        if self.current_album_name not in self.recently_played:
+            self.recently_played.append(self.current_album_name)
+            if len(self.recently_played) > self.max_memory:
+                self.recently_played.pop(0)
+            self.store.update_and_save("recently_played", self.recently_played)
+
+        self.play_random_album()
+
+    def play_random_album(self):
+        all_albums = self._get_albums()
+        if not all_albums: return cfg.RETURN_CODE.ERR_FILE_NOT_FOUND
+
+        available = [
+            a for a in all_albums 
+            if os.path.basename(a) not in self.recently_played
+        ]
+        
+        if not available: 
+            self.recently_played = []
+            available = all_albums
+            self.store.update_and_save("recently_played", [])
+
+        selection = random.choice(available)
+        album_name = os.path.basename(selection)
+        if not self._start_vlc_if_needed(selection):
+            self.vlc_instance.change_playlist(selection)
+
+        self.current_album_name = album_name
+        self.manage_monitor_playlist()
+        
         return cfg.RETURN_CODE.SUCCESS
 
     def is_alive(self):
@@ -107,13 +147,9 @@ class VLCUserManager:
             if not path and self.playlists:
                 path = list(self.playlists.values())[0]
             self.vlc_instance = VLCControl(self.user_index, str(path))
+            self.music_monitor.update_status()
             return True
         return False
-
-    def get_total_playlist_duration(self):
-        if not self.is_alive(): return 0
-        raw_playlist = self.vlc_instance.get_playlist_info()
-        return sum(item.get('duration', 0) for item in raw_playlist if item.get('duration', 0) > 0)
 
     def build_playlist_map(self):
         base_dir = Path(cfg.music_vlc.DATA_DIR) / "Playlists"
@@ -123,25 +159,18 @@ class VLCUserManager:
                     self.playlists[Path(entry.name).stem.lower()] = entry.path
         except FileNotFoundError: pass
 
-    def interpret_vlc_command(self, context):
-        if context.label == "DISCOVER":
-            return self.play_random_album()
-
-        if context.label == "PLAYLIST_AGENT":
-            command = context.result.split(":")
-            path = self.playlists.get(command[1].lower())
-            if command[0] == "PLAY" and path:
-                self.stop_event.set()
-                if not self._start_vlc_if_needed(path):
-                    self.vlc_instance.change_playlist(path)
-                return cfg.RETURN_CODE.SUCCESS
-        
-        elif context.label == "VLC_AGENT":
-            if not self._start_vlc_if_needed():
-                self.vlc_instance.handle_simple_command(context.result)
-            return cfg.RETURN_CODE.SUCCESS
+    def _get_albums(self):
+        if not self.album_cache and os.path.exists(self.smb_base):
+            self.album_cache = [f.path for f in os.scandir(self.smb_base) if f.is_dir()]
+        return self.album_cache
 
     def stop(self):
         if self.auto_switch_thread:
-            self.stop_event.set()
-            self.auto_switch_thread.join(timeout=5)
+            self.auto_switch_thread.join(timeout=3)
+        if self.vlc_instance:
+            self.vlc_instance.kill()
+
+    def __del__(self):
+        self.stop()
+        if self.vlc_instance:
+            self.vlc_instance.kill()
