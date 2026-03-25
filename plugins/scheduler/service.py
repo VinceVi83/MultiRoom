@@ -31,7 +31,6 @@ class SchedulerService:
         
         now = datetime.now()
         if p_type == "DELAY":
-            # Utiliser .get() avec 0 par défaut pour éviter les erreurs
             minutes = int(d.get("minutes") or d.get("minute") or 0)
             hours = int(d.get("hours") or d.get("hour") or 0)
             target = now + timedelta(hours=hours, minutes=minutes)

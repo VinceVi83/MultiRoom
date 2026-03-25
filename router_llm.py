@@ -115,7 +115,6 @@ class RouterLLM:
                     response_context = self.execute_native(context)
                 elif self.test:
                     result = llm.execute(context.user_input, cfg.sys.Global.pre_process_agent)
-                    print("Experience:", result)
                     if result.get('valid', 0):
                         response_context = self.select_and_execute(context)
                     else:
