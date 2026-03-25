@@ -8,6 +8,7 @@ import os
 import threading
 import time
 from http.server import SimpleHTTPRequestHandler, HTTPServer
+import glob
 
 class HubMessenger:
     """Hub Messenger Service
@@ -15,7 +16,7 @@ class HubMessenger:
     Role: Manages secure communication with the hub server including authentication, text-to-speech (STT) and push-to-talk (PTT) file transfers via SSL/TLS.
     
     Methods:
-        __init__(self, host, port, cert_path, user='test', password='test') : Initialize the messenger with connection settings.
+        __init__(self, host='172.21.8.200', port=28888, cert_path=None, user='test', password='test') : Initialize the messenger with connection settings.
         _get_hw_sign(self) : Generate hardware signature for authentication.
         _get_secure_context(self) : Create SSL context for secure connections.
         _authenticate(self, ssock) : Authenticate with the hub server.
@@ -31,7 +32,6 @@ class HubMessenger:
         self.user = user
         self.password = password
         self.hw_signature = self._get_hw_sign()
-        print(f"Add this {self.hw_signature} in LIST_ALLOWED_SIGS in your .env")
         
         self.cert_file = self._resolve_cert_path(cert_path)
         self.key_file = self.cert_file.replace("cert.pem", "key.pem") if self.cert_file else None
@@ -49,7 +49,7 @@ class HubMessenger:
             if os.path.exists(path_from_cfg):
                 return path_from_cfg
         except ImportError:
-            print("[HubMessenger] Cannot import config_loader.")
+            pass
         except Exception as e:
             print(f"[HubMessenger] Config error: {e}")
 
@@ -59,7 +59,7 @@ class HubMessenger:
             
         return ""
 
-    def is_wsl():
+    def is_wsl(self):
         wsl_files = glob.glob("/proc/sys/fs/binfmt_misc/WSL*")
         if len(wsl_files) > 0:
             return True
@@ -73,18 +73,16 @@ class HubMessenger:
             node_name = platform.node()
             is_wsl = "microsoft" in platform.release().lower() or os.path.exists("/proc/sys/fs/binfmt_misc/WSLInterop")
 
-            if is_wsl:
+            if self.is_wsl:
                 cmd = "powershell.exe -Command \"(Get-CimInstance Win32_ComputerSystemProduct).UUID\""
                 seed = subprocess.check_output(cmd, shell=True).decode().strip()
                 if not seed: seed = node_name
-                print(f"[*] Signature: WSL Mode")
-
+            
             elif "android" in sys.platform.lower() or os.path.exists("/system/build.prop"):
                 try:
                     seed = subprocess.check_output("getprop ro.serialno", shell=True).decode().strip()
                 except:
                     seed = subprocess.check_output("getprop ro.build.id", shell=True).decode().strip()
-                print(f"[*] Signature: Android Mode")
 
             elif system == "linux":
                 if os.path.exists("/etc/machine-id"):
@@ -92,13 +90,11 @@ class HubMessenger:
                         seed = f.read().strip()
                 else:
                     seed = node_name
-                print(f"[*] Signature: Linux Mode")
-
+            
             else:
                 os_id = subprocess.check_output('wmic csproduct get uuid').decode().split('\n')[1].strip()
                 mac = ':'.join(['{:02x}'.format((uuid.getnode() >> e) & 0xff) for e in range(0, 48, 8)][::-1])
                 seed = f"{os_id}-{mac}"
-                print(f"[*] Signature: Windows Mode")
             
             sign = hashlib.sha256(seed.encode()).hexdigest()
             return sign
@@ -174,7 +170,15 @@ class HubMessenger:
 
 
     def send_stt(self, text, wait_response=False):
-        return self._send_raw("test", text, wait_response)
+        if "\n" in text:
+            return self.send_multiple_stt(text, wait_response)
+        else:
+            return self._send_raw("test", text, wait_response)
+    
+    def send_multiple_stt(self, text, wait_response=False):
+        for line in text.split():
+            result = self._send_raw("test", line, wait_response)
+        return result
 
     def send_ptt(self, file_path):
         if not os.path.exists(file_path): return False
@@ -204,3 +208,19 @@ class HubMessenger:
 
         server_thread.join()
         return True
+
+if __name__ == "__main__":
+    import sys
+
+    if len(sys.argv) < 2:
+        print("Usage: python3 hub_messenger.py \"your message here\"")
+        sys.exit(1)
+
+    text_to_send = " ".join(sys.argv[1:])
+    messenger = HubMessenger()
+    success = messenger.send_stt(text_to_send, wait_response=True)
+
+    if success:
+        print(f"[+] Message sent successfully. Response: {success}")
+    else:
+        print("[!] Send failed.")

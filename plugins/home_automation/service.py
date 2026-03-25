@@ -14,6 +14,7 @@ class HomeAutomationService:
         __init__(self) : Initialize the service with configuration and communication handlers.
         execute(self, context) : Execute home automation tasks using LLM agents to determine location and label.
         get_status(self) : Check if the service is online and return status information.
+        execute_native(self, context) : Handles complex native commands with dictionary parsing.
     """
 
     def __init__(self):
@@ -24,6 +25,18 @@ class HomeAutomationService:
 
         if not self.config:
             print(f"[!] Error: Configuration for {self.plugin_name} not found.")
+
+    def execute_native(self, context):
+        try:
+            params = {}
+            if ',' in context.label or ':' in context.label:
+                params = dict(item.split(":") for item in context.label.split(",") if ":" in item)
+                context.params = params 
+                return self.ha_service.handle_request(context)
+            
+        except Exception as e:
+            print(f"Error parsing params in service: {e}")
+            return cfg.RETURN_CODE.ERR
 
     def execute(self, context):
         location_res = llm.execute(context.user_input, cfg.sys.Global.location_agent)

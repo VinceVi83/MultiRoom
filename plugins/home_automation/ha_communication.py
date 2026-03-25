@@ -55,11 +55,9 @@ class CommunicationHA:
             if res.ok:
                 return cfg.RETURN_CODE.SUCCESS
 
-            print(f"[-] HA Error {res.status_code}: {res.text}")
             return cfg.RETURN_CODE.ERR
 
         except Exception as e:
-            print(f"[-] Connection Error: {e}")
             return cfg.RETURN_CODE.ERR_NOT_CONNECTED
 
     def smart_toggle(self, action):
@@ -97,10 +95,10 @@ class CommunicationHA:
 
         try:
             params = dict(item.split(":") for item in context.label.split(","))
-            device_type = params.get("TYPE", "").lower()
-            action = params.get("ACTION", "").upper()
+            device_type = params.get("TYPE", "")
+            action = params.get("ACTION", "")
 
-            if context.location == "ALL":
+            if context.location == "ALL" and device_type == "LIGHT":
                 if action == "ON":
                     return self.smart_toggle(action)
                 elif action == "OFF":
@@ -109,22 +107,20 @@ class CommunicationHA:
 
             target = self.devices.search(context.location, device_type)
             if not target:
-                print(f"[!] {device_type} not found at: {context.location}")
                 return cfg.RETURN_CODE.ERR_UNKNOWN_DEVICE
             if action == "OFF":
                 return target.turn_off()
             elif action == "ON":
                 return target.turn_on()
+            elif action == "TOOGLE":
+                return target.toggle()
             elif action == "NIGHT_MODE":
                 return self.devices.set_brightness_percent_all(5)
             elif action == "DAY_MODE":
                 return self.devices.set_brightness_percent_all(100)
-
-            print(f"[!] Unknown action: {action}")
             return cfg.RETURN_CODE.ERR_INVALID_ARGUMENT
 
         except Exception as e:
-            print(f"[!] Error in handle_request: {e}")
             return cfg.RETURN_CODE.ERR
 
     def get_state(self, entity_id):
@@ -133,5 +129,4 @@ class CommunicationHA:
             response.raise_for_status()
             return response.json()
         except Exception as e:
-            print(f"API Error (Get State {entity_id}): {e}")
             return None

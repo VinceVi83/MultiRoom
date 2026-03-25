@@ -37,6 +37,21 @@ class Utils:
             return ",".join([f"{k}:{v}" for k, v in result.items()])
         return str(result)
 
+    @staticmethod
+    def to_int(dico, key):
+        try:
+            val = dico.get(key)
+            return int(val) if val is not None else -1
+        except (ValueError, TypeError):
+            return -1
+    
+    @staticmethod
+    def to_str(dico, key):
+        val = dico.get(key)
+        if val is None or str(val).strip() == "":
+            return "ERROR"
+        return str(val)
+
 
 class SimpleStore:
     """Simple file-based key-value store

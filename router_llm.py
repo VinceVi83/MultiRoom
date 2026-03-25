@@ -51,13 +51,33 @@ class RouterLLM:
                     instance.plugin_name = plugin_name
 
                     self.service_registry[str(i)] = instance
-                    if self.debug:
-                        print(f"  [ID {i}] Registered: {plugin_name} ({class_name})")
+                    self.service_registry[plugin_name] = instance
                 else:
                     print(f"  [!] Class {class_name} not found in {module_path}")
 
             except Exception as e:
                 print(f"  [!] Failed to load {plugin_name}: {e}")
+
+    def execute_native(self, context):
+        parts = context.user_input.lstrip('@').split(';-;', 3)
+        
+        if len(parts) < 4:
+            print(f"[!] Native Format Error: {context.user_input}")
+            return "FORMAT_ERROR"
+
+        plugin_name = parts[0]
+        context.location = parts[1] if parts[1] else "Unknown"
+        context.label    = parts[2].upper()
+        context.result   = parts[3]
+
+        service_instance = self.service_registry.get(plugin_name)
+        
+        if service_instance and hasattr(service_instance, 'execute_native'):
+            context.return_code = service_instance.execute_native(context)
+        else:
+            context.return_code = cfg.RETURN_CODE.ERR
+
+        return context._archive_and_rename()
 
     def select_and_execute(self, context):
         start_total = time.time()
@@ -90,7 +110,10 @@ class RouterLLM:
                     break
                 last_activity = time.time()
                 response_context = {}
-                if self.test:
+                
+                if context.user_input.startswith('@'):
+                    response_context = self.execute_native(context)
+                elif self.test:
                     result = llm.execute(context.user_input, cfg.sys.Global.pre_process_agent)
                     print("Experience:", result)
                     if result.get('valid', 0):

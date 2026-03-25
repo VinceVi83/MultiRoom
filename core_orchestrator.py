@@ -6,6 +6,7 @@ import os
 import requests
 import time
 import json
+import sys
 from requests.adapters import HTTPAdapter
 from urllib3.util.ssl_ import create_urllib3_context
 from router_llm import RouterLLM
@@ -24,7 +25,7 @@ class SessionManager:
     Role: Manages user sessions and handles incoming requests.
     
     Methods:
-        __init__(self) : Initializes the session manager.
+        __init__(self, disable_whisper=True) : Initializes the session manager.
         _cleanup_inactive_sessions(self) : Cleans up inactive sessions.
         _worker_loop(self) : Processes tasks from the queue.
         _handle_direct_command(self, session, text) : Handles direct commands.
@@ -34,16 +35,19 @@ class SessionManager:
         run_server(self) : Starts the SSL-secured Hub Server.
     """
 
-    def __init__(self):
+    def __init__(self, disable_whisper=True):
         self.host = cfg.sys.INTERFACE_IP
         self.port = int(cfg.sys.HUB_PORT)
         self.allowed_sigs = cfg.sys.LIST_ALLOWED_SIGS
         self.user_count = 0
         self.active_sessions = {}
+        self.disable_whisper = disable_whisper
 
-        print("[*] Loading Whisper...")
-        self.whisper = WhisperEngine()
-        print("[*] Loading RouterLLM...")
+        if not self.disable_whisper:
+            self.whisper = WhisperEngine()
+        else:
+            self.whisper = None
+            
         self.router = RouterLLM()
         self.active_sessions["system"] = UserSession("system", self.user_count)
         self.user_count += 1
@@ -64,7 +68,6 @@ class SessionManager:
 
                 if not session.socks:
                     if now - session.last_seen > 7200:
-                        print(f"[*] Timeout 2h: killall services link to {username}")
                         session.stop_all_services()
                         to_delete.append(username)
 
@@ -91,6 +94,8 @@ class SessionManager:
             self.router.add_to_queue(context)
 
     def _handle_stt_request(self, session, url):
+        if self.disable_whisper:
+            return
         temp_file = f"/tmp/temp_{session.index}_{threading.get_ident()}.wav"
         try:
             response = requests.get(url, timeout=10, verify=False)
@@ -106,7 +111,7 @@ class SessionManager:
         except Exception as e:
             print(f"[!] STT Error: {e}")
         finally:
-            print(temp_file)
+            pass
 
     def _handle_auth(self, sock, username, password):
         stored_password = cfg.sys.DICO_USERS.get(username)
@@ -118,7 +123,6 @@ class SessionManager:
                 self.active_sessions[username] = UserSession(username, self.user_count)
                 self.active_sessions[username].socks.append(sock)
                 self.user_count += 1
-            print(f"[+] Auth Success: {username} session started.")
             return True
         return False
 
@@ -164,7 +168,6 @@ class SessionManager:
                     session.socks.remove(sock)
                     if not session.socks:
                         session.last_seen = time.time()
-                        print(f"[*] {username} detached. Session maintained in background.")
             sock.close()
 
     def run_server(self):
@@ -195,5 +198,7 @@ class SessionManager:
             server_sock.close()
 
 if __name__ == "__main__":
+    no_whisper_flag = "--no-whisper" in sys.argv
+    
     manager = SessionManager()
     manager.run_server()

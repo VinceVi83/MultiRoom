@@ -91,6 +91,7 @@ class LightEntity(BaseEntity):
         get_current_brightness(self) : Retrieves the current brightness level.
         turn_on(self) : Turns on the light with an optional brightness level.
         turn_off(self) : Turns off the light.
+        toggle(self) : Toggles the light.
         set_brightness_percent(self, percent) : Sets the brightness level of the light.
     """
     def get_state(self):
@@ -113,6 +114,9 @@ class LightEntity(BaseEntity):
         if self.get_state() == 'on':
             return self.service.call_action("light", "toggle", self.id)
         return cfg.RETURN_CODE.SUCCESS_NOTHING_TO_DO
+    
+    def toggle(self):
+        return self.service.call_action("light", "toggle", self.id)
 
     def set_brightness_percent(self, percent: int):
         data = {"brightness_pct": min(max(percent, 0), 100)}
@@ -127,9 +131,13 @@ class SwitchEntity(BaseEntity):
     Methods:
         turn_on(self) : Turns on the switch.
         turn_off(self) : Turns off the switch.
+        toggle(self) : Toggles the switch.
     """
     def turn_on(self):
         return self.service.call_action("switch", "turn_on", self.id)
         
     def turn_off(self):
         return self.service.call_action("switch", "turn_off", self.id)
+
+    def toggle(self):
+        return self.service.call_action("switch", "toggle", self.id)
