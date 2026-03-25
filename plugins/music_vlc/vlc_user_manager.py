@@ -3,8 +3,7 @@ import random
 import threading
 import time
 from pathlib import Path
-from config_loader import cfg
-from tools.utils import SimpleStore
+from tools.utils import SimpleStore, Utils
 from plugins.music_vlc.vlc_control import VLCControl
 from plugins.music_vlc.music_monitor import MusicMonitor
 from plugins.music_vlc.playlist_manager import PlaylistManager
@@ -27,29 +26,29 @@ class VLCUserManager:
         interpret_vlc_command(self, context) : Router for AI agent commands.
         stop(self) : Stop auto-switch thread and cleanup.
     """
-    def __init__(self, session, user_index):
+    def __init__(self, cfg, session, user_index):
         self.user_index = user_index
         self.user_session = session
-        self.vlc_instance = None
-        self.auto_switch_thread = None
-        self.stop_event = threading.Event()
-        
-        history_path = Path(cfg.music_vlc.DATA_DIR) / f"history_user_{user_index}.json"
+        self.cfg = cfg
+        self.smb_base = self.cfg.SMB_MOUNT_POINT
+        history_path = Path(self.cfg.DATA_DIR) / f"history_user_{user_index}.json"
         self.store = SimpleStore(history_path, default_structure={"recently_played": []})
-        self.recently_played = self.store.get("recently_played")
-        
-        self.music_monitor = MusicMonitor(user_index)
-        self.playlist_manager = PlaylistManager()
-        
-        self.album_cache = []
+        self.music_monitor = MusicMonitor(self.cfg, user_index)
+        self.base_dir_playlist = Path(self.cfg.DATA_DIR) / "Playlists"
+        self.playlist_manager = PlaylistManager(self.base_dir_playlist)
+
+        self.vlc_instance = None
         self.current_album_name = ""
-        self.max_memory = 50 
-        self.smb_base = cfg.music_vlc.SMB_MOUNT_POINT
-        
+        self.album_cache = []
+        self.recently_played = self.store.get("recently_played")
         self.current_playlist_files = {}
         self.playlists = {}
-        self.build_playlist_map()
+        self.total_duration_sec = 0
+
+        self.stop_event = threading.Event()
+        self.auto_switch_thread = None
         self.cache_timer = None
+        self.build_playlist_map()
 
     def interpret_vlc_command(self, context):
         if context.label == "DISCOVERY":
@@ -58,19 +57,39 @@ class VLCUserManager:
             return self.execute_playlist(context)
         elif context.label == "VLC_AGENT":
             return self.execute_vlc(context)
-        return cfg.RETURN_CODE.SUCCESS
+        return self.cfg.RETURN_CODE.SUCCESS
 
     def execute_playlist(self, context):
-        command = context.result.split(":")
-        path = self.playlists.get(command[1].lower())
-        if command[0] == "PLAY" and path:
+        data = dict(item.split(":") for item in context.result.split(","))
+        action = data.get("ACTION")
+        name = data.get("NAME", "").lower()
+        playlist_path = self.playlists.get(name, "default")
+        
+        if playlist_path and os.path.isdir(playlist_path):
+            # Si c'est un dossier, on dit à VLC de lire le dossier
+            # VLC supporte normalement la lecture de dossier, 
+            # mais il faut s'assurer que le chemin finit par un slash
+            target = str(playlist_path)
+        else:
+            target = playlist_path
+
+        if action == "PLAY" and playlist_path != "Unknown":
             self.stop_event.set()
-            if not self._start_vlc_if_needed(path):
-                self.vlc_instance.change_playlist(path)
+            if not self._start_vlc_if_needed(target):
+                self.vlc_instance.change_playlist(target)
             self.manage_monitor_playlist()
             self._schedule_cache_update()
-            return cfg.RETURN_CODE.SUCCESS
-        return cfg.RETURN_CODE.ERR
+            return self.cfg.RETURN_CODE.SUCCESS
+        elif action == "CREATE" and name:
+            return self.playlist_manager.create_playlist(name)
+        elif action == "ADD" and name:
+            return self.playlist_manager.add_music(name, self.music_monitor.full_path)
+        elif action == "DEL" and name:
+            return self.playlist_manager.delete_music(name, self.music_monitor.full_path)
+        elif action == "INFO" and name:
+            return self.playlist_manager.delete_music(name, self.music_monitor.full_path)
+
+        return self.cfg.RETURN_CODE.ERR
 
     def execute_vlc(self, context):
         if not self._start_vlc_if_needed():
@@ -82,14 +101,14 @@ class VLCUserManager:
             if context.result in "INFO":
                 self.music_monitor.force_update()
                 self.music_monitor.print_status()
-                return cfg.RETURN_CODE.SUCCESS
+                return self.cfg.RETURN_CODE.SUCCESS
 
             self.vlc_instance.handle_simple_command(context.result)
             if context.result in ["NEXT", "PREVIOUS"]:
                 self.music_monitor.force_update()
                 self.manage_monitor_playlist()
-            return cfg.RETURN_CODE.SUCCESS
-        return cfg.RETURN_CODE.ERR
+            return self.cfg.RETURN_CODE.SUCCESS
+        return self.cfg.RETURN_CODE.ERR
 
     def manage_monitor_playlist(self, delay=2):
         self.stop_event.set()
@@ -117,7 +136,7 @@ class VLCUserManager:
 
         if self.current_album_name not in self.recently_played:
             self.recently_played.append(self.current_album_name)
-            if len(self.recently_played) > self.max_memory:
+            if len(self.recently_played) > int(self.cfg.LEN_ALBUMS_CACHE):
                 self.recently_played.pop(0)
             self.store.update_and_save("recently_played", self.recently_played)
 
@@ -125,7 +144,7 @@ class VLCUserManager:
 
     def play_random_album(self):
         all_albums = self._get_albums()
-        if not all_albums: return cfg.RETURN_CODE.ERR_FILE_NOT_FOUND
+        if not all_albums: return self.cfg.RETURN_CODE.ERR_FILE_NOT_FOUND
 
         available = [
             a for a in all_albums 
@@ -145,7 +164,7 @@ class VLCUserManager:
         self.current_album_name = album_name
         self.manage_monitor_playlist()
         self._schedule_cache_update()
-        return cfg.RETURN_CODE.SUCCESS
+        return self.cfg.RETURN_CODE.SUCCESS
     
     def _schedule_cache_update(self):
         if self.cache_timer:
@@ -158,7 +177,10 @@ class VLCUserManager:
         if not self.vlc_instance:
             return
 
+        self.cache_timer = None
         self.current_playlist_files = {}
+        total_duration_sec = 0
+        new_cache = {}
         xml_data = self.vlc_instance._vlc_request("playlist.xml")
         
         if xml_data:
@@ -170,12 +192,18 @@ class VLCUserManager:
                 for leaf in root.iter('leaf'):
                     name = leaf.get('name')
                     uri = leaf.get('uri')
+                    duration = leaf.get('duration')
                     
                     if name and uri:
                         clean_path = urllib.parse.unquote(uri.replace("file://", ""))
-                        self.current_playlist_files[name] = clean_path
+                        new_cache[name] = clean_path
+                        if duration and duration.isdigit():
+                            total_duration_sec += int(duration)
                 
-                self.music_monitor.playlist_cache = self.current_playlist_files
+                self.current_playlist_files = new_cache
+                self.music_monitor.playlist_cache = new_cache
+                self.total_duration_sec = total_duration_sec
+                self.print_playlist_summary()
                 
             except Exception as e:
                 print(f"Error parsing playlist XML: {e}")
@@ -187,16 +215,15 @@ class VLCUserManager:
         if not self.is_alive():
             if not path and self.playlists:
                 path = list(self.playlists.values())[0]
-            self.vlc_instance = VLCControl(self.user_index, str(path))
+            self.vlc_instance = VLCControl(self.cfg, self.user_index, str(path))
             self.music_monitor.vlc_instance = self.vlc_instance
             self.music_monitor.update_status()
             return True
         return False
 
     def build_playlist_map(self):
-        base_dir = Path(cfg.music_vlc.DATA_DIR) / "Playlists"
         try:
-            with os.scandir(base_dir) as entries:
+            with os.scandir(self.base_dir_playlist) as entries:
                 for entry in entries:
                     self.playlists[Path(entry.name).stem.lower()] = entry.path
         except FileNotFoundError: pass
@@ -205,6 +232,26 @@ class VLCUserManager:
         if not self.album_cache and os.path.exists(self.smb_base):
             self.album_cache = [f.path for f in os.scandir(self.smb_base) if f.is_dir()]
         return self.album_cache
+
+    def print_playlist_summary(self):
+        duration_str = time.strftime('%H:%M:%S', time.gmtime(self.total_duration_sec))
+        
+        print("\n" + "="*60)
+        print(f"       PLAYLIST CACHE SUMMARY (VLC -> Manager)")
+        print("="*60)
+        if not self.current_playlist_files:
+            print(" /!\\ Cache is EMPTY.")
+        else:
+            print(f" Items found    : {len(self.current_playlist_files)}")
+            print(f" Total Duration : {duration_str}")
+            print("-" * 60)
+            for i, (name, path) in enumerate(self.current_playlist_files.items()):
+                if i < 5:
+                    print(f" [{i+1:02d}] {name}")
+                else:
+                    print(f" ... and {len(self.current_playlist_files) - 5} more.")
+                    break
+        print("="*60 + "\n")
 
     def stop(self):
         if self.auto_switch_thread:

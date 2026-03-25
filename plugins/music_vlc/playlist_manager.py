@@ -1,6 +1,5 @@
 import os
 from pathlib import Path
-from config_loader import cfg
 
 class PlaylistManager:
     """Music VLC Playlist Manager
@@ -14,8 +13,8 @@ class PlaylistManager:
         add_music(self, name, song_path) : Add a music track to a playlist.
         delete_music(self, name, song_path) : Remove a song from the playlist.
     """
-    def __init__(self):
-        self.base_dir = Path(cfg.music_vlc.DATA_DIR) / "Playlists"
+    def __init__(self, base_dir_playlist):
+        self.base_dir = base_dir_playlist
         self.base_dir.mkdir(parents=True, exist_ok=True)
 
     def _get_path(self, name):
@@ -23,7 +22,7 @@ class PlaylistManager:
         return self.base_dir / f"{safe_name}.m3u8"
 
     def create_playlist(self, name):
-        file_path = self._get_path(name)
+        file_path = self._get_path(name.lower())
         if file_path.exists():
             return False
         

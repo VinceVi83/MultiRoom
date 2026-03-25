@@ -5,7 +5,6 @@ import requests
 import mutagen
 import threading
 from dataclasses import dataclass
-from config_loader import cfg
 import subprocess
 from pathlib import Path
 from plugins.music_vlc.vlc_control import VLCControl
@@ -119,24 +118,28 @@ class MusicMonitor:
         _schedule_next_auto_update(self) : Schedule next automatic update.
         stop(self) : Stop the monitor and cancel any pending updates.
     """
-    def __init__(self, index, vlc=None):
+    def __init__(self, cfg, index, vlc=None):
         self.index = index
+        self.cfg = cfg
+        self.port_ctrl = int(self.cfg.VLC_PORT_START) + index
+        self.vlc_url = f"http://127.0.0.1:{self.port_ctrl}/requests/status.xml"
         self.current_music = ""
         self.full_path = ""
         self.time_remaining = 0
-        self.port_ctrl = int(cfg.music_vlc.VLC_PORT_START) + index
-        self.vlc_url = f"http://127.0.0.1:{self.port_ctrl}/requests/status.xml"
+        
         self.metadata_handler = MusicMetadata()
-        self.timer_update = None
-        self._is_updating = False
-        self.vlc_instance = None
         self.playlist_cache = {}
 
-        self.playlists = {}
-        self.build_playlist_map()
+        self.vlc_instance = vlc
+        self.timer_update = None
+        self._is_updating = False
 
     def update_status(self):
         if self._is_updating or not self.vlc_instance:
+            return
+            
+        if not getattr(self.vlc_instance, 'is_initialized', False):
+            self._schedule_next_auto_update()
             return
         self._is_updating = True
         self.stop_timer()
@@ -184,31 +187,13 @@ class MusicMonitor:
             self.timer_update = None
 
     def print_status(self):
-        """Displays the current monitor status and music metadata."""
         print("-" * 30)
         print(f"PORT VLC       : {self.port_ctrl}")
         print(f"FILE           : {self.current_music}")
         print(f"FULL PATH      : {self.full_path}")
         print(f"TIME REMAINING : {self.time_remaining}s")
         
-        # Access metadata via MusicMetadata -> MusicInfo object
         m = self.metadata_handler.data
         print(f"METADATA       : {m.title} - {m.artist} ({m.album})")
         print(f"GENRE/CIRCLE   : {m.genre} / {m.circle}")
         print("-" * 30)
-
-    def build_playlist_map(self):
-        base_dir = Path(cfg.music_vlc.DATA_DIR) / "Playlists"
-        try:
-            with os.scandir(base_dir) as entries:
-                for entry in entries:
-                    self.playlists[Path(entry.name).stem.lower()] = entry.path
-        except FileNotFoundError: pass
-
-if __name__ == "__main__":
-    
-    monitor = MusicMonitor(0)
-    VLCControl(0, str(list(monitor.playlists.values())[0]))
-    monitor.update_status()
-    monitor.print_status()
-    monitor._schedule_next_auto_update()

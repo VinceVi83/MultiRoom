@@ -17,8 +17,9 @@ class MusicVlcService:
     def __init__(self):
         self.plugin_name = "Music VLC" 
         self.cfg = cfg.music_vlc
+        self.cfg.RETURN_CODE = cfg.RETURN_CODE
         self.active_instances = {}
-        self.cfg.INTENT = ["UNKNOWN", "PLAYLIST_AGENT", "VLC_AGENT", "DISCOVERY"]
+        self.cfg.INTENT = ["UNKNOWN", "DISCOVERY", "PLAYLIST_AGENT", "VLC_AGENT", "DISCOVERY"]
         self.cfg.VLC_ACTIONS = ["UNKNOWN","TOGGLE", "PREVIOUS", "NEXT", "VOL_DOWN", "VOL_UP", "SHUFFLE", "INFO"]
         self.cfg.PLAYLIST_ACTION = ["UNKNOWN", "PLAY", "CREATE", "ADD_TO", "DELETE_TO", "INFO"]
 
@@ -47,8 +48,8 @@ class MusicVlcService:
             result = vlc_manager.interpret_vlc_command(context)
 
         if result != "NONSENSE":
-            return cfg.RETURN_CODE.SUCCESS
-        return cfg.RETURN_CODE.ERR
+            return self.cfg.RETURN_CODE.SUCCESS
+        return self.cfg.RETURN_CODE.ERR
 
     def _get_free_index(self):
         for index, instance in self.active_instances.items():
@@ -69,14 +70,14 @@ class MusicVlcService:
         
         idx = self._get_free_index()
         if idx is None:
-            return cfg.RETURN_CODE.ERR
+            return self.cfg.RETURN_CODE.ERR
         
-        user_mgr = VLCUserManager(context.session.services, idx)
+        user_mgr = VLCUserManager(self.cfg, context.session.services, idx)
         res = context.session.add_new_service(self.plugin_name, user_mgr)
         
-        if res == cfg.RETURN_CODE.SUCCESS:
+        if res == self.cfg.RETURN_CODE.SUCCESS:
             return user_mgr
-        return cfg.RETURN_CODE.ERR
+        return self.cfg.RETURN_CODE.ERR
 
     def get_status(self):
         return {"status": "online", "plugin": self.plugin_name}

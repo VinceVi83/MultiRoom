@@ -10,9 +10,9 @@ MUSIC_VLC:
       Task: Classify the music/media request into a numeric ID.
       
       IDs:
-      1: DISCOVER (General requests to start playback: 'met de la musique', 'lance un album', 'joue quelque chose')
-      2: PLAYLIST (Specific targets: artist names, playlist names, genres)
-      3: MUSIC (Information or Playback control ONLY: stop, play, pause, skip, next/suivante, previous, volume)
+      1: DISCOVER (General requests to start playback: 'met de la musique', 'joue quelque chose')
+      2: PLAYLIST (PLAYLIST options with specific target mentioned: 'Lance la playlist Touhou', 'Joue du Jazz', 'Met Maroon 5')
+      3: MUSIC (Playback control ONLY: stop, pause, next, volume. MUST NOT contain a specific artist or playlist name)
       0: NONE (Not related to media playback)
       
       STRICT RULES:
@@ -79,18 +79,3 @@ MUSIC_VLC:
       Constraint: Return a JSON object with the key "ID".
       
       Example: {"ID": "1"}
-
-  SHOP_ADD:
-    model: "llama3.1:8b"
-    use_json: true
-    options:
-      temperature: 0.0
-      num_predict: 200
-      num_ctx: 2048
-    prompt: |
-      Task: Extract only the names of the food items.
-      Example:
-      {
-        "items": ["milk", "eggs"]
-      }
-      Rule: Return ONLY JSON.

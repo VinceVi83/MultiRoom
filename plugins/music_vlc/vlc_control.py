@@ -2,7 +2,6 @@ import os
 import subprocess
 import re
 import time
-from config_loader import cfg
 from pathlib import Path
 import xml.etree.ElementTree as ET
 import shlex
@@ -25,17 +24,18 @@ class VLCControl:
         __del__(self) : Cleanup on destruction.
     """
 
-    def __init__(self, index, playlist=""):
+    def __init__(self, cfg, index, playlist=""):
+        self.index = index
+        self.cfg = cfg
+        self.port_ctrl = str(int(self.cfg.VLC_PORT_START) + index)
+        self.port_stream = str(int(self.cfg.VLC_PORT_START) + 1000 + index)
+        self.password = self.cfg.DICO_VLC_USERS.get('test', 'test')
+        self.base_url = f"http://127.0.0.1:{self.port_ctrl}/requests"
+
+        self.process = None
         self.is_initialized = False
         self.is_playing = False
-        self.process = None
-        self.index = index
-        self.port_ctrl = str(int(cfg.music_vlc.VLC_PORT_START) + index)
-        self.port_stream = str(int(cfg.music_vlc.VLC_PORT_START) + 1000 + index)
         self.current_path = playlist
-
-        self.password = cfg.music_vlc.DICO_VLC_USERS.get('test', 'test')
-        self.base_url = f"http://127.0.0.1:{self.port_ctrl}/requests"
 
         self.vlc_commands = {
             "TOGGLE": "pl_pause",
@@ -83,22 +83,22 @@ class VLCControl:
     def start_vlc(self, path="default"):
         self.current_path = path
         if self.process and self.process.poll() is None:
-            return cfg.RETURN_CODE.SUCCESS
+            return self.cfg.RETURN_CODE.SUCCESS
 
-        sout_param = f"#standard{{access=http,mux=ogg,dst={cfg.sys.INTERFACE_IP}:{self.port_stream}}}"
+        sout_param = f"#standard{{access=http,mux=ogg,dst=0.0.0.0:{self.port_stream}}}"
         args = [
             "vlc", "--loop", "--playlist-enqueue", path,
             f"--http-port={self.port_ctrl}", "--sout", sout_param,
-            "-I", "dummy", "--extraintf", "http", "--http-password", cfg.sys.DICO_USERS[cfg.sys.LIST_USERS[0]]
+            "-I", "dummy", "--extraintf", "http", "--http-password", self.password
         ]
 
         try:
             self.process = subprocess.Popen(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             self.is_initialized = True
             self.is_playing = True
-            return cfg.RETURN_CODE.SUCCESS
+            return self.cfg.RETURN_CODE.SUCCESS
         except:
-            return cfg.RETURN_CODE.ERR
+            return self.cfg.RETURN_CODE.ERR
 
     def kill_vlc(self):
         if self.process:
@@ -114,7 +114,7 @@ class VLCControl:
         self.is_initialized = False
         self.is_playing = False
         self.current_path = ""
-        return cfg.RETURN_CODE.SUCCESS
+        return self.cfg.RETURN_CODE.SUCCESS
 
     def get_remaining_seconds(self):
         xml_data = self._vlc_request("status.xml")
