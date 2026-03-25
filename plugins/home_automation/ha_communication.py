@@ -95,10 +95,10 @@ class CommunicationHA:
 
         try:
             params = dict(item.split(":") for item in context.label.split(","))
-            device_type = params.get("TYPE", "")
+            device_type = params.get("TYPE", "").lower()
             action = params.get("ACTION", "")
 
-            if context.location == "ALL" and device_type == "LIGHT":
+            if context.location == "ALL" and device_type == "light":
                 if action == "ON":
                     return self.smart_toggle(action)
                 elif action == "OFF":
