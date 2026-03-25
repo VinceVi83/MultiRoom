@@ -17,7 +17,6 @@ class SchedulerService:
     def execute(self, context):
         time_data = llm.execute(context.user_input, self.config.SCHEDULER.TIME_EXTRACTOR)
         action = llm.execute(context.user_input, self.config.SCHEDULER.INTENT_AGENT)
-        print("VNG", time_data, action)
         raw_cmd = action.get("action", context.user_input)
         tid = f"task_{int(datetime.now().timestamp())}"
         sched, run_time = self._build_schedule(time_data)
@@ -68,11 +67,6 @@ class SchedulerService:
 
     def _prepare_command(self, tid, cmd, p_type):
         mode = llm.execute(cmd, self.config.SCHEDULER.SYSTEM_AGENT)
-
-        print("VNG action :", cmd)
-        # print(f"VNG action Scheduler FINAL CRON: {sched} | DATE: {run_time.strftime('%A %d %B %Y %H:%M')}")
-        print("VNG mode :", mode.get("type", "SYSTEM"))
-
         clean = f" && crontab -l | grep -v '#ID:{tid}' | crontab -" if p_type != "RECURRING" else ""
         exe = self.handler_script if mode.get("type", "SYSTEM") == "SYSTEM" else Path(cfg.root) / cfg.sys.SCRIPT_TTS
         return f"{self.python_bin} {exe} {shlex.quote(cmd)}{clean}"
