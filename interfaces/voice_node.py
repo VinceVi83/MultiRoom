@@ -75,8 +75,6 @@ class UnifiedSpeechSystem:
                     print(f" {status} | {bar} | RMS: {int(rms):<5} | Len: {len(frames):<3}", end="\r")
 
                 if frames and self.running:
-                    print(f"\n[INFO] Sending data ({len(frames)} chunks)...")
-                    
                     if self.mode == "ptt":
                         self._handle_ptt_action(frames)
                     else:
@@ -84,7 +82,6 @@ class UnifiedSpeechSystem:
                     
                     frames, recording = [], False
                     self.pre_roll.clear()
-                    print("[*] Waiting for voice. ..")
 
         finally:
             stream.stop_stream()
@@ -92,10 +89,8 @@ class UnifiedSpeechSystem:
             self.pa.terminate()
 
     def _handle_stt_action(self, frames):
-        print(f"[*] Processing {len(frames)} frames...")
         audio_np = np.frombuffer(b"".join(frames), dtype=np.int16).astype(np.float32) / 32768.0
         text = self.whisper.transcribe(audio_np)
-        print(f"[DEBUG] Whisper transcribed: '{text}'") # <--- REGARDE CE PRINT
         if text:
             print(f"[*] Sending to Hub: {text}")
             self.messenger.send_stt(text)

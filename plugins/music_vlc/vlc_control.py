@@ -12,7 +12,7 @@ class VLCControl:
     Role: Manages VLC media player control and playlist management.
     
     Methods:
-        __init__(self, index, playlist='') : Initialize VLC control instance.
+        __init__(self, cfg, index, playlist='') : Initialize VLC control instance.
         interpret_vlc_command(self, cmd_tokens) : Interpret and execute VLC commands.
         handle_simple_command(self, action) : Handle simple VLC commands.
         change_playlist(self, target) : Change the current playlist.

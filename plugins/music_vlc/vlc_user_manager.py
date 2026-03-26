@@ -15,15 +15,20 @@ class VLCUserManager:
     Role: Manages VLC playback with Smart Shuffle Jukebox and persistent history.
     
     Methods:
-        __init__(self, session, user_index) : Initialize manager with session and user index.
-        _get_albums(self) : Cache list of directories from SMB mount.
-        _auto_switch_logic(self, current_album) : Wait for album to finish, save to history, trigger next.
-        play_random_album(self) : Pick new album, reset monitor thread, start playback.
+        __init__(self, cfg, session, user_index) : Initialize manager with session and user index.
+        interpret_vlc_command(self, context) : Router for AI agent commands.
+        execute_playlist(self, context) : Execute playlist actions.
+        execute_vlc(self, context) : Execute VLC control commands.
+        manage_monitor_playlist(self, delay=2) : Manage monitor playlist thread.
+        _auto_switch_logic(self, initial_delay) : Auto-switch album logic.
+        play_random_album(self) : Pick and play random album.
+        _schedule_cache_update(self) : Schedule cache update timer.
+        _update_playlist_cache(self, path=None) : Update playlist cache from XML.
         is_alive(self) : Check if VLC instance is running.
         _start_vlc_if_needed(self, path="") : Start VLC if not already running.
-        get_total_playlist_duration(self) : Sum of all track durations in current playlist.
         build_playlist_map(self) : Build map of playlist names to paths.
-        interpret_vlc_command(self, context) : Router for AI agent commands.
+        _get_albums(self) : Cache list of directories from SMB mount.
+        print_playlist_summary(self) : Print playlist cache summary.
         stop(self) : Stop auto-switch thread and cleanup.
     """
     def __init__(self, cfg, session, user_index):
@@ -66,9 +71,6 @@ class VLCUserManager:
         playlist_path = self.playlists.get(name, "default")
         
         if playlist_path and os.path.isdir(playlist_path):
-            # Si c'est un dossier, on dit à VLC de lire le dossier
-            # VLC supporte normalement la lecture de dossier, 
-            # mais il faut s'assurer que le chemin finit par un slash
             target = str(playlist_path)
         else:
             target = playlist_path

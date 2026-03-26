@@ -14,11 +14,6 @@ BLACKLIST = [w.strip().upper() for w in cfg.agenda.BLACKLIST_NAMES.split(",")]
 KEYWORDS = [w.strip().upper() for w in cfg.agenda.ADDR_KEYWORDS.split(",")]
 
 def create_tmp_ics(pdf_name, info):
-    """
-    1. Input: PDF filename and extracted dictionary (date, location, artist).
-    2. Format: Converts info into iCalendar format (RFC 5545).
-    3. Output: Saves a .ics file in TICKETS_DIR
-    """
     artist = info.get("artist", "Unknown")
     date_raw = info.get("date", "20260101T190000")
     date_day, date_time = date_raw[:8], (date_raw[9:13] if len(date_raw) > 8 else "1900")
@@ -60,11 +55,6 @@ def clean_pdf_text(raw_text):
     return " ".join(filtered)
 
 def extract_ticket_info(text):
-    """
-    1. Forced: Check cfg.DICO_VENUES for organizer triggers.
-    2. Filter: Skip lines containing keywords from BLACKLIST.
-    3. Extract: Regex pattern to find address/date/price.
-    """
     price_pattern = re.compile(r"\b\d+([,.]\d{2})?\s*(?:EUR|EURO|€)\b", re.IGNORECASE)
     text = price_pattern.sub("", text)
     day, month, year = "01", "01", "2026"
@@ -130,17 +120,6 @@ def extract_ticket_info(text):
     return {"date": f"{year}{month}{day}T{hour}{minute}00", "location": addr}
 
 def sync_tickets_to_calendar(verbose=False):
-    """
-    Main Logic:
-    1. Fetch: Scans for ticket.pdf files.
-    2. Link: Attempts to match tickets with existing calendar events.
-    3. Fallback: If no match is found, generates a .ics file for manual update.
-    """
-    # 1. Fetching PDFs
-    # 2. Extracting data using cfg.DICO_VENUES/LLM/REGEX
-    # 3. CREATE/UPDATE concerts.json
-    # 4. Generating ICS if needed...
-
     calendar = CalendarService()
     index = json.load(open(INDEX_FILE, "r", encoding="utf-8")) if INDEX_FILE.exists() else {}
     events = calendar.fetch_calendar_events(keyword="concert", limit=0)

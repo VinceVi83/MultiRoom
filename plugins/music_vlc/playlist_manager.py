@@ -7,7 +7,7 @@ class PlaylistManager:
     Role: Manages VLC playlist creation, adding, and removing music tracks.
     
     Methods:
-        __init__(self) : Initialize the manager with base directory from config.
+        __init__(self, base_dir_playlist) : Initialize the manager with base directory from config.
         _get_path(self, name) : Clean name and return full file path for playlist.
         create_playlist(self, name) : Create a new empty playlist with standard header.
         add_music(self, name, song_path) : Add a music track to a playlist.

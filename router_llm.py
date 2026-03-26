@@ -17,9 +17,9 @@ class RouterLLM:
         __init__(self) : Initializes the RouterLLM instance with command queue, threading, and service instances.
         add_to_queue(self, context) : Adds a TaskContext to the command queue for processing.
         _initialize_service_registry(self) : Builds the service registry from loaded plugins.
+        execute_native(self, context) : Executes native format commands on registered services.
         select_and_execute(self, context) : Detects intent via LLM and calls the appropriate service immediately.
         inference_loop(self) : Background worker processing the command queue.
-        format_result(self, result) : Transforms a dictionary into a string 'KEY:Value' or returns the raw string.
         start(self) : Starts the inference loop in a separate daemon thread.
         stop(self) : Stops the inference loop and waits for thread completion.
     """

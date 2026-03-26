@@ -27,7 +27,6 @@ class OllamaClient:
         self._lock = threading.Lock()
         try:
             self.client.list()
-            print(f"Connected to Ollama {self.base_url}")
         except Exception as e:
             print(f"Error connecting to Ollama : {e}")
 

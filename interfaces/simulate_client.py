@@ -15,7 +15,7 @@ class STTClientSimulator:
     Role: Simulates STT/PTT client behavior using HubMessenger for sending and HTTPS synchronous server.
     
     Methods:
-        __init__(self, path, mode, cert_path=None, user="test", password="test") : Initialize simulator with JSON path, mode, and optional certificate.
+        __init__(self, path, mode, host="127.0.0.1", user="test", password="test") : Initialize simulator with JSON path, mode, and optional certificate.
         load_and_verify(self) : Load JSON file and verify audio files in PTT mode.
         check_result(self, response) : Verify if Hub response is correct using TaskContext.
         display_mismatch(self, context, exp, item_idx) : Display mismatch details for failed tests.

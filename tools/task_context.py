@@ -13,12 +13,12 @@ class TaskContext:
     Role: Manages task context including user input, session, audio path, category, label, result, duration, and location.
     
     Methods:
-        clone_safe(user_input, session=None) : Creates a safe clone of the TaskContext without the session.
+        clone_safe(self) : Creates a safe clone of the TaskContext without the session.
         from_json(json_str) : Creates a TaskContext instance from a JSON string.
-        to_dict() : Transforms the object into a dictionary for JSON transmission.
-        display_report(new_audio_name="None") : Displays a report of the task context.
-        update_record(name) : Updates the record file with current task data.
-        _archive_and_rename() : Archives the audio file and renames it.
+        to_dict(self) : Transforms the object into a dictionary for JSON transmission.
+        display_report(self, new_audio_name="None") : Displays a report of the task context.
+        update_record(self, name) : Updates the record file with current task data.
+        _archive_and_rename(self) : Archives the audio file and renames it.
     """
 
     user_input: str

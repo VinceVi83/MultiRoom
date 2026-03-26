@@ -38,16 +38,16 @@ class Utils:
         return str(result)
 
     @staticmethod
-    def to_int(dico, key):
+    def to_int(data, key):
         try:
-            val = dico.get(key)
+            val = data.get(key)
             return int(val) if val is not None else -1
         except (ValueError, TypeError):
             return -1
     
     @staticmethod
-    def to_str(dico, key):
-        val = dico.get(key)
+    def to_str(data, key):
+        val = data.get(key)
         if val is None or str(val).strip() == "":
             return "ERROR"
         return str(val)
