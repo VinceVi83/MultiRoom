@@ -67,3 +67,12 @@ class UserSession:
                 del self.services[name]
             except KeyError:
                 pass
+
+    def stop_all_services(self):
+        for name, service in list(self.services.items()):
+            if hasattr(service, 'stop'):
+                service.stop()
+    
+        self.services.clear()
+        self.stop_threads.set()
+    
