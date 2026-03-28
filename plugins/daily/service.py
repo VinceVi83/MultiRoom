@@ -30,27 +30,28 @@ class DailyService:
             
             res_id = int(result_llm.get('ID', '0'))
             context.label = cfg.daily.AGENT_FEATURES[res_id]
-        except (ValueError, KeyError, Exception) as e:
-            print(f"[!] IA Intent Error: {e}")
-            return cfg.RETURN_CODE.ERR
 
-        result = "NONSENSE"
-        if context.label == "SHOP_ADD":
-            new_items = llm.execute(context.user_input, cfg.daily.DAILY_USE.EXTRACT_FOOD_AGENT)
-            result = shopping.update_shopping_list(new_items)
-        elif context.label == "SHOP_DEL":
-            result = shopping.delete_shopping_list()
-        elif context.label == "SHOP_INFO":
-            result = shopping.report_shopping_list()
-        elif context.label == "SHOP_MAIL":
-            result = shopping.mail_shopping_list()
+            result = "NONSENSE"
+            if context.label == "SHOP_ADD":
+                new_items = llm.execute(context.user_input, cfg.daily.DAILY_USE.EXTRACT_FOOD_AGENT)
+                result = shopping.update_shopping_list(new_items)
+            elif context.label == "SHOP_DEL":
+                result = shopping.delete_shopping_list()
+            elif context.label == "SHOP_INFO":
+                result = shopping.report_shopping_list()
+            elif context.label == "SHOP_MAIL":
+                result = shopping.mail_shopping_list()
 
-        context.result = Utils.format_result(result)
-        if result == "NONSENSE":
+            context.result = Utils.format_result(result)
+            if result == "NONSENSE":
+                return cfg.RETURN_CODE.ERR
+            elif type(result) is type(cfg.RETURN_CODE.SUCCESS):
+                return result
+            return cfg.RETURN_CODE.SUCCESS
+        
+        except (ValueError, Exception) as e:
+            print(f"[PLUGIN DailyService ERROR] {e}")
             return cfg.RETURN_CODE.ERR
-        elif type(result) is type(cfg.RETURN_CODE.SUCCESS):
-            return result
-        return cfg.RETURN_CODE.SUCCESS
 
     def get_status(self):
         return {"status": "online", "plugin": self.plugin_name}

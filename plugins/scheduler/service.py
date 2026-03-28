@@ -23,7 +23,8 @@ class SchedulerService:
             sched, run_time = self._build_schedule(time_data)
             full_shell_cmd = self._prepare_command(tid, raw_cmd, time_data.get("mode", "FIX"))
             return self._register_task(tid, raw_cmd, sched, full_shell_cmd, time_data.get("mode", "FIX"), run_time)
-        except Exception:
+        except Exception as e:
+            print(f"[PLUGIN SchedulerService ERROR] {e}")
             return self.cfg.RETURN_CODE.ERR
 
     def _build_schedule(self, d):

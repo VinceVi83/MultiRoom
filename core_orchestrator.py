@@ -35,7 +35,7 @@ class SessionManager:
         run_server(self) : Starts the SSL-secured Hub Server.
     """
 
-    def __init__(self, disable_whisper=True):
+    def __init__(self, disable_whisper=False):
         self.host = cfg.sys.INTERFACE_IP
         self.port = int(cfg.sys.HUB_PORT)
         self.allowed_sigs = cfg.sys.LIST_ALLOWED_SIGS
@@ -217,5 +217,5 @@ class SessionManager:
 if __name__ == "__main__":
     no_whisper_flag = "--no-whisper" in sys.argv
     
-    manager = SessionManager()
+    manager = SessionManager(no_whisper_flag)
     manager.run_server()

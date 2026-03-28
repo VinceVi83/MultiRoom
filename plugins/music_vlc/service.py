@@ -32,25 +32,25 @@ class MusicVlcService:
 
     def execute(self, context):
         try:
-            location = llm.execute(context.user_input, cfg.sys.Global.location_agent, timeout=10)
-            result = llm.execute(context.user_input, cfg.music_vlc.MUSIC_VLC.MUSIC_AGENT, timeout=10)
-
+            location = llm.execute(context.user_input, cfg.sys.Global.location_agent)
+            result = llm.execute(context.user_input, cfg.music_vlc.MUSIC_VLC.MUSIC_AGENT)
             intent_id = Utils.to_int(result, "ID")
-            context.label = self.cfg.INTENT.get(intent_id)
+            context.label = self.cfg.INTENT[intent_id]
             context.location = Utils.to_str(location, "location")
 
             if context.label == "PLAYLIST_AGENT":
-                res_pl = llm.execute(context.user_input, cfg.music_vlc.MUSIC_VLC.PLAYLIST_AGENT, timeout=10)
+                res_pl = llm.execute(context.user_input, cfg.music_vlc.MUSIC_VLC.PLAYLIST_AGENT)
                 context.result = Utils.format_result(res_pl)
                 
             elif context.label == "VLC_AGENT":
-                res_vlc = llm.execute(context.user_input, cfg.music_vlc.MUSIC_VLC.VLC_AGENT, timeout=10)
+                res_vlc = llm.execute(context.user_input, cfg.music_vlc.MUSIC_VLC.VLC_AGENT)
                 vlc_id = Utils.to_int(res_vlc, "ID")
-                context.result = self.cfg.VLC_ACTIONS.get(vlc_id)
+                context.result = self.cfg.VLC_ACTIONS[vlc_id]
 
             return self.execute_native(context)
 
-        except Exception:
+        except Exception as e:
+            print(f"[PLUGIN MusicVlcService ERROR] {e}")
             return self.cfg.RETURN_CODE.ERR
     
     def execute_native(self, context):

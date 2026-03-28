@@ -60,7 +60,7 @@ class HomeAutomationService:
                 context.result = "Failed"
             return result
         except Exception as e:
-            print(f"Error executing home automation task: {e}")
+            print(f"[PLUGIN HomeAutomationService ERROR] {e}")
             return cfg.RETURN_CODE.ERR
 
     def get_status(self):
