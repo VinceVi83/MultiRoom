@@ -22,13 +22,21 @@ class DailyService:
             print(f"[!] Error: Configuration for {self.plugin_name} not found.")
 
     def execute(self, context):
-        shopping = ShoppingService()
-        result = llm.execute(context.user_input, cfg.daily.DAILY_USE.DAILY_AGENT)
-        res = int(result.get('ID', '0'))
-        context.label = cfg.daily.AGENT_FEATURES[res]
+        try:
+            shopping = ShoppingService()
+            result_llm = llm.execute(context.user_input, cfg.daily.DAILY_USE.DAILY_AGENT)
+            if not result_llm:
+                return cfg.RETURN_CODE.ERR
+            
+            res_id = int(result_llm.get('ID', '0'))
+            context.label = cfg.daily.AGENT_FEATURES[res_id]
+        except (ValueError, KeyError, Exception) as e:
+            print(f"[!] IA Intent Error: {e}")
+            return cfg.RETURN_CODE.ERR
+
         result = "NONSENSE"
         if context.label == "SHOP_ADD":
-            new_items = llm.execute(context.user_input, cfg.daily.DAILY_USE.EXTRACT_FOOD)
+            new_items = llm.execute(context.user_input, cfg.daily.DAILY_USE.EXTRACT_FOOD_AGENT)
             result = shopping.update_shopping_list(new_items)
         elif context.label == "SHOP_DEL":
             result = shopping.delete_shopping_list()

@@ -13,6 +13,8 @@ class Utils:
     Methods:
         get_unique_path(dir_path, base_name, extension=".wav") : Generates a unique file path by appending counter suffixes if the file already exists.
         format_result(result) : Format the playlist result from LLM response.
+        to_int(data, key) : Convert value to int, return -1 on error.
+        to_str(data, key) : Convert value to str, return "ERROR" if empty.
     """
 
     @staticmethod
@@ -34,7 +36,10 @@ class Utils:
     @staticmethod
     def format_result(result):
         if isinstance(result, dict):
-            return ",".join([f"{k}:{v}" for k, v in result.items()])
+            try:
+                return ",".join([f"{k}:{v}" for k, v in result.items()])
+            except Exception:
+                return str(result)
         return str(result)
 
     @staticmethod
@@ -68,7 +73,7 @@ class SimpleStore:
     """
 
     def __init__(self, file_path, default_structure=None):
-        self.file_path = Path(file_path)
+        self.file_path = Path(file_path) if file_path else None
         self.default = default_structure if default_structure is not None else {"items": []}
         self.data = {}
         self.load()

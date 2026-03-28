@@ -97,7 +97,7 @@ class VLCControl:
             self.is_initialized = True
             self.is_playing = True
             return self.cfg.RETURN_CODE.SUCCESS
-        except:
+        except Exception:
             return self.cfg.RETURN_CODE.ERR
 
     def kill_vlc(self):
@@ -128,14 +128,13 @@ class VLCControl:
                 return -1
         return -1
 
-    def get_total_remaining_seconds(self):
-        current_remaining = self.get_remaining_seconds()
-        xml_data = self._vlc_request("playlist.xml")
-        
-        if not xml_data:
-            return current_remaining
-            
+    def get_total_remaining_seconds(self): 
         try:
+            current_remaining = self.get_remaining_seconds()
+            xml_data = self._vlc_request("playlist.xml")
+            
+            if not xml_data:
+                return current_remaining
             root = ET.fromstring(xml_data)
             total_after_current = 0
             found_current = False
@@ -146,8 +145,8 @@ class VLCControl:
                     continue
                 
                 if found_current:
-                    duration = leaf.get('duration', '0')
-                    if duration and int(duration) > 0:
+                    duration_val = leaf.get('duration')
+                    if duration:
                         total_after_current += int(duration)
                         
             return current_remaining + total_after_current

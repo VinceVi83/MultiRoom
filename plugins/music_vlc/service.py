@@ -11,6 +11,9 @@ class MusicVlcService:
     Methods:
         __init__(self) : Initialize the MusicVLC service.
         execute(self, context) : Execute the main service logic with given context.
+        execute_native(self, context) : Execute native service logic.
+        _get_free_index(self) : Get a free instance index.
+        check_user_use_service(self, context) : Check and create user service manager.
         get_status(self) : Check if the service responds and return status.
     """
 
@@ -25,30 +28,37 @@ class MusicVlcService:
 
         self.occupied_indexes = []
         if not self.cfg:
-            print(f"[!] Error: Configuration for {self.plugin_name} not found.")
+            return
 
     def execute(self, context):
-        location = llm.execute(context.user_input, cfg.sys.Global.location_agent)
-        result = llm.execute(context.user_input, cfg.music_vlc.MUSIC_VLC.MUSIC_AGENT)
-        context.label = self.cfg.INTENT[Utils.to_int(result, "ID")]
-        context.location = Utils.to_str(location, "location")
+        try:
+            location = llm.execute(context.user_input, cfg.sys.Global.location_agent, timeout=10)
+            result = llm.execute(context.user_input, cfg.music_vlc.MUSIC_VLC.MUSIC_AGENT, timeout=10)
 
-        if context.label == "PLAYLIST_AGENT":
-            result = llm.execute(context.user_input, cfg.music_vlc.MUSIC_VLC.PLAYLIST_AGENT)
-            context.result = Utils.format_result(result)
-        elif context.label == "VLC_AGENT":
-            result = llm.execute(context.user_input, cfg.music_vlc.MUSIC_VLC.VLC_AGENT)
-            context.result = self.cfg.VLC_ACTIONS[Utils.to_int(result, "ID")]
-        
-        return self.execute_native(context)
+            intent_id = Utils.to_int(result, "ID")
+            context.label = self.cfg.INTENT.get(intent_id)
+            context.location = Utils.to_str(location, "location")
+
+            if context.label == "PLAYLIST_AGENT":
+                res_pl = llm.execute(context.user_input, cfg.music_vlc.MUSIC_VLC.PLAYLIST_AGENT, timeout=10)
+                context.result = Utils.format_result(res_pl)
+                
+            elif context.label == "VLC_AGENT":
+                res_vlc = llm.execute(context.user_input, cfg.music_vlc.MUSIC_VLC.VLC_AGENT, timeout=10)
+                vlc_id = Utils.to_int(res_vlc, "ID")
+                context.result = self.cfg.VLC_ACTIONS.get(vlc_id)
+
+            return self.execute_native(context)
+
+        except Exception:
+            return self.cfg.RETURN_CODE.ERR
     
     def execute_native(self, context):
         vlc_manager = self.check_user_use_service(context)
         if isinstance(vlc_manager, VLCUserManager):
             result = vlc_manager.interpret_vlc_command(context)
-
-        if result != "NONSENSE":
-            return self.cfg.RETURN_CODE.SUCCESS
+            if result != "NONSENSE":
+                return self.cfg.RETURN_CODE.SUCCESS
         return self.cfg.RETURN_CODE.ERR
 
     def _get_free_index(self):

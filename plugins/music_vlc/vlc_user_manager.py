@@ -65,7 +65,14 @@ class VLCUserManager:
         return self.cfg.RETURN_CODE.SUCCESS
 
     def execute_playlist(self, context):
-        data = dict(item.split(":") for item in context.result.split(","))
+        if not context or not context.result:
+            return self.cfg.RETURN_CODE.ERR
+        
+        try:
+            data = dict(item.split(":") for item in context.result.split(","))
+        except (ValueError, AttributeError):
+            return self.cfg.RETURN_CODE.ERR
+        
         action = data.get("ACTION")
         name = data.get("NAME", "").lower()
         playlist_path = self.playlists.get(name, "default")
@@ -95,11 +102,11 @@ class VLCUserManager:
 
     def execute_vlc(self, context):
         if not self._start_vlc_if_needed():
-            if self.vlc_instance.get_current_state() == "playing":
+            if self.vlc_instance and self.vlc_instance.get_current_state() == "playing":
                 self.stop_event.set()
             else:
                 self.stop_event.clear()
-                self.music_monitor
+
             if context.result in "INFO":
                 self.music_monitor.force_update()
                 self.music_monitor.print_status()
@@ -146,7 +153,8 @@ class VLCUserManager:
 
     def play_random_album(self):
         all_albums = self._get_albums()
-        if not all_albums: return self.cfg.RETURN_CODE.ERR_FILE_NOT_FOUND
+        if not all_albums:
+            return self.cfg.RETURN_CODE.ERR_FILE_NOT_FOUND
 
         available = [
             a for a in all_albums 

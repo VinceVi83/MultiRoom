@@ -30,7 +30,7 @@ DAILY_USE:
       
       Example: {"ID": "1"}
 
-  EXTRACT_FOOD:
+  EXTRACT_FOOD_AGENT:
     model: "llama3.1:8b"
     use_json: true
     options:

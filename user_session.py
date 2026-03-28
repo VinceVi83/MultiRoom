@@ -1,6 +1,6 @@
 import time
 import logging
-from threading import Thread, Event
+from threading import Thread, Event, Lock
 from config_loader import cfg
 
 
@@ -27,6 +27,9 @@ class UserSession:
         self.services = {}
 
     def add_new_service(self, service_name, service):
+        if not service_name or not service:
+            return cfg.RETURN_CODE.INVALID_INPUT
+        
         new_type = type(service)
         
         if any(isinstance(s, new_type) for s in self.services.values()):
@@ -40,15 +43,27 @@ class UserSession:
         return cfg.RETURN_CODE.SUCCESS
 
     def send_to_all_socks(self, text):
+        if not self.socks:
+            return
+        
         for sock in self.socks:
-            sock.send(text.encode())
+            try:
+                sock.send(text.encode())
+            except (BrokenPipeError, ConnectionError, OSError):
+                continue
 
     def cleanup_services(self):
         to_delete = []
         for name, service in self.services.items():
             if hasattr(service, 'is_alive'):
-                if not service.is_alive():
+                try:
+                    if not service.is_alive():
+                        to_delete.append(name)
+                except Exception:
                     to_delete.append(name)
         
         for name in to_delete:
-            del self.services[name]
+            try:
+                del self.services[name]
+            except KeyError:
+                pass

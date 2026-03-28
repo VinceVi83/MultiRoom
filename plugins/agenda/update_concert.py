@@ -33,16 +33,25 @@ def create_tmp_ics(pdf_name, info):
         template_path = ROOT / template_path
 
     try:
+        if not template_path.exists():
+            print(f"Warning: ICS template not found at {template_path}")
+            return False
+        
         with open(template_path, "r", encoding="utf-8") as t:
             template_content = t.read()
         
         ics_path = TICKETS_DIR / f"tmp_{pdf_name.replace('.pdf', '')}.ics"
         with open(ics_path, "w", encoding="utf-8") as f:
             f.write(template_content.format(**params))
+        return True
     except Exception as e:
         print(f"Error reading ICS template: {e}")
+        return False
 
 def clean_pdf_text(raw_text):
+    if not raw_text:
+        return ""
+    
     price_pattern = re.compile(r"\b\d+([,.]\d{2})?\s*(?:EUR|EURO|€)\b", re.IGNORECASE)
     text_no_price = price_pattern.sub("", raw_text)
     
@@ -55,6 +64,10 @@ def clean_pdf_text(raw_text):
     return " ".join(filtered)
 
 def extract_ticket_info(text):
+    if not text:
+        current_time = datetime.now().strftime("%Y%m%dT%H%M%S")
+        return {"date": current_time, "location": None}
+    
     price_pattern = re.compile(r"\b\d+([,.]\d{2})?\s*(?:EUR|EURO|€)\b", re.IGNORECASE)
     text = price_pattern.sub("", text)
     day, month, year = "01", "01", "2026"
@@ -74,8 +87,8 @@ def extract_ticket_info(text):
     for m in re.finditer(r"\b(\d{1,2})\s+([a-zéû\.]+?)\s+(\d{2,4})\b", text, re.IGNORECASE):
         d, m_name, y = m.group(1).zfill(2), m.group(2).lower().replace('.', '')[:3], m.group(3)
         if len(y) == 2: y = "20" + y
-        if m_name in cfg.agenda.DICO_MONTHS:
-            valid_matches.append((d, cfg.agenda.DICO_MONTHS[m_name], y, m.start()))
+        if m_name in cfg.agenda.MONTH_DICT:
+            valid_matches.append((d, cfg.agenda.MONTH_DICT[m_name], y, m.start()))
 
     future_dates = []
     for d, m_val, y, pos in valid_matches:
@@ -83,7 +96,8 @@ def extract_ticket_info(text):
             dt_obj = datetime.datetime(int(y), int(m_val), int(d))
             if dt_obj.date() >= now.date():
                 future_dates.append((d, m_val, y, pos))
-        except ValueError: continue
+        except ValueError:
+            continue
 
     if future_dates:
         day, month, year, pos = future_dates[0]
@@ -99,7 +113,7 @@ def extract_ticket_info(text):
 
     for line in text.split('\n'):
         u_line = line.strip().upper()
-        for trigger, forced_addr in cfg.agenda.DICO_VENUES.items():
+        for trigger, forced_addr in cfg.agenda.VENUE_DICT.items():
             if trigger in u_line:
                 addr = forced_addr
                 break
@@ -136,7 +150,8 @@ def sync_tickets_to_calendar(verbose=False):
                 reader = PyPDF2.PdfReader(f)
                 raw_text = "".join([p.extract_text() for p in reader.pages[:2]])
                 clean_text = clean_pdf_text(raw_text)
-        except: continue
+        except Exception:
+            continue
 
         res_artist = llm.execute(clean_text, cfg.agenda.AGENDA.EXTRACT_ARTIST_AGENT)
         res_venue = llm.execute(clean_text, cfg.agenda.AGENDA.EXTRACT_VENUE_AGENT)
@@ -149,7 +164,6 @@ def sync_tickets_to_calendar(verbose=False):
         infos = extract_ticket_info(raw_text)
         if infos["location"] is None or len(infos["location"]) > 50:
             infos["location"] = ai_addr
-
 
         infos["date"] = ai_date
         if verbose:
@@ -166,18 +180,16 @@ def sync_tickets_to_calendar(verbose=False):
                 highest_score, best_match = score, title
 
         if highest_score >= 80:
-            matched_event = next(e for e in events if e["summary"] == best_match)
-            event_key = f"[{matched_event['dt'].strftime('%Y/%m/%d')}] {best_match}"
-            index[event_key] = pdf_path.name
-            
-            result["added_tickets"].append({event_key: pdf_path.name})
-            
-            if verbose: print(f"Match found: {event_key}")
+            matched_event = next((e for e in events if e["summary"] == best_match), None)
+            if matched_event:
+                event_key = f"[{matched_event['dt'].strftime('%Y/%m/%d')}] {best_match}"
+                index[event_key] = pdf_path.name
+                
+                result["added_tickets"].append({event_key: pdf_path.name})
         else:
             create_tmp_ics(pdf_path.name, {"artist": ticket_artist, "date": infos["date"], "location": infos["location"]})
             
             result["created_ics"].append(pdf_path.name)
-            if verbose: print(f"No match (score: {highest_score}). Temporary ICS created.")
 
     with open(INDEX_FILE, "w", encoding="utf-8") as f:
         json.dump(index, f, indent=4, ensure_ascii=False)

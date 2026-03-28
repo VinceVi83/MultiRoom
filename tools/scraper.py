@@ -55,6 +55,7 @@ class ScraperService:
                 "safesearch": 1
             }
             response = requests.get(cfg.SEARXNG_URL, params=params, timeout=10)
+            response.raise_for_status()
             results = response.json().get('results', [])
         except Exception as e:
             print(f"SEARCH_ERROR: {e}")

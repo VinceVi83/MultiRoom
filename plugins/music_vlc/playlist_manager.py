@@ -13,7 +13,10 @@ class PlaylistManager:
         add_music(self, name, song_path) : Add a music track to a playlist.
         delete_music(self, name, song_path) : Remove a song from the playlist.
     """
+
     def __init__(self, base_dir_playlist):
+        if base_dir_playlist is None:
+            raise ValueError("base_dir_playlist cannot be None")
         self.base_dir = base_dir_playlist
         self.base_dir.mkdir(parents=True, exist_ok=True)
 

@@ -1,4 +1,3 @@
-# logic_module.py
 import json
 from pathlib import Path
 from config_loader import cfg

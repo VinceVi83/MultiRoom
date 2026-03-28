@@ -50,20 +50,29 @@ class CommunicationHA:
         if data:
             payload.update(data)
         try:
-            res = requests.post(endpoint, headers=self.headers, json=payload)
+            res = requests.post(endpoint, headers=self.headers, json=payload, timeout=10)
 
             if res.ok:
                 return cfg.RETURN_CODE.SUCCESS
 
             return cfg.RETURN_CODE.ERR
 
-        except Exception as e:
+        except requests.exceptions.Timeout:
             return cfg.RETURN_CODE.ERR_NOT_CONNECTED
+        except requests.exceptions.ConnectionError:
+            return cfg.RETURN_CODE.ERR_NOT_CONNECTED
+        except Exception:
+            return cfg.RETURN_CODE.ERR
 
     def smart_toggle(self, action):
         my_entity_ids = [l.id for l in self.devices.lights]
-        response = requests.get(f"{self.url}/states", headers=self.headers)
-        all_states = response.json()
+        try:
+            response = requests.get(f"{self.url}/states", headers=self.headers, timeout=10)
+            response.raise_for_status()
+            all_states = response.json()
+        except Exception:
+            return cfg.RETURN_CODE.ERR_NOT_CONNECTED
+
         lights_on = []
         lights_off = []
 
@@ -120,13 +129,13 @@ class CommunicationHA:
                 return self.devices.set_brightness_percent_all(100)
             return cfg.RETURN_CODE.ERR_INVALID_ARGUMENT
 
-        except Exception as e:
+        except Exception:
             return cfg.RETURN_CODE.ERR
 
     def get_state(self, entity_id):
         try:
-            response = requests.get(f"{self.url}/states/{entity_id}", headers=self.headers)
+            response = requests.get(f"{self.url}/states/{entity_id}", headers=self.headers, timeout=10)
             response.raise_for_status()
             return response.json()
-        except Exception as e:
+        except Exception:
             return None

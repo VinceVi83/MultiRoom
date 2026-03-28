@@ -1,5 +1,5 @@
 SCHEDULER:
-  TIME_EXTRACTOR:
+  TIME_EXTRACTOR_AGENT:
     model: "llama3.1:8b"
     use_json: true
     options:

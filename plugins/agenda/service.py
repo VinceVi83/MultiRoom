@@ -22,27 +22,38 @@ class AgendaService:
             print(f"[!] Error: Configuration for {self.plugin_name} not found.")
 
     def execute(self, context):
-        calendar = CalendarService()
-        result = llm.execute(context.user_input, cfg.agenda.AGENDA.CALENDAR_AGENT)
-        res = int(result.get('ID', '0'))
-        context.label = cfg.agenda.AGENT_FEATURES[res]
+        try:
+            if context is None:
+                return cfg.RETURN_CODE.ERR
+            
+            calendar = CalendarService()
+            result = llm.execute(context.user_input, cfg.agenda.AGENDA.CALENDAR_AGENT)
+            
+            if result is None:
+                return cfg.RETURN_CODE.ERR
+                
+            res = int(result.get('ID', '0'))
+            context.label = cfg.agenda.AGENT_FEATURES[res]
 
-        result = "NONSENSE"
-        if context.label == "NEXT_RDV":
-            result = calendar.fetch_calendar_events(limit=1)
-        elif context.label == "NEXT_CONCERT":
-            result = calendar.get_next_concert_data()
-        elif context.label == "CURRENT_WEEK":
-            result = calendar.get_week_events(0)
-        elif context.label == "NEXT_WEEK":
-            result = calendar.get_week_events(1)
-        elif context.label == "MAIL_NEXT_CONCERT":
-            result = calendar.mail_me_next_concert()
+            result = "NONSENSE"
+            if context.label == "NEXT_RDV":
+                result = calendar.fetch_calendar_events(limit=1)
+            elif context.label == "NEXT_CONCERT":
+                result = calendar.get_next_concert_data()
+            elif context.label == "CURRENT_WEEK":
+                result = calendar.get_week_events(0)
+            elif context.label == "NEXT_WEEK":
+                result = calendar.get_week_events(1)
+            elif context.label == "MAIL_NEXT_CONCERT":
+                result = calendar.mail_me_next_concert()
 
-        context.result = Utils.format_result(result)
-        if result in ["NONSENSE"]:
+            context.result = Utils.format_result(result)
+            if result in ["NONSENSE"]:
+                return cfg.RETURN_CODE.ERR
+            return cfg.RETURN_CODE.SUCCESS
+        except Exception as e:
+            print(f"[PLUGIN AGENDA ERROR] {e}")
             return cfg.RETURN_CODE.ERR
-        return cfg.RETURN_CODE.SUCCESS
 
     def get_status(self):
         print("OK")

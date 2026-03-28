@@ -9,7 +9,7 @@ from tools.task_context import TaskContext
 from tools.utils import Utils
 
 class RouterLLM:
-    """AI Router module that orchestrates intent detection, interactive web research, and service dispatching.
+    """RouterLLM
     
     Role: Manages LLM routing, plugin registration, and command queue processing.
     
@@ -73,7 +73,11 @@ class RouterLLM:
         service_instance = self.service_registry.get(plugin_name)
         
         if service_instance and hasattr(service_instance, 'execute_native'):
-            context.return_code = service_instance.execute_native(context)
+            try:
+                context.return_code = service_instance.execute_native(context)
+            except Exception as e:
+                print(f"[!] Service {plugin_name} execute_native failed: {e}")
+                context.return_code = cfg.RETURN_CODE.ERR
         else:
             context.return_code = cfg.RETURN_CODE.ERR
 
@@ -82,17 +86,25 @@ class RouterLLM:
     def select_and_execute(self, context):
         start_total = time.time()
 
-        category_res = llm.execute(context.user_input, cfg.sys.Global.router_agent)
-        choice = str(category_res.get('ID', '0'))
-        if choice != '0' and choice.isdigit():
-            context.category = cfg.LOADED_PLUGINS[int(choice)-1].upper()
+        try:
+            category_res = llm.execute(context.user_input, cfg.sys.Global.router_agent)
+            choice = str(category_res.get('ID', '0'))
+            if choice != '0' and choice.isdigit():
+                context.category = cfg.LOADED_PLUGINS[int(choice)-1].upper()
 
-            service_instance = self.service_registry.get(choice)
-            if service_instance and hasattr(service_instance, 'execute'):
-                return_code = service_instance.execute(context)
-                context.return_code = Utils.format_result(return_code)
-        else:
-            print("NONSENSE")
+                service_instance = self.service_registry.get(choice)
+                if service_instance and hasattr(service_instance, 'execute'):
+                    try:
+                        return_code = service_instance.execute(context)
+                        context.return_code = Utils.format_result(return_code)
+                    except Exception as e:
+                        print(f"[!] Service {choice} execute failed: {e}")
+                        context.return_code = cfg.RETURN_CODE.ERR
+            else:
+                print("NONSENSE")
+        except Exception as e:
+            print(f"[!] LLM execution failed: {e}")
+            context.return_code = cfg.RETURN_CODE.ERR
 
         context.duration_llm = time.time() - start_total
         context.duration = time.time() - context.start
@@ -151,7 +163,6 @@ class RouterLLM:
 
     def stop(self):
         self.is_running = False
-        self.thread.join()
-
-if __name__ == "__main__":
-    engine = RouterLLM()
+        self.command_queue.put(None) 
+        if hasattr(self, 'thread') and self.thread.is_alive():
+            self.thread.join(timeout=5.0)

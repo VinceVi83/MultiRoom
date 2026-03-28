@@ -9,9 +9,10 @@ import threading
 import time
 from http.server import SimpleHTTPRequestHandler, HTTPServer
 import glob
+import sys
 
 class HubMessenger:
-    """Hub Messenger Service
+    """Hub Messenger Service Plugin
     
     Role: Manages secure communication with the hub server including authentication, text-to-speech (STT) and push-to-talk (PTT) file transfers via SSL/TLS.
     
@@ -38,6 +39,7 @@ class HubMessenger:
         
         self.ssl_context = self._get_secure_context()
         self._ssock = None
+        self._server_thread = None
 
     def _resolve_cert_path(self, cert_path):
         if cert_path and os.path.exists(cert_path):
@@ -48,11 +50,10 @@ class HubMessenger:
             path_from_cfg = os.path.join(cfg.DATA_DIR, "Certification", "cert.pem")
             if os.path.exists(path_from_cfg):
                 return path_from_cfg
-        except ImportError:
-            pass
-        except Exception as e:
+        except (ImportError, AttributeError, Exception) as e:
             print(f"[HubMessenger] Config error: {e}")
-
+            pass
+        
         local_fallback = os.path.join("Certification", "cert.pem")
         if os.path.exists(local_fallback):
             return local_fallback
@@ -210,8 +211,6 @@ class HubMessenger:
         return True
 
 if __name__ == "__main__":
-    import sys
-
     if len(sys.argv) < 2:
         print("Usage: python3 hub_messenger.py \"your message here\"")
         sys.exit(1)

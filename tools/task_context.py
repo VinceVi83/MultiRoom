@@ -110,7 +110,6 @@ class TaskContext:
                 shutil.move(self.audio_path, dest_path)
                 self.audio_path = str(dest_path)
                 self.update_record(new_name)
-                print("Recorded")
 
             return self.clone_safe()
 

@@ -25,16 +25,20 @@ class UnifiedSpeechSystem:
         self.temp_wav = "temp_voice.wav"
         self.pre_roll = deque(maxlen=40)
         
-        self.messenger = HubMessenger(
+        try:
+            self.messenger = HubMessenger(
             cert_path=cert_path, 
             user=user, 
             password=password
-        )
-        
-        if self.mode == "stt":
-            self.whisper = WhisperEngine()
+            )
 
-        self.pa = pyaudio.PyAudio()
+            self.messenger = HubMessenger(cert_path=cert_path, user=user, password=password)
+            if self.mode == "stt":
+                self.whisper = WhisperEngine()
+            self.pa = pyaudio.PyAudio()
+        except Exception as e:
+            print(f"[CRITICAL] System initialization failed: {e}")
+            raise
 
     def start(self):
         stream = self.pa.open(format=pyaudio.paInt16, channels=1, rate=16000, 
@@ -48,7 +52,13 @@ class UnifiedSpeechSystem:
                 frames, recording, silent_chunks = [], False, 0
                 
                 while self.running:
-                    data = stream.read(1024, exception_on_overflow=False)
+                    try:
+                        data = stream.read(1024, exception_on_overflow=False)
+                    except Exception as e:
+                        print(f"[WARN] Audio glitch: {e}")
+                        time.sleep(0.1)
+                        continue
+                    
                     rms = np.sqrt(np.mean(np.frombuffer(data, dtype=np.int16).astype(np.float64)**2))
                     
                     if rms > 500 and not recording:
@@ -89,11 +99,14 @@ class UnifiedSpeechSystem:
             self.pa.terminate()
 
     def _handle_stt_action(self, frames):
-        audio_np = np.frombuffer(b"".join(frames), dtype=np.int16).astype(np.float32) / 32768.0
-        text = self.whisper.transcribe(audio_np)
-        if text:
-            print(f"[*] Sending to Hub: {text}")
-            self.messenger.send_stt(text)
+        try:
+            audio_np = np.frombuffer(b"".join(frames), dtype=np.int16).astype(np.float32) / 32768.0
+            text = self.whisper.transcribe(audio_np)
+            if text:
+                print(f"[*] Sending to Hub: {text}")
+                self.messenger.send_stt(text)
+        except Exception as e:
+            print(f"[ERROR] STT processing failed: {e}")
 
     def _handle_ptt_action(self, frames):
         with wave.open(self.temp_wav, 'wb') as wf:
@@ -112,8 +125,11 @@ if __name__ == "__main__":
     
     signal.signal(signal.SIGINT, lambda sig, frame: node.stop())
     try:
-        node = UnifiedSpeechSystem(mode=args.mode, cert_path=args.cert)
+        node = UnifiedSpeechSystem(mode=args.mode, cert_path=args.cert, user=args.user, password=args.password)
         node.start()
     except KeyboardInterrupt:
-        print("\nSystem stopped.")
+        if node: node.stop()
         sys.exit(0)
+    except Exception as e:
+        print(f"[FATAL] Node crashed: {e}")
+        sys.exit(1)

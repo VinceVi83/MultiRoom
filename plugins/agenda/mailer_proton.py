@@ -48,6 +48,7 @@ class MailerProton:
                 msg.attach(part)
             except Exception as e:
                 if debug: print(f"Attachment Error: {e}")
+                return False
 
         try:
             context = ssl.create_default_context()
@@ -65,6 +66,15 @@ class MailerProton:
 
             return True
 
+        except smtplib.SMTPAuthenticationError as e:
+            print(f"SMTP Authentication Error: {e}")
+            return False
+        except smtplib.SMTPConnectError as e:
+            print(f"SMTP Connection Error: {e}")
+            return False
+        except smtplib.SMTPException as e:
+            print(f"SMTP Exception: {e}")
+            return False
         except Exception as e:
             print(f"SMTP Error: {e}")
             return False

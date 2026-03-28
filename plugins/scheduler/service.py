@@ -15,13 +15,16 @@ class SchedulerService:
         self._ensure_db()
 
     def execute(self, context):
-        time_data = llm.execute(context.user_input, self.config.SCHEDULER.TIME_EXTRACTOR)
-        action = llm.execute(context.user_input, self.config.SCHEDULER.INTENT_AGENT)
-        raw_cmd = action.get("action", context.user_input)
-        tid = f"task_{int(datetime.now().timestamp())}"
-        sched, run_time = self._build_schedule(time_data)
-        full_shell_cmd = self._prepare_command(tid, raw_cmd, time_data.get("mode", "FIX"))
-        return self._register_task(tid, raw_cmd, sched, full_shell_cmd, time_data.get("mode", "FIX"), run_time)
+        try:
+            time_data = llm.execute(context.user_input, self.config.SCHEDULER.TIME_EXTRACTOR_AGENT)
+            action = llm.execute(context.user_input, self.config.SCHEDULER.INTENT_AGENT)
+            raw_cmd = action.get("action", context.user_input)
+            tid = f"task_{int(datetime.now().timestamp())}"
+            sched, run_time = self._build_schedule(time_data)
+            full_shell_cmd = self._prepare_command(tid, raw_cmd, time_data.get("mode", "FIX"))
+            return self._register_task(tid, raw_cmd, sched, full_shell_cmd, time_data.get("mode", "FIX"), run_time)
+        except Exception:
+            return self.cfg.RETURN_CODE.ERR
 
     def _build_schedule(self, d):
         p_type = d.get("mode", "FIX").upper()

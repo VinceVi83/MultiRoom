@@ -43,7 +43,7 @@ class HAListener:
     async def start(self):
         while True:
             try:
-                async with websockets.connect(self.uri) as ws:
+                async with websockets.connect(self.uri, ping_interval=20, ping_timeout=10) as ws:
                     if await self._auth(ws):
                         await self._sub(ws)
                         while True:
@@ -56,10 +56,14 @@ class HAListener:
                 await asyncio.sleep(5)
 
     async def _auth(self, ws):
-        await ws.recv() 
-        await ws.send(json.dumps({"type": "auth", "access_token": self.token}))
-        res = json.loads(await ws.recv())
-        return res.get("type") == "auth_ok"
+        try:
+            await ws.recv() 
+            await ws.send(json.dumps({"type": "auth", "access_token": self.token}))
+            res = json.loads(await asyncio.wait_for(ws.recv(), timeout=10))
+            return res.get("type") == "auth_ok"
+        except (asyncio.TimeoutError, websockets.exceptions.ConnectionClosed, Exception) as e:
+            print(f"Auth error: {e}")
+            return False
 
     async def _sub(self, ws):
         await ws.send(json.dumps({"id": 1, "type": "subscribe_events"}))
@@ -96,6 +100,9 @@ class HAListener:
             self.pending_clicks.pop(eid, None)
         except asyncio.CancelledError:
             pass
+        except Exception as e:
+            print(f"Error in delayed trigger for {eid}: {e}")
+            self.pending_clicks.pop(eid, None)
 
     def trigger(self, eid, name, action, command):
         print(f"EXECUTION: [{name}] -> Action: {action} -> Command: {command}")
@@ -118,3 +125,5 @@ if __name__ == "__main__":
         asyncio.run(HAListener().start())
     except KeyboardInterrupt:
         print("\nStopping the listener.")
+    except Exception as e:
+        print(f"Fatal error: {e}")

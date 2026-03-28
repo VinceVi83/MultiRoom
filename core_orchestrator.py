@@ -54,25 +54,28 @@ class SessionManager:
 
         self.task_queue = queue.Queue()
         threading.Thread(target=self._worker_loop, daemon=True).start()
-        threading.Thread(target=self._cleanup_inactive_sessions, daemon=True).start()
+        threading.Thread(target=self._cleanup_loop, daemon=True).start()
 
-    def _cleanup_inactive_sessions(self):
+    def _cleanup_loop(self):
         while True:
+            try:
+                self._do_session_cleanup()
+            except Exception as e:
+                print(f"[!] Cleanup loop encountered a critical error: {e}")
             time.sleep(300)
-            now = time.time()
-            to_delete = []
 
-            for username, session in list(self.active_sessions.items()):
-                if username == "system":
-                    continue
+    def _do_session_cleanup(self):
+        now = time.time()
+        for username, session in list(self.active_sessions.items()):
+            if username == "system" or session.socks:
+                continue
 
-                if not session.socks:
-                    if now - session.last_seen > 7200:
-                        session.stop_all_services()
-                        to_delete.append(username)
-
-            for username in to_delete:
-                del self.active_sessions[username]
+            if now - session.last_seen > 7200:
+                try:
+                    session.stop_all_services()
+                    self.active_sessions.pop(username, None)
+                except Exception as e:
+                    print(f"[!] Error cleaning session for {username}: {e}")
 
     def _worker_loop(self):
         while True:
@@ -111,7 +114,8 @@ class SessionManager:
         except Exception as e:
             print(f"[!] STT Error: {e}")
         finally:
-            pass
+            if os.path.exists(temp_file):
+                os.unlink(temp_file)
 
     def _handle_auth(self, sock, username, password):
         stored_password = cfg.sys.DICO_USERS.get(username)
@@ -127,6 +131,7 @@ class SessionManager:
         return False
 
     def handle_client(self, sock):
+        sock.settimeout(7200.0)
         try:
             while True:
                 raw_data = sock.recv(4096)
@@ -165,10 +170,16 @@ class SessionManager:
                 if username == "system":
                     continue
                 if sock in session.socks:
-                    session.socks.remove(sock)
+                    try:
+                        session.socks.remove(sock)
+                    except (ValueError, AttributeError):
+                        pass
                     if not session.socks:
                         session.last_seen = time.time()
-            sock.close()
+            try:
+                sock.close()
+            except:
+                pass
 
     def run_server(self):
         """Starts the SSL-secured Hub Server"""
@@ -190,12 +201,18 @@ class SessionManager:
                 try:
                     conn = context.wrap_socket(newsock, server_side=True)
                     threading.Thread(target=self.handle_client, args=(conn,), daemon=True).start()
-                except ssl.SSLError as e:
-                    print(f"[!] SSL Handshake failed: {e}")
+                except (ssl.SSLError, socket.error) as e:
+                    print(f"[!] Connection failed (SSL/Socket): {e}")
+                except Exception as e:
+                    print(f"[!] Unexpected error in accept loop: {e}")
         except KeyboardInterrupt:
             print("[*] Server shutting down...")
         finally:
-            server_sock.close()
+            try:
+                self.router.stop()
+                server_sock.close()
+            except Exception as e:
+                print(f"[!] Close Error: {e}")
 
 if __name__ == "__main__":
     no_whisper_flag = "--no-whisper" in sys.argv

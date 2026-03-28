@@ -48,21 +48,27 @@ class CalendarService:
 
         if self.index_path.exists():
             checks["json_file"] = True
+        else:
+            print(f"[WARN] File not found: {self.index_path}")
         try:
             r = requests.head(cfg.agenda.LINK_CALENDAR, timeout=5)
             if r.status_code == 200:
                 checks["ical_url"] = True
-        except:
-            pass
+        except requests.RequestException as e:
+            print(f"[!] Calendar check failed (Network): {e}")
         return checks
 
     def is_healthy(self):
         return all(self.status.values()), "All systems GO" if all(self.status.values()) else f"Issues detected: {', '.join([k for k, v in self.status.items() if not v])}"
 
     def _get_calendar_events(self):
-        response = requests.get(cfg.agenda.LINK_CALENDAR, timeout=10)
-        response.raise_for_status()
-        calendar = vobject.readOne(response.text)
+        try:
+            response = requests.get(cfg.agenda.LINK_CALENDAR, timeout=10)
+            response.raise_for_status()
+            calendar = vobject.readOne(response.text)
+        except (requests.RequestException, Exception) as e:
+             print(f"[!] Network error: Unable to fetch calendar: {e}")
+             return []
 
         events = []
         vevent_list = getattr(calendar, 'vevent_list', [])

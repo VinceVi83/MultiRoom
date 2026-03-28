@@ -34,6 +34,7 @@ class MusicMetadata:
     Methods:
         __init__(self) : Initialize the metadata handler.
         update_metadata(self, song_path) : Update metadata for a given song path.
+        print_status(self) : Print current metadata status.
     """
 
     METADATA_MAP = {
@@ -64,7 +65,8 @@ class MusicMetadata:
 
         try:
             audio = mutagen.File(local_path)
-            if not audio: return
+            if not audio:
+                return
 
             for attr, tags in self.METADATA_MAP.items():
                 for tag in tags:
@@ -83,8 +85,6 @@ class MusicMetadata:
             logging.error(f"Metadata error: {e}")
 
     def print_status(self):
-        """Displays the current monitor status and extracted metadata."""
-        # Get the metadata data object
         m = self.metadata_handler.data
         
         print("\n" + "="*50)
@@ -116,7 +116,7 @@ class MusicMonitor:
         force_update(self) : Trigger an update following a manual action.
         _do_update(self) : Perform the actual update operation.
         _schedule_next_auto_update(self) : Schedule next automatic update.
-        stop(self) : Stop the monitor and cancel any pending updates.
+        stop_timer(self) : Stop the monitor and cancel any pending updates.
     """
     def __init__(self, cfg, index, vlc=None):
         self.index = index
@@ -133,6 +133,7 @@ class MusicMonitor:
         self.vlc_instance = vlc
         self.timer_update = None
         self._is_updating = False
+        self._lock = threading.Lock()
 
     def update_status(self):
         if self._is_updating or not self.vlc_instance:

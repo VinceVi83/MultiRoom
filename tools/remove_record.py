@@ -15,6 +15,9 @@ def main():
     except json.JSONDecodeError:
         print(f"Error: Failed to decode JSON from '{file_path}'.")
         return
+    except Exception as e:
+        print(f"Error: Unexpected error reading file: {e}")
+        return
 
     to_remove = []
     index = 0
@@ -50,10 +53,10 @@ def main():
                 index -= 1
         elif user_input == 'r':
             if item in to_remove:
-                to_remove.remove(item)
+                to_remove.discard(item)
                 index += 1
             else:
-                to_remove.append(item)
+                to_remove.add(item)
                 index += 1
         elif user_input == 'q':
             break

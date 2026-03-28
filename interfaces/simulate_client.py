@@ -39,7 +39,11 @@ class STTClientSimulator:
             "failed_ids": []
         }
         
-        self.load_and_verify()
+        try:
+            self.load_and_verify()
+        except Exception as e:
+            print(f"Failed to initialize simulator: {e}")
+            sys.exit(1)
 
     def load_and_verify(self):
         if not self.json_path.exists():
@@ -102,8 +106,13 @@ class STTClientSimulator:
             audio_path = self.json_path.parent / entry.get('audio_path')
             self.messenger.send_ptt(str(audio_path))
         else:
-            response = self.messenger.send_stt(entry['Command'], wait_response=True)
-            self.check_result(response)
+            try:
+                response = self.messenger.send_stt(entry['Command'], wait_response=True)
+                self.check_result(response)
+            except Exception as e:
+                print(f"   [!] STT send failed: {e}")
+                self.stats["errors"] += 1
+                self.stats["failed_ids"].append(self.current_idx)
 
     def show_final_summary(self):
         sep = "=" * 40
@@ -125,17 +134,23 @@ class STTClientSimulator:
 
     def interactive_mode(self):
         while True:
-            choice = input(f"ID [{self.current_idx}/{len(self.records)-1}] (n=next / q=quit / ID) > ").strip().lower()
+            prompt = f"ID [{self.current_idx}/{len(self.records)-1}] (n=next / q=quit / ID) > "
+            choice = input(prompt).strip().lower()
             if choice == 'q': break
-            elif choice == 'n' or choice == '':
+            if choice in ('n', ''):
                 if self.current_idx < len(self.records):
                     self.send_to_hub(self.records[self.current_idx])
                     self.current_idx += 1
-            else:
-                try:
-                    self.current_idx = int(choice)
+                continue
+            if choice.isdigit():
+                idx = int(choice)
+                if 0 <= idx < len(self.records):
+                    self.current_idx = idx
                     self.send_to_hub(self.records[self.current_idx])
-                except: pass
+                else:
+                    print(f"   [!] Out of range: {idx}")
+            else:
+                print("   [!] Invalid input (use 'n', 'q', or a numeric ID)")
 
     def auto_mode(self):
         for i, entry in enumerate(self.records):

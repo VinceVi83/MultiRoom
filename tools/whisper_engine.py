@@ -38,7 +38,7 @@ class WhisperEngine:
     def __init__(self):
         if WHISPER_MODE == "GPU":
             self.model = WhisperModel("medium", device="cuda", compute_type="float16")
-        elif WHISPER_MODE == "CPU":
+        else:
             self.model = WhisperModel("medium", device="cpu", compute_type="int8", cpu_threads=4, num_workers=1)
 
         self.vad_params = dict(threshold=0.35, min_speech_duration_ms=250)

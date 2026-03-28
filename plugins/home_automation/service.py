@@ -29,7 +29,7 @@ class HomeAutomationService:
     def execute_native(self, context):
         try:
             params = {}
-            if ',' in context.label or ':' in context.label:
+            if context.label and (',' in context.label or ':' in context.label):
                 params = dict(item.split(":") for item in context.label.split(",") if ":" in item)
                 context.params = params 
                 return self.ha_service.handle_request(context)
@@ -39,24 +39,29 @@ class HomeAutomationService:
             return cfg.RETURN_CODE.ERR
 
     def execute(self, context):
-        location_res = llm.execute(context.user_input, cfg.sys.Global.location_agent)
-        result = llm.execute(context.user_input, cfg.home_automation.DOMOTIC_HA.DOMOTIC_AGENT)
-        context.label = Utils.format_result(result)
-        context.location = location_res.get('location', 'NONSENSE')
+        try:
+            location_res = llm.execute(context.user_input, cfg.sys.Global.location_agent)
+            result = llm.execute(context.user_input, cfg.home_automation.DOMOTIC_HA.DOMOTIC_AGENT)
+            
+            context.label = Utils.format_result(result)
+            context.location = location_res.get('location', 'NONSENSE') if location_res else 'NONSENSE'
 
-        if "WEATHER" in context.label:
-            result = self.meteo.fetch_current_status()
-            if isinstance(result, WeatherStatus):
-                context.result = result.display()
-                return cfg.RETURN_CODE.SUCCESS
-        else:
-            result = self.ha_service.handle_request(context)
+            if "WEATHER" in context.label:
+                result = self.meteo.fetch_current_status()
+                if isinstance(result, WeatherStatus):
+                    context.result = result.display()
+                    return cfg.RETURN_CODE.SUCCESS
+            else:
+                result = self.ha_service.handle_request(context)
 
-        if result == cfg.RETURN_CODE.SUCCESS:
-            context.result = "Executed"
-        else:
-            context.result = "Failed"
-        return result
+            if result == cfg.RETURN_CODE.SUCCESS:
+                context.result = "Executed"
+            else:
+                context.result = "Failed"
+            return result
+        except Exception as e:
+            print(f"Error executing home automation task: {e}")
+            return cfg.RETURN_CODE.ERR
 
     def get_status(self):
         return {"status": "online", "plugin": self.plugin_name}

@@ -1,64 +1,85 @@
 import os
-import re
+import sys
+import shutil
+import argparse
 from pathlib import Path
-
-OLD_ENV = ".env"
-NEW_ENV = ".env_example"
-PROJECT_DIR = "."
+from dotenv import dotenv_values
 
 def get_env_vars(filepath):
-    """Parses an environment file into a dictionary of keys and values."""
-    vars_dict = {}
-    if not os.path.exists(filepath):
-        return vars_dict
-    with open(filepath, 'r', encoding='utf-8') as f:
-        for line in f:
-            line = line.strip()
-            if line and not line.startswith("#"):
-                if "=" in line:
-                    key, val = line.split("=", 1)
-                    vars_dict[key.strip()] = val.strip()
-    return vars_dict
+    if not filepath or not os.path.exists(filepath):
+        return {}
+    return dotenv_values(filepath)
 
-def scan_code_for_cfg_calls(directory):
-    """Scans Python files for references to cfg.VARIABLE."""
-    found_calls = set()
-    blacklist = {"S", "NAME", "VARIABLE_NAME", "YOUR_VARIABLE"}
+def append_missing_vars(target_file, missing_vars_dict, mode_label):
+    if not missing_vars_dict:
+        return
 
-    regex = r"cfg\.([A-Z0-9_]+)"
+    with open(target_file, 'a', encoding='utf-8') as f:
+        f.write(f"\n\n# --- MIGRATION: {mode_label} ---\n")
+        for key, value in missing_vars_dict.items():
+            val_str = value if value is not None else ""
+            f.write(f"{key}={val_str}\n")
+            print(f"   [+] Added: {key}")
 
-    for root, _, files in os.walk(directory):
-        for file in files:
-            if file.endswith(".py"):
-                with open(os.path.join(root, file), 'r', errors='ignore') as f:
-                    matches = re.findall(regex, f.read())
-                    for m in matches:
-                        if m not in blacklist and len(m) > 1:
-                            found_calls.add(m)
-    return found_calls
+def migrate_pair(source_path, target_path, mode_label):
+    if not source_path.exists():
+        return
 
-def run_migration_check():
-    """Performs an audit to compare old/new env files against actual code usage."""
-    print("=== CONFIGURATION MIGRATION AUDIT ===\n")
+    if not target_path.exists():
+        print(f"[*] Created: {target_path}")
+        shutil.copy(source_path, target_path)
+        return
 
-    old_vars = get_env_vars(OLD_ENV)
-    new_vars = get_env_vars(NEW_ENV)
-    code_needs = scan_code_for_cfg_calls(PROJECT_DIR)
+    print(f"[*] Comparing: {source_path.name} -> {target_path.name}")
+    source_vars = get_env_vars(source_path)
+    target_vars = get_env_vars(target_path)
 
-    missing_in_new = [v for v in old_vars if v not in new_vars]
-    if missing_in_new:
-        print(f"DELETED/MISSING VARIABLES (absent from the new .env):")
-        for v in missing_in_new:
-            usage = " [!] STILL USED IN CODE" if v in code_needs else ""
-            print(f"   - {v}{usage}")
+    to_transfer = {k: v for k, v in source_vars.items() if k not in target_vars}
+
+    if to_transfer:
+        print(f"   -> {len(to_transfer)} new variables found.")
+        append_missing_vars(target_path, to_transfer, mode_label)
     else:
-        print("No variables were forgotten in the new file.")
+        print("   -> OK (Already up to date).")
 
-    added_in_new = [v for v in new_vars if v not in old_vars]
-    if added_in_new:
-        print(f"\nNEWLY ADDED VARIABLES:")
-        for v in added_in_new:
-            print(f"   - {v}")
+def run_migration(reverse=False):
+    ROOT = Path(__file__).resolve().parent.parent 
+    DATA_DIR = Path.home() / "Documents" / "ALISU_DATA"
+    
+    mode_label = "REVERSE (Data -> Template)" if reverse else "NORMAL (Template -> Data)"
+
+    print(f"=== ALISU MIGRATION: {mode_label} ===")
+
+    if reverse:
+        migrate_pair(DATA_DIR / ".env", ROOT / ".env_template", mode_label)
+    else:
+        src = ROOT / ".env_template" if (ROOT / ".env_template").exists() else ROOT / ".env"
+        migrate_pair(src, DATA_DIR / ".env", mode_label)
+
+    src_plugins_dir = (DATA_DIR / "plugins") if reverse else (ROOT / "plugins")
+    
+    if src_plugins_dir.exists():
+        for folder in src_plugins_dir.iterdir():
+            if not folder.is_dir() or folder.name.startswith("__"):
+                continue
+            
+            plugin_name = folder.name
+            
+            if reverse:
+                src_env = folder / ".env"
+                dst_env = ROOT / "plugins" / plugin_name / ".env_template"
+            else:
+                src_env = folder / ".env_template" if (folder / ".env_template").exists() else folder / ".env"
+                dst_dir = DATA_DIR / "plugins" / plugin_name
+                dst_dir.mkdir(parents=True, exist_ok=True)
+                dst_env = dst_dir / ".env"
+
+            migrate_pair(src_env, dst_env, mode_label)
+
+    print("\n[END] Migration completed.")
 
 if __name__ == "__main__":
-    run_migration_check()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--reverse", action="store_true")
+    args = parser.parse_args()
+    run_migration(reverse=args.reverse)

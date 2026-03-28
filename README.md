@@ -205,8 +205,9 @@ The system's bridge to your logic.
     * *Current state:* System already records `.wav` and `.json` logs. A "Replay" system exists to compare **Expected vs Obtained** results.
 	* *Goal:* Clean up and stabilize the benchmark code to ensure consistent response times and prevent logic regressions.
 - [ ] **Auto Test**: Automated testing suite for core services and orchestrator logic.
-- [ ] **Rolling Buffer**: Audio stream optimization (RAM-based).
-- [ ] **Playlists & Alarms**: Music queue management and scheduled musical alarms.
+- [*] **Rolling Buffer**: Audio stream optimization (RAM-based).
+- [-] **Playlists & Alarms**: Music queue management and scheduled musical alarms.
+    * *Current state:* Schedule alarm possible but too complex get an expected result, because it need better prompting and phrasing...
 - [ ] **Local TTS Integration**: Implementing **VoiceSpeak** (or similar CLI-based TTS) for voice feedback.
 - [ ] **Edge Hardware**: Integration of Raspberry Pi nodes as satellite microphones/speakers.
 - [ ] **Synchronize-Latency Multiroom**: Integrate real-time audio synchronization for multiple VLC clients on the same stream without offset or drift (**Already tested a working solution**).

@@ -5,6 +5,7 @@ import requests
 import time
 from config_loader import cfg
 from types import SimpleNamespace
+import threading
 
 
 class OllamaClient:
@@ -25,12 +26,42 @@ class OllamaClient:
         self.main_model = cfg.sys.MODEL_NAME_MAIN
         self.current_model = None
         self._lock = threading.Lock()
+        
+        self.is_ready = True
+        self.retry_count = 0
+        self.max_delay = 3600
+        
+        self._check_connection()
+
+    def _check_connection(self):
         try:
             self.client.list()
-        except Exception as e:
-            print(f"Error connecting to Ollama : {e}")
+            self.is_ready = True
+            self.retry_count = 0
+        except:
+            self.is_ready = False
+            self._start_reconnect_thread()
+
+    def _start_reconnect_thread(self):
+        thread = threading.Thread(target=self._reconnect_loop, daemon=True)
+        thread.start()
+
+    def _reconnect_loop(self):
+        while not self.is_ready:
+            self.retry_count += 1
+            delay = min(self.retry_count ** 2, self.max_delay)
+            time.sleep(delay)
+            try:
+                self.client.list()
+                self.is_ready = True
+                self.retry_count = 0
+            except:
+                pass
 
     def execute(self, user_input, agent_cfg=None, debug=False, verbose=False):
+        if not self.is_ready:
+            return {"error": "Ollama is offline", "status": "reconnecting"}
+
         with self._lock:
             self.manage_vram(agent_cfg.model)
             agent_cfg_final = agent_cfg
@@ -68,11 +99,12 @@ class OllamaClient:
                 return result
 
             except Exception as e:
-                return {"error": f"LLM execution failed: {e}"}
+                self.is_ready = False
+                self._start_reconnect_thread()
+                return {'ID': '0', 'error': str(e)}
 
     def manage_vram(self, target_model):
         if self.current_model and self.current_model != target_model:
-            print("Discharge current model")
             try:
                 requests.post(
                     f"{self.base_url}/api/generate",
