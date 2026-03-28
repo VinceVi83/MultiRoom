@@ -174,11 +174,11 @@ class HubMessenger:
         if "\n" in text:
             return self.send_multiple_stt(text, wait_response)
         else:
-            return self._send_raw("test", text, wait_response)
+            return self._send_raw(self.user, text, wait_response)
     
     def send_multiple_stt(self, text, wait_response=False):
         for line in text.split():
-            result = self._send_raw("test", line, wait_response)
+            result = self._send_raw(self.user, line, wait_response)
         return result
 
     def send_ptt(self, file_path):
