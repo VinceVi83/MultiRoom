@@ -40,11 +40,11 @@ class HomeAutomationService:
 
     def execute(self, context):
         try:
-            location_res = llm.execute(context.user_input, cfg.sys.Global.location_agent)
             result = llm.execute(context.user_input, cfg.home_automation.DOMOTIC_HA.DOMOTIC_AGENT)
             
-            context.label = Utils.format_result(result)
-            context.location = location_res.get('location', 'NONSENSE') if location_res else 'NONSENSE'
+            action, dtype = res.get('ACTION', 'NONE'), res.get('TYPE', 'NONE')
+            context.label = f"{dtype}:{action}"
+            context.add_step('sub_category', res)
 
             if "WEATHER" in context.label:
                 result = self.meteo.fetch_current_status()

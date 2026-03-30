@@ -26,9 +26,17 @@ class HAListener:
         self.pending_clicks = {}
         self._load_mapping()
 
+        user = "system"
+        pwd = ""
+        for i in cfg.sys.LIST_USERS:
+            if i == "system" and i in cfg.sys.DICO_USERS.keys():
+                pwd = cfg.sys.DICO_USERS[user]
+
         self.messenger = HubMessenger(
             host=getattr(cfg.home_automation, 'HUB_HOST', "172.21.8.200"),
-            port=getattr(cfg.home_automation, 'HUB_PORT', 28888)
+            port=getattr(cfg.home_automation, 'HUB_PORT', 28888),
+            user=user,
+            password=pwd
         )
 
     def _load_mapping(self):

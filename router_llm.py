@@ -83,25 +83,35 @@ class RouterLLM:
 
         return context._archive_and_rename()
 
+    def get_location(self, context):
+        local_res = llm.execute(context.user_input, cfg.sys.ALL_PURPOSE.LOCATION_CLEANER_AGENT, verbose=False, debug=False)
+        if local_res.get('cleaned_command') != 'none':
+            context.location = local_res.get('location')
+            context.user_input = local_res.get('cleaned_command')
+        context.add_step('LOCATION_CLEANER_AGENT', local_res)
+        return True
+
     def select_and_execute(self, context):
         start_total = time.time()
 
         try:
-            category_res = llm.execute(context.user_input, cfg.sys.Global.router_agent)
-            choice = str(category_res.get('ID', '0'))
-            if choice != '0' and choice.isdigit():
-                context.category = cfg.LOADED_PLUGINS[int(choice)-1].upper()
+            category_res = llm.execute(context.user_input, cfg.sys.ALL_PURPOSE.ROUTER_AGENT)
+            self.get_location(context)
+            context.add_step('ROUTER_AGENT', route_res)
+            context.category = route_res.get('PLUGIN', 'NONE')
+            if context.category == 'NONE' and not context.category in cfg.LOADED_PLUGINS:
+                print('Result: NONSENSE / No route found')
+                return context._archive_and_rename()
+            
+            service_instance = self.service_registry.get(context.category)
+            if service_instance and hasattr(service_instance, 'execute'):
+                try:
+                    return_code = service_instance.execute(context)
+                    context.return_code = Utils.format_result(return_code)
+                except Exception as e:
+                    print(f"[!] Service {choice} execute failed: {e}")
+                    context.return_code = cfg.RETURN_CODE.ERR
 
-                service_instance = self.service_registry.get(choice)
-                if service_instance and hasattr(service_instance, 'execute'):
-                    try:
-                        return_code = service_instance.execute(context)
-                        context.return_code = Utils.format_result(return_code)
-                    except Exception as e:
-                        print(f"[!] Service {choice} execute failed: {e}")
-                        context.return_code = cfg.RETURN_CODE.ERR
-            else:
-                print("NONSENSE")
         except Exception as e:
             print(f"[!] LLM execution failed: {e}")
             context.return_code = cfg.RETURN_CODE.ERR
@@ -111,7 +121,7 @@ class RouterLLM:
         return context._archive_and_rename()
 
     def inference_loop(self):
-        llm.execute("Be ready", cfg.sys.Global.router_agent)
+        llm.execute("Be ready", cfg.sys.ALL_PURPOSE.ROUTER_AGENT)
         last_activity = time.time()
         keep_alive_threshold = 240
 
@@ -126,7 +136,7 @@ class RouterLLM:
                 if context.user_input.startswith('@'):
                     response_context = self.execute_native(context)
                 elif self.test:
-                    result = llm.execute(context.user_input, cfg.sys.Global.pre_process_agent)
+                    result = llm.execute(context.user_input, cfg.sys.ALL_PURPOSE.pre_process_agent)
                     if result.get('valid', 0):
                         response_context = self.select_and_execute(context)
                     else:
@@ -148,7 +158,7 @@ class RouterLLM:
             except queue.Empty:
                 if time.time() - last_activity >= keep_alive_threshold:
                     try:
-                        self.llm.execute("Be ready", cfg.sys.Global.router_agent)
+                        self.llm.execute("Be ready", cfg.sys.ALL_PURPOSE.ROUTER_AGENT)
                     except:
                         pass
                     last_activity = time.time()

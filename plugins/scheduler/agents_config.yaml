@@ -1,6 +1,6 @@
 SCHEDULER:
   TIME_EXTRACTOR_AGENT:
-    model: "llama3.1:8b"
+    model: "qwen2.5:3b"
     use_json: true
     options:
       temperature: 0.0
@@ -32,7 +32,7 @@ SCHEDULER:
       - "Mardi prochain à 10h" -> {"mode": "FIXED", "hour": 10, "minute": 0, "target_day": "tuesday", "timeframe": "1_week"}
   
   INTENT_AGENT:
-    model: "llama3.1:8b"
+    model: "qwen2.5:3b"
     use_json: true
     options:
       temperature: 0.0
@@ -57,7 +57,7 @@ SCHEDULER:
       {"action": "string"}
 
   SYSTEM_AGENT:
-    model: "llama3.1:8b"
+    model: "qwen2.5:3b"
     use_json: true
     options:
       temperature: 0.0

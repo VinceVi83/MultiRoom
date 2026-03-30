@@ -22,7 +22,7 @@ class MusicVlcService:
         self.cfg = cfg.music_vlc
         self.cfg.RETURN_CODE = cfg.RETURN_CODE
         self.active_instances = {}
-        self.cfg.INTENT = ["UNKNOWN", "DISCOVERY", "PLAYLIST_AGENT", "VLC_AGENT", "DISCOVERY"]
+        self.cfg.INTENT = ["UNKNOWN", "PLAYLIST_AGENT", "DISCOVERY", "VLC_AGENT", "DISCOVERY"]
         self.cfg.VLC_ACTIONS = ["UNKNOWN","TOGGLE", "PREVIOUS", "NEXT", "VOL_DOWN", "VOL_UP", "SHUFFLE", "INFO"]
         self.cfg.PLAYLIST_ACTION = ["UNKNOWN", "PLAY", "CREATE", "ADD_TO", "DELETE_TO", "INFO"]
 
@@ -31,28 +31,38 @@ class MusicVlcService:
             return
 
     def execute(self, context):
+        bypass_map = {
+            'PLAYLIST': ['playlist'],
+            'MUSIC': ['vlc', 'augmente', 'monte', 'baisse', 'diminue', 'moins', 'plus', 'précédent', 'suivant', 'après', 'remets']
+        }
+
+        matched = next((k for k, v in bypass_map.items() if any(w in context.user_input.lower() for w in v)), None)
+
+        if matched:
+            context.label = matched
+            context.add_step('sub_category', {'label': matched, 'bypass': 1})
+        else:
+            try:
+                res = llm.execute(context.user_input, cfg.music_vlc.MUSIC_VLC.MUSIC_AGENT)
+                context.label = res.get('CATEGORY', 'NONE')
+                context.add_step('sub_category', res)
+            except Exception as e:
+                print(f"[PLUGIN MusicVlcService MUSIC_AGENT ERROR] {e}")
+                return self.cfg.RETURN_CODE.ERR
+
         try:
-            location = llm.execute(context.user_input, cfg.sys.Global.location_agent)
-            result = llm.execute(context.user_input, cfg.music_vlc.MUSIC_VLC.MUSIC_AGENT)
-            intent_id = Utils.to_int(result, "ID")
-            context.label = self.cfg.INTENT[intent_id]
-            context.location = Utils.to_str(location, "location")
-
-            if context.label == "PLAYLIST_AGENT":
-                res_pl = llm.execute(context.user_input, cfg.music_vlc.MUSIC_VLC.PLAYLIST_AGENT)
-                context.result = Utils.format_result(res_pl)
-                
-            elif context.label == "VLC_AGENT":
-                res_vlc = llm.execute(context.user_input, cfg.music_vlc.MUSIC_VLC.VLC_AGENT)
-                vlc_id = Utils.to_int(res_vlc, "ID")
-                context.result = self.cfg.VLC_ACTIONS[vlc_id]
-
-            return self.execute_native(context)
-
+            if context.label == 'PLAYLIST':
+                res = llm.execute(context.user_input, cfg.music_vlc.MUSIC_VLC.PLAYLIST_AGENT)
+            elif context.label == 'MUSIC':
+                res = llm.execute(context.user_input, cfg.music_vlc.MUSIC_VLC.VLC_AGENT)
         except Exception as e:
-            print(f"[PLUGIN MusicVlcService ERROR] {e}")
-            return self.cfg.RETURN_CODE.ERR
-    
+                print(f"[PLUGIN MusicVlcService MUSIC_AGENT 2 ERROR] {e}")
+                return self.cfg.RETURN_CODE.ERR
+
+        action = res.get('ACTION', 'ERR')
+        context.add_step('Result', res)
+        return self.execute_native(context)
+
     def execute_native(self, context):
         vlc_manager = self.check_user_use_service(context)
         if isinstance(vlc_manager, VLCUserManager):

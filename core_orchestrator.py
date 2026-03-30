@@ -25,7 +25,7 @@ class SessionManager:
     Role: Manages user sessions and handles incoming requests.
     
     Methods:
-        __init__(self, disable_whisper=True) : Initializes the session manager.
+        __init__(self, disable_whisper=False) : Initializes the session manager.
         _cleanup_inactive_sessions(self) : Cleans up inactive sessions.
         _worker_loop(self) : Processes tasks from the queue.
         _handle_direct_command(self, session, text) : Handles direct commands.
@@ -92,7 +92,6 @@ class SessionManager:
 
     def _handle_direct_command(self, session, text):
         if text:
-            print(f"[*] Transcription [{session.username}]: {text}")
             context = TaskContext(user_input=text, session=session)
             self.router.add_to_queue(context)
 
@@ -108,7 +107,6 @@ class SessionManager:
 
                 text = self.whisper.transcribe(temp_file)
                 if text:
-                    print(f"[*] Transcription [{session.username}]: {text}")
                     context = TaskContext(user_input=text, session=session, audio_path=temp_file)
                     self.router.add_to_queue(context)
         except Exception as e:
@@ -182,7 +180,6 @@ class SessionManager:
                 pass
 
     def run_server(self):
-        """Starts the SSL-secured Hub Server"""
         context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         dir_cert = Path(cfg.DATA_DIR) / "Certification"
         context.load_cert_chain(certfile=dir_cert/"cert.pem", keyfile=dir_cert/"key.pem")
@@ -193,7 +190,6 @@ class SessionManager:
         server_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         server_sock.bind((self.host, self.port))
         server_sock.listen(10)
-        print(f"[*] Hub Server active on {self.host}:{self.port} (SSL Secure)")
 
         try:
             while True:

@@ -1,27 +1,30 @@
 AGENDA:
   CALENDAR_AGENT:
-    model: "llama3.1:8b"
+    model: "qwen2.5:3b"
     use_json: true
     options:
       temperature: 0.0
       num_predict: 20
       num_ctx: 2048
     prompt: |
-      Task: Classify the CALENDAR request into a numeric ID.
-      
-      IDs:
-      1: NEXT_RDV (Next generic appointment)
-      2: NEXT_CONCERT (Next concert event)
-      3: CURRENT_WEEK (Schedule for the current week)
-      4: NEXT_WEEK (Schedule for the next week)
-      5: MAIL_NEXT_CONCERT (Send next concert details by email)
-      0: NONE (Not a valid calendar request)
-      
-      STRICT RULES:
-      1. Return a JSON object with the key "ID".
-      2. Be extremely literal. Do not guess.
-      
-      Example: {"ID": "1"}
+      prompt: |
+      Task: Classify the CALENDAR request. Output ONLY JSON: {"ACTION": "ACTION_NAME"}.
+
+      [ACTIONS & TRIGGERS]
+      - NEXT_RDV: Asking for the next general appointment (e.g., "Prochain rdv", "C'est quand mon rendez-vous ?").
+      - NEXT_CONCERT: Asking specifically for the next CONCERT (e.g., "Prochain concert").
+      - CURRENT_WEEK: Schedule for THIS week (e.g., "Cette semaine", "Mon planning de la semaine").
+      - NEXT_WEEK: Schedule for NEXT week (e.g., "La semaine prochaine").
+      - MAIL_NEXT_CONCERT: Request to SEND or EMAIL concert details (e.g., "Envoie-moi mon prochain concert").
+      - NONE: Jokes, greetings, or unrelated tasks.
+
+      [STRICT RULES]
+      1. If the user mentions "SEND" or "EMAIL" -> Use MAIL_NEXT_CONCERT.
+      2. If the user says "NEXT WEEK" (semaine prochaine) -> Use NEXT_WEEK.
+      3. Otherwise, if it's just about "THIS WEEK" -> Use CURRENT_WEEK.
+      4. No specific date or event? -> NONE.
+
+      Example: {"ACTION": "NEXT_RDV"}
 
   CALENDAR_REPORTER:
     use_json: false
@@ -51,7 +54,7 @@ AGENDA:
       Constraint: The response must be ready to be read by a text-to-speech system.
 
   EXTRACT_ARTIST_AGENT:
-    model: "llama3.1:8b"
+    model: "qwen2.5:3b"
     use_json: true
     options:
       temperature: 0.0
@@ -60,7 +63,7 @@ AGENDA:
       Respond with JSON format: {"artist": "NAME"}
   
   EXTRACT_VENUE_AGENT:
-    model: "llama3.1:8b"
+    model: "qwen2.5:3b"
     use_json: true
     options:
       temperature: 0.0
@@ -69,7 +72,7 @@ AGENDA:
       Respond with JSON format: {"location": "VENUE, CITY"}
 
   EXTRACT_DATE_AGENT:
-    model: "llama3.1:8b"
+    model: "qwen2.5:3b"
     use_json: true
     options:
       temperature: 0.0

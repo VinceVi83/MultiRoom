@@ -1,37 +1,50 @@
 DAILY_USE:
   DAILY_AGENT:
-    model: "llama3.1:8b"
+    model: "qwen2.5:3b"
     use_json: true
     options:
       temperature: 0.0
       num_predict: 20
       num_ctx: 2048
     prompt: |
-      Task: Classify the user intent into a numeric ID.
-      
-      [SECTION GROCERY]
-      1: SHOP_ADD (Add items to list)
-      2: SHOP_DEL (Clear entire list)
-      3: SHOP_INFO -> User wants to SEE the list ONLY on the screen (No email).
-      4: SHOP_MAIL -> User wants to receive the shopping list via email or is ready to go shopping.
-      
-      [SECTION FRIDGE]
-      5: FRIDGE_ADD (Put food in)
-      6: FRIDGE_REM (Take food out / finished)
-      7: FRIDGE_INFO -> User wants to SEE the list ONLY on the screen (No email).
-      8: FRIDGE_MAIL -> User explicitly wants to RECEIVE the list via email.
-      
-      [SECTION REJECTION]
-      0: NONE (Nonsense, joke, sys chat, or unrelated)
-      
-      STRICT RULES:
-      1. Return a JSON object with the key "ID".
-      2. Be extremely literal. Do not guess.
-      
-      Example: {"ID": "1"}
+      Role: Inventory Classifier. Output ONLY JSON: {"ACTION": "STR"}.
+
+      [GROCERY CATEGORIES]
+      - SHOP_ADD: Use ONLY if a SPECIFIC item/food is named (e.g., "Need bread", "Buy milk").
+      - SHOP_INFO: Use if asking for the CONTENT or what to buy (e.g., "What's on it?", "What do I need?").
+      - SHOP_MAIL: Use to SEND, EMAIL, or EXPORT (e.g., "Send me the list", "Going shopping").
+      - SHOP_DEL: Clear/Delete the entire list.
+      - NONE (Nonsense, joke, sys chat, or unrelated)
+
+      [RULES]
+      1. Specific items mentioned? -> SHOP_ADD.
+      2. Request to send/receive/email? -> SHOP_MAIL.
+      3. Nonsense/General chat? -> NONE.
+
+  FRIDGE_AGENT:
+    model: "qwen2.5:3b"
+    use_json: true
+    options:
+      temperature: 0.0
+      num_predict: 20
+      num_ctx: 2048
+    prompt: |
+      Role: Inventory Classifier. Output ONLY JSON: {"ACTION": "STR"}.
+
+      [FRIDGE]
+      - FRIDGE_ADD: Putting food IN (e.g., "I put eggs in the fridge").
+      - FRIDGE_REM: Taking food OUT/Finished (e.g., "No more butter", "Finish milk").
+      - FRIDGE_INFO: Asking what is INSIDE (e.g., "What's in the fridge?").
+      - FRIDGE_MAIL: Explicitly ask for fridge inventory via EMAIL.
+      - NONE (Nonsense, joke, sys chat, or unrelated)
+
+      [RULES]
+      1. Naming specific items to buy/need? -> SHOP_ADD.
+      2. Request to Send/Email? -> FRIDGE_MAIL.
+      3. Nonsense/General chat? -> NONE.
 
   EXTRACT_FOOD_AGENT:
-    model: "llama3.1:8b"
+    model: "qwen2.5:3b"
     use_json: true
     options:
       temperature: 0.0

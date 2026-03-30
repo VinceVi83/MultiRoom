@@ -124,7 +124,9 @@ class AlisuConfig:
         for i, name in enumerate(self.cfg.LOADED_PLUGINS, start=1):
             plugin_obj = getattr(self.cfg, name)
             description = getattr(plugin_obj, "DESCRIPTION", "No description provided")
-            all_lines += f"{i}: {name.upper()} ({description})\n"
+            if description == "No description provided":
+                continue
+            all_lines += f"{name.upper()} ({description})\n"
         
         all_lines += "0: NONE (Nonsense, philosophy, or no clear action)"
         
@@ -183,6 +185,12 @@ class AlisuConfig:
                 val = v
             elif k.startswith("LIST") or k == "AGENT_FEATURES":
                 val = [i.strip() for i in v.split(',')]
+            elif k.startswith("DICO_LIST"):
+                val = {}
+                for entry in v.split(';'):
+                    if ':' in entry:
+                        key, values_part = entry.split(':', 1)
+                        val[key.strip()] = [i.strip() for i in values_part.split(',')]
             elif k.startswith("DICO"):
                 val = {i.split(':')[0].strip(): i.split(':')[1].strip() for i in v.split(',') if ':' in i}
             

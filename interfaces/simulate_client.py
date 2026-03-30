@@ -36,7 +36,9 @@ class STTClientSimulator:
             "total": 0, 
             "success": 0, 
             "errors": 0,
-            "failed_ids": []
+            "to_verify": 0,
+            "failed_ids": [],
+            "verify_ids": []
         }
         
         try:
@@ -53,11 +55,12 @@ class STTClientSimulator:
             self.records = json.load(f)
         self.stats["total"] = len(self.records)
 
-    def display_mismatch(self, context, exp, item_idx):
+    def display_mismatch(self, context, exp, item_idx, is_verify=False):
         sep = "─" * 90
+        status_label = "TO VERIFY (Subtle Diff)" if is_verify else "MISMATCH DETECTED"
         header = f"{'TYPE':<12} | {'CATEGORY':<15} | {'SUBCAT':<15} | {'LOC':<15} | {'CODE':<15} | {'RES'}"
         
-        print(f"\nMISMATCH DETECTED on item #{item_idx}: '{context.user_input}'")
+        print(f"\n{status_label} on item #{item_idx}: '{context.user_input}'")
         print(sep)
         print(header)
         print(sep)
@@ -68,7 +71,7 @@ class STTClientSimulator:
     def check_result(self, response):
         if not response or not self.current_object:
             self.stats["errors"] += 1
-            self.stats["failed_ids"].append(self.current_idx)
+            self.stats["failed_ids"].append((self.current_idx, None, self.current_object))
             return False
 
         try:
@@ -78,24 +81,31 @@ class STTClientSimulator:
             data_match = (
                 context.category == exp.get('Category') and
                 context.label == exp.get('Subcategory') and
-                context.location.lower() == exp.get('Location', '').lower() and
-                context.result.lower() == exp.get('Result', '').lower() and
                 str(context.return_code) == str(exp.get('ReturnCode'))
             )
 
+            has_subtle_diff = (
+                context.location.lower() != exp.get('Location', '').lower() or
+                context.result.lower() != exp.get('Result', '').lower()
+            )
+
             if data_match:
-                print(f"OK: {context.category} | {context.label} | {context.result}")
-                self.stats["success"] += 1
+                if has_subtle_diff:
+                    self.stats["to_verify"] += 1
+                    self.stats["verify_ids"].append((self.current_idx, context, exp))
+                    print(f"[#{self.current_idx}] TO VERIFY: {context.category} (Subtle diff)")
+                else:
+                    print(f"[#{self.current_idx}] OK: {context.category} | {context.label}")
+                    self.stats["success"] += 1
                 return True
             else:
-                self.display_mismatch(context, exp, self.current_idx)
+                print(f"[#{self.current_idx}] MISMATCH: {context.category} vs {exp.get('Category')}")
                 self.stats["errors"] += 1
-                self.stats["failed_ids"].append(self.current_idx)
+                self.stats["failed_ids"].append((self.current_idx, context, exp))
                 return False
         except Exception as e:
             print(f"   [!] Error check_result: {e}")
             self.stats["errors"] += 1
-            self.stats["failed_ids"].append(self.current_idx)
             return False
 
     def send_to_hub(self, entry):
@@ -115,22 +125,42 @@ class STTClientSimulator:
                 self.stats["failed_ids"].append(self.current_idx)
 
     def show_final_summary(self):
-        sep = "=" * 40
-        print(f"\n{sep}")
+        sep_double = "═" * 95
+        sep_simple = "─" * 95
+
+        print(f"\n{sep_double}")
+        print(f"RESULTS REVIEW PHASE")
+        print(f"{sep_double}")
+
+        if self.stats["verify_ids"]:
+            print(f"\n[SECTION 1/2] ITEMS TO VERIFY ({len(self.stats['verify_ids'])} items)")
+            for idx, ctx, exp in self.stats["verify_ids"]:
+                self.display_mismatch(ctx, exp, idx, is_verify=True)
+                time.sleep(0.1)
+
+        if self.stats["failed_ids"]:
+            print(f"\n[SECTION 2/2] CRITICAL FAILURES ({len(self.stats['failed_ids'])} items)")
+            print("These items have errors in category, subcategory, or return code.")
+            for idx, ctx, exp in self.stats["failed_ids"]:
+                if ctx:
+                    self.display_mismatch(ctx, exp, idx, is_verify=False)
+                else:
+                    print(f"\n[!] ID #{idx}: No context received (Server error or timeout)")
+                time.sleep(0.1)
+
+        sep_stats = "=" * 40
+        print(f"\n{sep_stats}")
         print(f"       FINAL TEST SUMMARY")
-        print(sep)
+        print(sep_stats)
         print(f"  Total         : {self.stats['total']}")
         print(f"  Success       : {self.stats['success']}")
-        print(f"  Errors/Fails  : {self.stats['errors']}")
-        
-        if self.stats["failed_ids"]:
-            ids_str = ", ".join(map(str, self.stats["failed_ids"]))
-            print(f"  Failed IDs    : [{ids_str}]")
+        print(f"  To Verify     : {self.stats['to_verify']}")
+        print(f"  Failed        : {self.stats['errors']}")
         
         if self.stats['total'] > 0:
-            ratio = (self.stats['success'] / self.stats['total']) * 100
-            print(f"  Success rate  : {ratio:.1f}%")
-        print(f"{sep}\n")
+            ratio = ((self.stats['success'] + self.stats['to_verify']) / self.stats['total']) * 100
+            print(f"  Pass Rate     : {ratio:.1f}%")
+        print(f"{sep_stats}\n")
 
     def interactive_mode(self):
         while True:

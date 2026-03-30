@@ -1,7 +1,7 @@
 # agents_config.yaml
 PLUGIN_NAME:
   INTENT_AGENT:
-    model: "llama3.1:8b"
+    model: "qwen2.5:3b"
     use_json: true
     options:
       temperature: 0.0
@@ -20,7 +20,7 @@ PLUGIN_NAME:
       Example: {"ID": "1"}
 
   EXTRACT_DATA:
-    model: "llama3.1:8b"
+    model: "qwen2.5:3b"
     use_json: true
     prompt: |
       Task: Extract relevant entities from the input.

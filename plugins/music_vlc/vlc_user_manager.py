@@ -56,11 +56,11 @@ class VLCUserManager:
         self.build_playlist_map()
 
     def interpret_vlc_command(self, context):
-        if context.label == "DISCOVERY":
+        if context.label == "DISCOVER":
             return self.play_random_album()
-        elif context.label == "PLAYLIST_AGENT":
+        elif context.label == "PLAYLIST":
             return self.execute_playlist(context)
-        elif context.label == "VLC_AGENT":
+        elif context.label == "MUSIC":
             return self.execute_vlc(context)
         return self.cfg.RETURN_CODE.SUCCESS
 
@@ -264,12 +264,19 @@ class VLCUserManager:
         print("="*60 + "\n")
 
     def stop(self):
-        if self.auto_switch_thread:
+        self.stop_event.set()
+        
+        if self.auto_switch_thread and self.auto_switch_thread.is_alive():
             self.auto_switch_thread.join(timeout=3)
+        
+        if self.music_monitor:
+            self.music_monitor.stop_timer()
+            
         if self.vlc_instance:
-            self.vlc_instance.kill()
+            self.vlc_instance.kill_vlc()
 
     def __del__(self):
-        self.stop()
-        if self.vlc_instance:
-            self.vlc_instance.kill()
+        try:
+            self.stop()
+        except Exception:
+            pass

@@ -23,17 +23,22 @@ class DailyService:
 
     def execute(self, context):
         try:
+            is_fridge = any(w in context.user_input.lower() for w in ['frigo', 'fridge'])
+            agent = cfg.daily.DAILY_USE.FRIDGE_AGENT if is_fridge else cfg.daily.DAILY_USE.DAILY_AGENT
             shopping = ShoppingService()
-            result_llm = llm.execute(context.user_input, cfg.daily.DAILY_USE.DAILY_AGENT)
-            if not result_llm:
-                return cfg.RETURN_CODE.ERR
+
+            res = llm.execute(context.user_input, agent)
+            action = res.get('ACTION', 'NONE')
+            context.label = action
+            context.add_step('sub_category', res)
             
-            res_id = int(result_llm.get('ID', '0'))
-            context.label = cfg.daily.AGENT_FEATURES[res_id]
+            if "_ADD" in context.label:
+                new_items = llm.execute(context.user_input, cfg.daily.DAILY_USE.EXTRACT_FOOD_AGENT)
+            elif action == 'NONE':
+                return cfg.RETURN_CODE.ERR
 
             result = "NONSENSE"
             if context.label == "SHOP_ADD":
-                new_items = llm.execute(context.user_input, cfg.daily.DAILY_USE.EXTRACT_FOOD_AGENT)
                 result = shopping.update_shopping_list(new_items)
             elif context.label == "SHOP_DEL":
                 result = shopping.delete_shopping_list()

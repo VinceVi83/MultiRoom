@@ -1,6 +1,6 @@
 DOMOTIC_HA:
   DOMOTIC_AGENT:
-    model: "llama3.1:8b"
+    model: "qwen2.5:3b"
     use_json: true
     options:
       num_predict: 20
@@ -31,7 +31,7 @@ DOMOTIC_HA:
       Output: {"TYPE": "NONE", "ACTION": "NONE"}
 
   INFO_AGENT:
-    model: "llama3.1:8b"
+    model: "qwen2.5:3b"
     use_json: true
     options:
       temperature: 0.0

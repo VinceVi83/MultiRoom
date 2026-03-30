@@ -121,7 +121,7 @@ class CommunicationHA:
                 return target.turn_off()
             elif action == "ON":
                 return target.turn_on()
-            elif action == "TOOGLE":
+            elif action == "TOGGLE":
                 return target.toggle()
             elif action == "NIGHT_MODE":
                 return self.devices.set_brightness_percent_all(5)

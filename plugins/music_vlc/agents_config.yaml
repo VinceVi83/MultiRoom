@@ -1,62 +1,68 @@
 MUSIC_VLC:
   MUSIC_AGENT:
-    model: "llama3.1:8b"
+    model: "qwen2.5:3b"
     use_json: true
     options:
       temperature: 0.0
       num_predict: 20
       num_ctx: 2048
     prompt: |
-      Task: Classify the music/media request into a numeric ID.
+      Task: Classify the input command into one of these 3 CATEGORY:
       
-      IDs:
-      1: DISCOVER (General requests to start playback: 'met de la musique', 'joue quelque chose')
-      2: PLAYLIST (PLAYLIST options with specific target mentioned: 'Lance la playlist Touhou', 'Joue du Jazz', 'Met Maroon 5')
-      3: MUSIC (Playback control ONLY: stop, pause, next, volume. MUST NOT contain a specific artist or playlist name)
-      0: NONE (Not related to media playback)
+      MUSIC (VLC/Playback control ONLY: stop, pause, next, volume. 'relance la music', 'stop la music', 'passe la music', 'Remets la musique')
+      DISCOVER (General requests to start playback: 'balance ' 'mets de la musique', 'mets du son', 'joue quelque chose')
+      NONE (Not related to media playback)
       
       STRICT RULES:
-      1. Return a JSON object with the key "ID".
-      2. Be extremely literal.
+      1. Return a JSON object with the key "CATEGORY".
+      2. Be extremely literal
       
-      Example: {"ID": "2"}
+      Constraint: Return ONLY valid JSON: {"CATEGORY": "VALUE"}
+      
+      Example: {"CATEGORY": "MUSIC"}
 
   PLAYLIST_AGENT:
-    model: "llama3.1:8b"
+    model: "qwen2.5:3b"
     use_json: true
     options:
       temperature: 0.0
       num_predict: 50
       num_ctx: 2048
     prompt: |
-      Act as a Playlist Extraction API.
-      Task: Extract action and playlist name.
-      
-      Existing Playlists:
+      ### ROLE
+      Music Playlist API. Extract ACTION and NAME from French input.
+
+      ### DATABASE (Existing Playlists)
       REPLACE_PLAYLISTS
 
-      STRICT RULES:
-      1. FULL SCAN: Analyze the entire user input to find a match in 'Existing Playlists' OR a new name if the action is 'CREATE'.
-      2. MATCHING PRIORITIES: - If a name from 'Existing Playlists' is detected (even with extra words like "Lance la..."), extract it.
-      3. If the action is "CREATE", extract the new name following the command.
-      4. NO GUESSING: If NO playlist name is explicitly mentioned in the input, return {"0": "0"}.
-      5. GENERIC FALLBACK: Return {"0": "0"} only for vague requests without a specific target (e.g., "Joue de la musique", "Lance la playlist").
+      ### ACTIONS DEFINITION
+      1. PLAY: Start a list. (NAME = Exact match from DATABASE or "UNKNOWN" if no match).
+      2. CREATE: Create a new playlist. (RULE: NAME = new name mentioned).
+      3. ADD: Add current song to list. (RULE: NAME = "CURRENT").
+      4. DEL: Remove current song from list. (RULE: NAME = "CURRENT").
+      5. INFO: Ask about list content.
 
-      Context:
-      Actions: "PLAY", "CREATE", "ADD", "DEL", "INFO".
+      ### STRICT RULES
+      1. FORCED MATCH: For 'PLAY', you MUST return the closest name from DATABASE. If "Toho" and 'Touhou' exists, return "Touhou".
+      2. AUTO-FILL: For 'ADD' and 'DEL', you MUST return "CURRENT" for the NAME.
+      3. NO GUESSING: If no action or name is found, return {"ACTION": "NONE", "NAME": "NONE"}.
+      4. OUTPUT: ONLY JSON. No prose. No markdown tags.
 
-      Example Output:
+      ### OUTPUT FORMAT
       {
-        "ACTION": "NAME"
-      }
-      {
-        "PLAY": "Touhou"
+        "ACTION": "string",
+        "NAME": "string"
       }
 
-      Constraint: Output ONLY the JSON object. No prose. No explanations.
+      ### EXAMPLES
+      Input: "Lance ma liste Toho" (DATABASE: Touhou)
+      Output: {"ACTION": "PLAY", "NAME": "Touhou"}
+
+      Input: "Vire cette musique"
+      Output: {"ACTION": "DEL", "NAME": "CURRENT"}
 
   VLC_AGENT:
-    model: "llama3.1:8b"
+    model: "qwen2.5:3b"
     use_json: true
     options:
       seed: 42
@@ -64,18 +70,38 @@ MUSIC_VLC:
       num_predict: 20
       num_ctx: 2048
     prompt: |
-      Task: Jukebox Control Classification.
-      
-      IDs:
-      1: TOGGLE (Pause, resume, play, stop)
-      2: PREVIOUS (Previous track, go back, restart song)
-      3: NEXT (Next track, skip, change song)
-      4: VOL_DOWN (Lower volume, quieter, softer)
-      5: VOL_UP (Increase volume, louder, turn it up)
-      6: SHUFFLE (Random mode, mix it up)
-      7: INFO (What is playing, current song details)
-      0: UNKNOWN (Unknown or unrelated to music)
+      ### ROLE
+      Act as a Music Control Classifier API.
 
-      Constraint: Return a JSON object with the key "ID".
-      
-      Example: {"ID": "1"}
+      ### OBJECTIVE
+      Classify the user's music request into exactly ONE of the following ACTIONS.
+
+      ### ACTIONS & KEYWORDS
+      - TOGGLE: (Pause, reprends, remets, relance, play, stop, arrête, continue, coupe). Use this for any request to start/stop or resume the current stream.
+      - PREVIOUS: (Précédent, avant, revient, recommence la chanson, retour).
+      - NEXT: (suivante, prochaine, après, saute, change, une autre, après).
+      - VOL_DOWN: (Baisse, moins fort, diminue, doucement, calme).
+      - VOL_UP: (Monte, plus fort, augmente, du son).
+      - SHUFFLE: (Aléatoire, mélange, random).
+      - INFO: (C'est quoi, quel titre, qui chante, infos).
+      - UNKNOWN: Use if the request is not about controlling the player.
+
+      ### STRICT RULES
+      1. INPUT ANALYSIS: "Remets" or "Relance" must always be classified as TOGGLE.
+      2. SYNTAX: Output ONLY a valid JSON object. No markdown, no prose.
+      3. FALLBACK: If unsure, return UNKNOWN.
+
+      ### OUTPUT FORMAT
+      {
+        "ACTION": "string"
+      }
+
+      ### EXAMPLES
+      Input: "Alice, remets la musique"
+      Output: {"ACTION": "TOGGLE"}
+
+      Input: "Passe à la suite"
+      Output: {"ACTION": "NEXT"}
+
+      Input: "C'est un peu trop fort"
+      Output: {"ACTION": "VOL_DOWN"}

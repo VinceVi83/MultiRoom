@@ -27,14 +27,11 @@ class AgendaService:
                 return cfg.RETURN_CODE.ERR
             
             calendar = CalendarService()
-            result = llm.execute(context.user_input, cfg.agenda.AGENDA.CALENDAR_AGENT)
+            res = llm.execute(context.user_input, cfg.agenda.AGENDA.CALENDAR_AGENT, False, False)
+            action = res.get('ACTION', 'NONE')
+            context.label = action
+            context.add_step('sub_category', res)
             
-            if result is None:
-                return cfg.RETURN_CODE.ERR
-                
-            res = int(result.get('ID', '0'))
-            context.label = cfg.agenda.AGENT_FEATURES[res]
-
             result = "NONSENSE"
             if context.label == "NEXT_RDV":
                 result = calendar.fetch_calendar_events(limit=1)
@@ -56,5 +53,4 @@ class AgendaService:
             return cfg.RETURN_CODE.ERR
 
     def get_status(self):
-        print("OK")
         return {"status": "online", "plugin": self.plugin_name}

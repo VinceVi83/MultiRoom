@@ -2,9 +2,9 @@
 # This YAML file defines agent configurations for the routing and location systems.
 # Each section contains an agent with model settings, options, and prompts.
 
-Global:
-  router_agent:
-    model: "llama3.1:8b"
+ALL_PURPOSE:
+  ROUTER_AGENT:
+    model: "qwen2.5:3b"
     use_json: true
     options:
       temperature: 0.0
@@ -13,21 +13,34 @@ Global:
       top_k: 1
       top_p: 0.0
     prompt: |
-      Task: Classify French user input into one of these numeric IDs.
-      
-      IDs:
+      ### ROLE
+      Classify input into exactly one Plugin based on keywords and context. 
+
+      ### OBJECTIVE
+      Classify the user input into exactly one Plugin
+
+      ### PLUGINS DATABASE
       REPLACE_PLUGINS
 
-      STRICT RULES:
-      1. Be extremely literal. Do not guess.
-      2. Return a JSON object with the key "ID".
-      3. If an input matches multiple IDs or is ambiguous, you MUST return "ID" "0".
-      4. Do not attempt to overlap categories.
-      
-      Example: {"ID": "1"}
+      ### RULES
+      1. If a time-related word (week, day, appointment) is present, prioritize AGENDA.
+      2. Ignore filler words like "Alisu" or "est-ce que".
+      3. Return ONLY JSON.
 
-  location_agent:
-    model: "llama3.1:8b"
+      ### OUTPUT FORMAT
+      {
+        "PLUGIN": "string"
+      }
+
+      ### EXAMPLES
+      Input: "Allume la lumière dans le salon"
+      Output: {"PLUGIN": "PLUGIN_NAME"}
+
+      Input: "Mets de la musique"
+      Output: {"PLUGIN": "PLUGIN_NAME"}
+
+  LOCATION_AGENT:
+    model: "qwen2.5:3b"
     use_json: true
     options:
       seed: 42
@@ -54,40 +67,76 @@ Global:
       Input: "Turn off the light" -> {"location": "Unknown"}
       Input: "Turn on the kitchen" -> {"location": "Kitchen"}
 
-  pre_process_agent: # Experience to limit error from transcription or user
-    model: llama3.1:8b
+  PRE_PROCESS_AGENT:
+    model: "qwen2.5:3b"
     use_json: true
     options:
       temperature: 0.0
       num_predict: 100
-      num_ctx: 512
+      num_ctx: 2048
       top_k: 1
       top_p: 0.0
     prompt: |
-      ### OBJECTIVE
-      Validate French transcription and map intent to an English action verb.
+      # OBJECTIVE: Validate intent and detect location.
+      # CATEGORIES: ACT, TELL, SEND, SEARCH, PLAN.
 
-      ### CLASSIFICATION
-      - ACT: (Lance, fais, joue, allume, ajoute, démarre, balance, mets, active, annule, supprime, coupe)
-      - TELL: (Dis, raconte, annonce, répète)
-      - SEND: (Envoie, mail, transmets, poste)
-      - SEARCH: (Trouve, cherche, regarde, check, c'est quoi)
-      - PLAN: (Rappelle-moi, programme, alarme, note)
+      # RULES:
+      1. If input is noise, polite chatter, or Be ready -> return {"valid": 0}
+      2. If valid, return: {"valid": 1, "category": "CAT", "verb": "VerbFound", "has_location": 0 or1}
 
-      ### CRITICAL RULES
-      1. COHERENCE: If input is noise, nonsensical, or pure politesse/chatter without a command (e.g., euh, test, ah), return: {"valid": 0}.
-      2. SYSTEM: If input is Be ready, return: {"valid": 1, "normalized_verb": IDLE, "subject": keep_alive}.
-      3. PROCESSING: If input is a valid command, return: {"valid": 1, "normalized_verb": VERB, "subject": French subject only}.
+      # CATEGORIES:
+      - ACT: (Turn on, Play, Launch, Throw, Light, Stop, Cut, Add, Activate)
+      - TELL: (Say, Tell, Announce, Repeat)
+      - SEND: (Send, Mail, Transmit, Post)
+      - SEARCH: (Find, Search, Look at, Check, What is)
+      - PLAN: (Remind, Schedule, Alarm, Note)
+      - CREATE: (Generate, Create)
 
-      ### EXAMPLES
-      Input: Euh... bah... ouais
-      Output: {"valid": "0"}
+      # EXAMPLES:
+      Input: Turn on the light in the living room -> {"valid": 1, "category": "ACT", "verb": "Turn on"}
+      Input: Play some music -> {"valid": 1, "category": "ACT", "verb": "Play"}
+      Input: Be ready -> {"valid": 0}
 
-      Input: Be ready
-      Output: {"valid": "1", "normalized_verb": IDLE, "subject": keep_alive}
+  LOCATION_CLEANER_AGENT:
+      model: "qwen2.5:3b"
+      use_json: true
+      options:
+        temperature: 0
+        num_predict: 100
+        num_ctx: 2048
+        top_k: 1
+        top_p: 0.0
+      prompt: |
+        ### ROLE
+        Expert Entity Extractor for Home Automation.
 
-      Input: Balance du son dans la cuisine
-      Output: {"valid": "1", "normalized_verb": ACT, "subject": musique dans la cuisine}
+        ### OBJECTIVE
+        1. Identify the 'location' from the user input.
+        2. Generate a 'cleaned_command' by removing the location and DO NOT TRANSLATE.
 
-      ### OUTPUT
-      Strict JSON only
+        ### LOCATIONS
+        Allowed: REPLACE_LOCATIONS
+
+        ### STRICT RULES
+        - Output ONLY the JSON object.
+        - If you fail, output: {"location": "unknown", "cleaned_command": "none"}        
+        - Mapping: "toutes les", "Everywhere", "all rooms", "whole house", "everything" -> ALL
+        - If NO location is found, return "Unknown" for location.
+        - If a location is found, return the EXACT name from the allowed list.
+        - The 'cleaned_command' must be the original text without the location phrase and DO NOT TRANSLATE.
+
+        ### OUTPUT FORMAT (Strict JSON)
+        {
+          "location": "ExactName",
+          "cleaned_command": "Extracted command text"
+        }
+
+        ### EXAMPLES
+        Input: "Turn on the light in the Salon"
+        Output: {"location": "Salon", "cleaned_command": "Turn on the light"}
+
+        Input: "Turn off everything in the house"
+        Output: {"location": "ALL", "cleaned_command": "coupe/éteint toutes les lumières"}
+
+        Input: "Play some music"
+        Output: {"location": "Unknown", "cleaned_command": "Play some music"}

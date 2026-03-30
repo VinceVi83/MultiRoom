@@ -31,7 +31,11 @@ class TaskContext:
     duration: int = 0
     location: str = "NONSENSE"
     start: float = field(default_factory=time.time)
+    data: dict = field(default_factory=dict, init=False)
     return_code: ReturnCode = cfg.RETURN_CODE.ERR
+
+    def add_step(self, step_name, data):
+        self.data[step_name] = data
 
     def clone_safe(self):
         self.return_code = Utils.format_result(self.return_code)
