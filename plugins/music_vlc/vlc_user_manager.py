@@ -56,11 +56,11 @@ class VLCUserManager:
         self.build_playlist_map()
 
     def interpret_vlc_command(self, context):
-        if context.label == "DISCOVER":
+        if context.sub_category == "DISCOVER":
             return self.play_random_album()
-        elif context.label == "PLAYLIST":
+        elif context.sub_category == "PLAYLIST":
             return self.execute_playlist(context)
-        elif context.label == "MUSIC":
+        elif context.sub_category == "MUSIC":
             return self.execute_vlc(context)
         return self.cfg.RETURN_CODE.SUCCESS
 

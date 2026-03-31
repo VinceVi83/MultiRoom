@@ -28,14 +28,14 @@ class YourPluginService:
         intent_result = llm.execute(context.user_input, self.config.PLUGIN_NAME.INTENT_AGENT)
         intent_id = int(intent_result.get('ID', '0'))
         
-        context.label = self.config.AGENT_FEATURES[intent_id]
+        context.sub_category = self.config.AGENT_FEATURES[intent_id]
         
         result = "NONSENSE"
         
-        if context.label == "ACTION_ONE":
+        if context.sub_category == "ACTION_ONE":
             extracted = llm.execute(context.user_input, self.config.PLUGIN_NAME.EXTRACT_DATA)
             result = logic.perform_action(extracted)
-        elif context.label == "ACTION_TWO":
+        elif context.sub_category == "ACTION_TWO":
             result = logic.perform_action()
 
         context.result = Utils.format_result(result)

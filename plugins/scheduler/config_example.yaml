@@ -1,3 +1,4 @@
-scheduling:
+scheduler:
   config:
     DESCRIPTION_: "Handles task scheduling, alarms, and reminders using Crontab."
+    USE_LOCATION: 0

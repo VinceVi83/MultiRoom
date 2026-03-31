@@ -1,7 +1,8 @@
 music_vlc:
   config:
     DESCRIPTION: "Music, playlists, VLC"
-    BYPASS_MAP:
+    USE_LOCATION: 1
+    BYPASS_ROUTER:
       PLAYLIST:
         - "playlist"
       MUSIC:

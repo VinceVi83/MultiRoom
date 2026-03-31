@@ -29,8 +29,8 @@ class HomeAutomationService:
     def execute_native(self, context):
         try:
             params = {}
-            if context.label and (',' in context.label or ':' in context.label):
-                params = dict(item.split(":") for item in context.label.split(",") if ":" in item)
+            if context.sub_category and (',' in context.sub_category or ':' in context.sub_category):
+                params = dict(item.split(":") for item in context.sub_category.split(",") if ":" in item)
                 context.params = params 
                 return self.ha_service.handle_request(context)
             
@@ -43,10 +43,10 @@ class HomeAutomationService:
             result = llm.execute(context.user_input, cfg.home_automation.DOMOTIC_HA.DOMOTIC_AGENT)
             
             action, dtype = res.get('ACTION', 'NONE'), res.get('TYPE', 'NONE')
-            context.label = f"{dtype}:{action}"
+            context.sub_category = f"{dtype}:{action}"
             context.add_step('sub_category', res)
 
-            if "WEATHER" in context.label:
+            if "WEATHER" in context.sub_category:
                 result = self.meteo.fetch_current_status()
                 if isinstance(result, WeatherStatus):
                     context.result = result.display()

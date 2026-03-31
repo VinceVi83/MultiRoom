@@ -39,22 +39,21 @@ class MusicVlcService:
         matched = next((k for k, v in bypass_map.items() if any(w in context.user_input.lower() for w in v)), None)
 
         if matched:
-            context.label = matched
+            context.sub_category = matched
             context.add_step('sub_category', {'label': matched, 'bypass': 1})
         else:
             try:
-                res = llm.execute(context.user_input, cfg.music_vlc.MUSIC_VLC.MUSIC_AGENT)
-                context.label = res.get('CATEGORY', 'NONE')
+                res = llm.execute(context.user_input, self.cfg.MUSIC_VLC.MUSIC_AGENT)
+                context.sub_category = res.get('CATEGORY', 'NONE')
                 context.add_step('sub_category', res)
             except Exception as e:
                 print(f"[PLUGIN MusicVlcService MUSIC_AGENT ERROR] {e}")
                 return self.cfg.RETURN_CODE.ERR
-
         try:
-            if context.label == 'PLAYLIST':
-                res = llm.execute(context.user_input, cfg.music_vlc.MUSIC_VLC.PLAYLIST_AGENT)
-            elif context.label == 'MUSIC':
-                res = llm.execute(context.user_input, cfg.music_vlc.MUSIC_VLC.VLC_AGENT)
+            if context.sub_category == 'PLAYLIST':
+                res = llm.execute(context.user_input, self.cfg.MUSIC_VLC.PLAYLIST_AGENT)
+            elif context.sub_category == 'MUSIC':
+                res = llm.execute(context.user_input, self.cfg.MUSIC_VLC.VLC_AGENT)
         except Exception as e:
                 print(f"[PLUGIN MusicVlcService MUSIC_AGENT 2 ERROR] {e}")
                 return self.cfg.RETURN_CODE.ERR

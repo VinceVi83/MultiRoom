@@ -37,15 +37,18 @@ class PluginConfig(SimpleNamespace):
                 for k, v in items:
                     formatted_v = custom_format(v, indent_level + 1)
                     lines.append(f'{inner_spacing}"{k}": {formatted_v},')
-                # Retrait de la dernière virgule et fermeture
                 lines[-1] = lines[-1].rstrip(',')
                 lines.append(f"{spacing}")
                 return "\n".join(lines)
             
+            elif isinstance(obj, Enum):
+                return f'"{obj.name}"'
+            
+            elif isinstance(obj, type):
+                return f'"{obj.__name__}"'
+            
             elif isinstance(obj, str):
                 if "\n" in obj:
-                    # Pour les prompts, on garde les sauts de ligne réels 
-                    # mais on indente chaque ligne pour rester aligné
                     lines = obj.splitlines()
                     indented_lines = [f"\n{inner_spacing}  " + l for l in lines]
                     content = "".join(indented_lines)
@@ -64,7 +67,6 @@ class PluginConfig(SimpleNamespace):
         return custom_format(self)
 
     def to_dict(self):
-        """Retourne le format exact attendu par l'API Ollama."""
         return {
             "model": getattr(self, 'model', cfg.sys.config.MODEL_NAME_MAIN),
             "format": "json" if getattr(self, 'use_json', False) else "",
@@ -89,7 +91,7 @@ class AlisuConfig:
         _process_yaml_config(self, yaml_path, parent_obj) : Process a YAML configuration file.
         _apply_logic_to_agents(self, obj, replacements) : Apply replacement logic to agent prompts.
         _dict_to_namespace(self, data) : Recursively convert dict to SimpleNamespace.
-        _parse_to_obj(self, path, obj) : Parse .env file into the provided object.
+        _parse_to_obj(self, path) : Parse .env file into the provided object.
     """
     def __init__(self):
         self.ROOT = Path(__file__).resolve().parent
@@ -99,15 +101,14 @@ class AlisuConfig:
         self.descriptions = []
         self.cfg = PluginConfig()
         self.cfg.DATA_DIR = self.DATA_DIR
+        self.cfg.ROUTER = {}
         self.cfg.root = self.ROOT
         self.cfg.LOADED_PLUGINS = []
         self.cfg.RETURN_CODE = ReturnCode
 
         self._sync_and_freeze_plugins()
         self._load_env_only()
-        print("HELLO")
         self._generate_plugin_description_list()
-        print("HELLO")
         self._load_all_yaml()
         self._setup_system_info()
 
@@ -138,7 +139,7 @@ class AlisuConfig:
             return [self._dict_to_namespace(i) for i in data]
         return data
 
-    def _parse_to_obj(self, path, obj):
+    def _parse_to_obj(self, path):
         if not path.exists():
             return
 
@@ -146,22 +147,45 @@ class AlisuConfig:
             data = yaml.safe_load(f) or {}
 
         for l0_key, l1_data in data.items():
+            print("VNG", l0_key)
             if not isinstance(l1_data, dict):
-                setattr(obj, l0_key, l1_data)
+                setattr(self.cfg, l0_key, l1_data)
                 continue
-
+            print("VNG-X", l0_key)
+            has_config_flag = False
             for l1_key, l2_data in l1_data.items():
                 if l1_key.startswith("config"):
-                    obj.has_config_flag = True
-                    if isinstance(l2_data, dict) and "DESCRIPTION" in l2_data:
-                        self.descriptions.append(f"{l0_key.upper()}: {l2_data['DESCRIPTION']}")
+                    if isinstance(l2_data, dict):
+                        print("VNG-Y", l2_data)
+                        # 1. Gestion de la DESCRIPTION pour le routeur
+                        if "DESCRIPTION" in l2_data.keys():
+                            self.descriptions.append(f"{l0_key.upper()}: {l2_data['DESCRIPTION']}")
+                        
 
-                if isinstance(l2_data, dict):
-                    for key, value in l2_data.items():
-                        if "replace" in key.lower():
-                            self.replacements[key.upper()] = value
+                        for key, value in l2_data.items():
+                            if "REPLACE_" in key:
+                                self.replacements[key.upper()] = value
 
-            setattr(obj, l0_key, self._dict_to_namespace(l1_data))
+                        # 2. Traitement spécial pour BYPASS_ROUTER ou BYPASS_MAP
+                        # On cherche l'une ou l'autre des clés
+                        print("*********", l2_data.keys())
+                        if "BYPASS_ROUTER" in l2_data.keys():
+                            content = l2_data["BYPASS_ROUTER"]
+                            final_list = []
+                            print("*********", l2_data)
+                            if isinstance(content, list):
+                                final_list = content
+                            
+                            elif isinstance(content, dict):
+                                for sub_list in content.values():
+                                    print("????", sub_list)
+                                    if isinstance(sub_list, list):
+                                        final_list.extend(sub_list)
+                            
+                            if final_list:
+                                self.cfg.ROUTER[l0_key.upper()] = final_list
+
+            setattr(self.cfg, l0_key, self._dict_to_namespace(l1_data))
 
     def _sync_and_freeze_plugins(self):
         self.DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -195,12 +219,12 @@ class AlisuConfig:
             shutil.copy("config_example.yaml", global_config)
             print(f'SYSTEM : Please copy update configfile in {self.DATA_DIR}')
         
-        self._parse_to_obj(global_config, self.cfg)
+        self._parse_to_obj(global_config)
         
         for name in self.cfg.LOADED_PLUGINS:
             config_path = self.plugins_ROOT / name / "config.yaml"
             if config_path.exists():
-                self._parse_to_obj(config_path, getattr(self.cfg, name))
+                self._parse_to_obj(config_path)
             else:
                 print(f'SYSTEM : Please copy update configfile in {config_path}')
 
@@ -239,8 +263,26 @@ class AlisuConfig:
             for item in obj:
                 self._apply_logic_to_agents(item)
 
+
+def print_config_paths(obj, current_path="cfg"):
+    # Si c'est un namespace (notre config), on explore ses attributs
+    if isinstance(obj, (SimpleNamespace, PluginConfig)):
+        for key, value in vars(obj).items():
+            print_config_paths(value, f"{current_path}.{key}")
+    
+    # Si c'est une liste, on explore les index (optionnel, selon vos besoins)
+    elif isinstance(obj, list):
+        for i, item in enumerate(obj):
+            print_config_paths(item, f"{current_path}[{i}]")
+    
+    # Sinon c'est une valeur finale, on affiche le chemin
+    else:
+        print(f"{current_path}")
+
 cfg = AlisuConfig().cfg
-# print(cfg.sys)
+# print("\n--- TOUS LES CHEMINS D'ACCÈS ---")
+# print_config_paths(cfg)
+print(cfg.ROUTER)
 # print(cfg.sys.config.WHISPER)
-print(cfg.ALL_PURPOSE.ROUTER_AGENT)
+# print(cfg.ALL_PURPOSE.ROUTER_AGENT)
 # print(cfg.music_vlc)

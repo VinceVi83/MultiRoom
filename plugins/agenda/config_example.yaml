@@ -1,6 +1,9 @@
 agenda:
   config:
     DESCRIPTION: "Calendar, dates, appointments, concerts, schedules"
+    USE_LOCATION: 0
+    BYPASS_ROUTER:
+      - "rendez-vous"
 
   calendar_integration:
     LINK_CALENDAR: "https://calendar.service.com/api/v1/user/token/calendar.ics"
@@ -14,7 +17,7 @@ agenda:
     IP_MAIL: "127.0.0.1"
     PORT_SMTP_MAIL: 1025
 
-  filtering_and_parsing:
+  filter:
     BLACKLIST_NAMES:
       - "SURNAME"
       - "GIVEN_NAME"

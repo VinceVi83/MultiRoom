@@ -64,7 +64,7 @@ class STTClientSimulator:
         print(sep)
         print(header)
         print(sep)
-        print(f"{'OBTAINED':<12} | {context.category:<15} | {context.label:<15} | {context.location:<15} | {context.return_code:<15} | {context.result}")
+        print(f"{'OBTAINED':<12} | {context.category:<15} | {context.sub_category:<15} | {context.location:<15} | {context.return_code:<15} | {context.result}")
         print(f"{'EXPECTED':<12} | {exp.get('Category'):<15} | {exp.get('Subcategory'):<15} | {exp.get('Location'):<15} | {exp.get('ReturnCode'):<15} | {exp.get('Result')}")
         print(sep)
 
@@ -80,7 +80,7 @@ class STTClientSimulator:
 
             data_match = (
                 context.category == exp.get('Category') and
-                context.label == exp.get('Subcategory') and
+                context.sub_category == exp.get('Subcategory') and
                 str(context.return_code) == str(exp.get('ReturnCode'))
             )
 
@@ -95,7 +95,7 @@ class STTClientSimulator:
                     self.stats["verify_ids"].append((self.current_idx, context, exp))
                     print(f"[#{self.current_idx}] TO VERIFY: {context.category} (Subtle diff)")
                 else:
-                    print(f"[#{self.current_idx}] OK: {context.category} | {context.label}")
+                    print(f"[#{self.current_idx}] OK: {context.category} | {context.sub_category}")
                     self.stats["success"] += 1
                 return True
             else:

@@ -63,7 +63,7 @@ class TaskContext:
         print("-" * 50)
         print(f"{'Location:':<15} {self.location}")
         print(f"{'Category:':<15} {self.category}")
-        print(f"{'Label:':<15} {self.label}")
+        print(f"{'Label:':<15} {self.sub_category}")
         print(f"{'Result:':<15} {Utils.format_result(self.result)}")
         print(f"{'ReturnCode:':<15} {Utils.format_result(self.return_code)}")
         print(f"{'Duration:':<15} {self.duration}s")
@@ -86,7 +86,7 @@ class TaskContext:
             "Success":     "True",
             "Command":     str(Utils.format_result(self.user_input)),
             "Category":    str(Utils.format_result(self.category)),
-            "Subcategory": str(Utils.format_result(self.label)),
+            "Subcategory": str(Utils.format_result(self.sub_category)),
             "Location":    str(Utils.format_result(self.location)),
             "Result":      str(Utils.format_result(self.result)),
             "ReturnCode":  str(Utils.format_result(self.return_code)),
@@ -99,11 +99,11 @@ class TaskContext:
 
     def _archive_and_rename(self):
         try:
-            if "NONSENSE" in [self.category, self.label]:
+            if "NONSENSE" in [self.category, self.sub_category]:
                 return self.clone_safe()
 
             timestamp = int(time.time())
-            base = f"{timestamp}_{self.category}_{self.label}"
+            base = f"{timestamp}_{self.category}_{self.sub_category}"
 
             archive_dir = Path(cfg.DATA_DIR) / "Archive"
             dest_path, new_name = Utils.get_unique_path(archive_dir, base, ".wav")

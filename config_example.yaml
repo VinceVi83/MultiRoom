@@ -4,11 +4,11 @@ sys:
     OLLAMA_SERVER: "http://[OLLAMA_IP]:11434"
     HUB_IP: "[SERVER_IP_ADDRESS]"
     MODEL_NAME_MAIN: "qwen2.5:3b"
-    LANGUAGE: "fr"
+    LANGUAGE: "en"
     DIR_DOCS: "/home/[USER]/Documents"
     SCRIPT_TTS: "/home/[USER]/[PROJECT_PATH]/tts_test.py"
     SEARXNG_URL: "http://[SEARXNG_IP]:8080"
-    SEARCH_LANG: "fr-FR"
+    SEARCH_LANG: "en-US"
 
   security:
     LIST_ALLOWED_SIGS:
@@ -20,14 +20,14 @@ sys:
 
   locations:
     REPLACE_LOCATIONS:
-      - "Chambre_1"
-      - "Chambre_2"
-      - "Salon"
-      - "Cuisine"
-      - "Salle_de_bain"
-      - "Toilettes"
+      - "Bedroom_1"
+      - "Bedroom_2"
+      - "Living Room"
+      - "Kitchen"
+      - "Bathroom"
+      - "Toilet"
       - "ALL" 
-    REPLACE_RULE_LOCATIONS: "Partout, tout, toutes, maison --> ALL"
+    REPLACE_RULE_LOCATIONS: "Everywhere, all, everything --> ALL"
 
   port_management:
     HUB_PORT: 28888

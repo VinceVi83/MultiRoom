@@ -1,6 +1,14 @@
 home_automation:
   config:
     DESCRIPTION: "Weather, lights, plugs, temperature control. EXCLUDING music/audio devices"
+    USE_LOCATION: 1
+    BYPASS_ROUTER:
+      - "allume"
+      - "éteint"
+      - "lumière"
+      - "coupe"
+      - "purifier
+      - "méteo"
     AGENT_FEATURES:
       - "NONSENSE"
       - "LIGHTS"

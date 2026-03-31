@@ -29,19 +29,19 @@ class AgendaService:
             calendar = CalendarService()
             res = llm.execute(context.user_input, cfg.agenda.AGENDA.CALENDAR_AGENT, False, False)
             action = res.get('ACTION', 'NONE')
-            context.label = action
+            context.sub_category = action
             context.add_step('sub_category', res)
             
             result = "NONSENSE"
-            if context.label == "NEXT_RDV":
+            if context.sub_category == "NEXT_RDV":
                 result = calendar.fetch_calendar_events(limit=1)
-            elif context.label == "NEXT_CONCERT":
+            elif context.sub_category == "NEXT_CONCERT":
                 result = calendar.get_next_concert_data()
-            elif context.label == "CURRENT_WEEK":
+            elif context.sub_category == "CURRENT_WEEK":
                 result = calendar.get_week_events(0)
-            elif context.label == "NEXT_WEEK":
+            elif context.sub_category == "NEXT_WEEK":
                 result = calendar.get_week_events(1)
-            elif context.label == "MAIL_NEXT_CONCERT":
+            elif context.sub_category == "MAIL_NEXT_CONCERT":
                 result = calendar.mail_me_next_concert()
 
             context.result = Utils.format_result(result)

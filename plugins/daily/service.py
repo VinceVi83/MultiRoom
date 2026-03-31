@@ -29,22 +29,22 @@ class DailyService:
 
             res = llm.execute(context.user_input, agent)
             action = res.get('ACTION', 'NONE')
-            context.label = action
+            context.sub_category = action
             context.add_step('sub_category', res)
             
-            if "_ADD" in context.label:
+            if "_ADD" in context.sub_category:
                 new_items = llm.execute(context.user_input, cfg.daily.DAILY_USE.EXTRACT_FOOD_AGENT)
             elif action == 'NONE':
                 return cfg.RETURN_CODE.ERR
 
             result = "NONSENSE"
-            if context.label == "SHOP_ADD":
+            if context.sub_category == "SHOP_ADD":
                 result = shopping.update_shopping_list(new_items)
-            elif context.label == "SHOP_DEL":
+            elif context.sub_category == "SHOP_DEL":
                 result = shopping.delete_shopping_list()
-            elif context.label == "SHOP_INFO":
+            elif context.sub_category == "SHOP_INFO":
                 result = shopping.report_shopping_list()
-            elif context.label == "SHOP_MAIL":
+            elif context.sub_category == "SHOP_MAIL":
                 result = shopping.mail_shopping_list()
 
             context.result = Utils.format_result(result)

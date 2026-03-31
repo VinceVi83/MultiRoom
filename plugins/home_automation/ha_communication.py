@@ -103,7 +103,7 @@ class CommunicationHA:
             return cfg.RETURN_CODE.ERR_INVALID_ARGUMENT
 
         try:
-            params = dict(item.split(":") for item in context.label.split(","))
+            params = dict(item.split(":") for item in context.sub_category.split(","))
             device_type = params.get("TYPE", "").lower()
             action = params.get("ACTION", "")
 
