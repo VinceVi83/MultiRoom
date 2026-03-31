@@ -1,0 +1,35 @@
+music_vlc:
+  config:
+    DESCRIPTION: "Music, playlists, VLC"
+    BYPASS_MAP:
+      PLAYLIST:
+        - "playlist"
+      MUSIC:
+        - "vlc"
+        - "augmente"
+        - "monte"
+        - "baisse"
+        - "diminue"
+        - "moins"
+        - "plus"
+        - "précédent"
+        - "suivant"
+        - "après"
+        - "remets"
+        
+  vlc_configuration:
+    VLC_PORT_START: 48888
+    LEN_ALBUMS_CACHE: 50
+
+  storage_and_playlists:
+    REPLACE_PLAYLISTS:
+      - "Default"
+      - "Rock"
+      - "Touhou"
+    SMB_MOUNT_POINT: "PATH_TO_MUSIC_LIBRARY"
+
+  access_control:
+    DICO_VLC_USERS:
+      TEST: "test"
+    DICO_MA_USERS:
+      TEST: "test"

@@ -1,0 +1,34 @@
+sys:
+  config:
+    WHISPER: "CPU"
+    OLLAMA_SERVER: "http://[OLLAMA_IP]:11434"
+    HUB_IP: "[SERVER_IP_ADDRESS]"
+    MODEL_NAME_MAIN: "qwen2.5:3b"
+    LANGUAGE: "fr"
+    DIR_DOCS: "/home/[USER]/Documents"
+    SCRIPT_TTS: "/home/[USER]/[PROJECT_PATH]/tts_test.py"
+    SEARXNG_URL: "http://[SEARXNG_IP]:8080"
+    SEARCH_LANG: "fr-FR"
+
+  security:
+    LIST_ALLOWED_SIGS:
+      - "[HASH_1]"
+      - "[HASH_2]"
+    DICO_USERS:
+      "[USER_1]": "[PASSWORD_1]"
+      "[USER_2]": "[PASSWORD_2]"
+
+  locations:
+    REPLACE_LOCATIONS:
+      - "Chambre_1"
+      - "Chambre_2"
+      - "Salon"
+      - "Cuisine"
+      - "Salle_de_bain"
+      - "Toilettes"
+      - "ALL" 
+    REPLACE_RULE_LOCATIONS: "Partout, tout, toutes, maison --> ALL"
+
+  port_management:
+    HUB_PORT: 28888
+    RPI_PORT: 28889

@@ -1,0 +1,4 @@
+daily:
+  config:
+    NAME: "DailyManagement"
+    DESCRIPTION: "Grocery, fridge, buy, courses"

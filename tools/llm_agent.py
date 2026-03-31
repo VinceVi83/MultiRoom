@@ -21,9 +21,9 @@ class OllamaClient:
     """
 
     def __init__(self):
-        self.base_url = cfg.sys.OLLAMA_CONFIG
+        self.base_url = cfg.sys.config.OLLAMA_SERVER
         self.client = ollama.Client(host=self.base_url)
-        self.main_model = cfg.sys.MODEL_NAME_MAIN
+        self.main_model = cfg.sys.config.MODEL_NAME_MAIN
         self.current_model = None
         self._lock = threading.Lock()
         
@@ -116,7 +116,7 @@ class OllamaClient:
         self.current_model = target_model
 
     def _prepare(self, c, user_input):
-        params = c._payload.copy()
+        params = c.to_dict()
         params["messages"] = params["messages"] + [{"role": "user", "content": user_input}]
         return params
 
@@ -145,8 +145,8 @@ llm = OllamaClient()
 
 if __name__ == "__main__":
 
-    config_from_yaml = cfg.sys.Global.router_agent
-    result = llm.execute("Turn on the living room light", agent_cfg=cfg.sys.Global.location_agent, verbose=True)
+    config_from_yaml = cfg.ALL_PURPOSE.ROUTER_AGENT
+    result = llm.execute("Turn on the living room light", agent_cfg=cfg.ALL_PURPOSE.LOCATION_CLEANER_AGENT, verbose=True)
     result = llm.execute("I want to listen to my Touhou playlist", agent_cfg=config_from_yaml, verbose=True)
     result = llm.execute("Stop the music", agent_cfg=config_from_yaml, verbose=True)
     result = llm.execute("I need to buy butter, eggs, steaks", agent_cfg=config_from_yaml, verbose=True)

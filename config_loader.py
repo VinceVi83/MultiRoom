@@ -2,6 +2,7 @@ import shutil
 import yaml
 import os
 import socket
+import json
 from enum import Enum
 from pathlib import Path
 from dotenv import load_dotenv, dotenv_values
@@ -22,13 +23,61 @@ class ReturnCode(Enum):
     DUPLICATE = 12
 
 class PluginConfig(SimpleNamespace):
-    """Container for a single plugin's env vars and yaml structure."""
-    pass
+    def __repr__(self):
+        
+        def custom_format(obj, indent_level=0):
+            spacing = "  " * indent_level
+            inner_spacing = "  " * (indent_level + 1)
+            
+            if isinstance(obj, (SimpleNamespace, PluginConfig)):
+                items = vars(obj).items()
+                if not items: return "{}"
+                
+                lines = ["{"]
+                for k, v in items:
+                    formatted_v = custom_format(v, indent_level + 1)
+                    lines.append(f'{inner_spacing}"{k}": {formatted_v},')
+                # Retrait de la dernière virgule et fermeture
+                lines[-1] = lines[-1].rstrip(',')
+                lines.append(f"{spacing}")
+                return "\n".join(lines)
+            
+            elif isinstance(obj, str):
+                if "\n" in obj:
+                    # Pour les prompts, on garde les sauts de ligne réels 
+                    # mais on indente chaque ligne pour rester aligné
+                    lines = obj.splitlines()
+                    indented_lines = [f"\n{inner_spacing}  " + l for l in lines]
+                    content = "".join(indented_lines)
+                    return f'"""{content}\n{inner_spacing}"""'
+                return f'"{obj}"'
+            
+            elif isinstance(obj, Path):
+                return f'"{str(obj)}"'
+            
+            elif isinstance(obj, list):
+                if not obj: return "[]"
+                return json.dumps(obj, ensure_ascii=False)
+            
+            return json.dumps(obj, ensure_ascii=False)
+
+        return custom_format(self)
+
+    def to_dict(self):
+        """Retourne le format exact attendu par l'API Ollama."""
+        return {
+            "model": getattr(self, 'model', cfg.sys.config.MODEL_NAME_MAIN),
+            "format": "json" if getattr(self, 'use_json', False) else "",
+            "options": vars(self.options) if hasattr(self, 'options') else {},
+            "messages": [
+                {'role': 'system', 'content': getattr(self, 'prompt', "")}
+            ]
+        }
 
 class AlisuConfig:
     """Alisu configuration manager class.
     
-    Role: Manages plugin configurations, environment variables, and YAML payloads.
+    Role: Manages plugin configurations, environment variables, and YAML.
     
     Methods:
         __init__(self) : Initialize the configuration object.
@@ -36,7 +85,7 @@ class AlisuConfig:
         _generate_plugin_description_list(self) : Generate plugin description list.
         _sync_and_freeze_plugins(self) : Create folders and copy .env templates.
         _load_env_only(self) : Load environment variables into config objects.
-        _load_all_yaml_and_payloads(self) : Load all YAML configurations and payloads.
+        _load_all_yaml(self) : Load all YAML configurations.
         _process_yaml_config(self, yaml_path, parent_obj) : Process a YAML configuration file.
         _apply_logic_to_agents(self, obj, replacements) : Apply replacement logic to agent prompts.
         _dict_to_namespace(self, data) : Recursively convert dict to SimpleNamespace.
@@ -46,8 +95,9 @@ class AlisuConfig:
         self.ROOT = Path(__file__).resolve().parent
         self.DATA_DIR = Path.home() / "Documents" / "ALISU_DATA"
         self.plugins_ROOT = self.DATA_DIR / "plugins"
-        
-        self.cfg = SimpleNamespace()
+        self.replacements = {}
+        self.descriptions = []
+        self.cfg = PluginConfig()
         self.cfg.DATA_DIR = self.DATA_DIR
         self.cfg.root = self.ROOT
         self.cfg.LOADED_PLUGINS = []
@@ -55,9 +105,10 @@ class AlisuConfig:
 
         self._sync_and_freeze_plugins()
         self._load_env_only()
+        print("HELLO")
         self._generate_plugin_description_list()
-
-        self._load_all_yaml_and_payloads()
+        print("HELLO")
+        self._load_all_yaml()
         self._setup_system_info()
 
     def _setup_system_info(self):
@@ -73,15 +124,44 @@ class AlisuConfig:
 
     def _generate_plugin_description_list(self):
         all_lines = ""
-        for i, name in enumerate(self.cfg.LOADED_PLUGINS, start=1):
-            plugin_obj = getattr(self.cfg, name)
-            
-            description = getattr(plugin_obj, "DESCRIPTION", "No description provided")
-
-            all_lines += f"{i}: {name.upper()} ({description})\n"
+        for description in self.descriptions:
+            all_lines += f"{description}\n"
         
-        all_lines +="0: NONE (Nonsense, philosophy, or no clear action)"
-        return all_lines
+        all_lines +="NONE: Nonsense, philosophy, or no clear action"
+        self.replacements["REPLACE_PLUGINS"] = all_lines
+        return
+
+    def _dict_to_namespace(self, data):
+        if isinstance(data, dict):
+            return PluginConfig(**{k: self._dict_to_namespace(v) for k, v in data.items()})
+        elif isinstance(data, list):
+            return [self._dict_to_namespace(i) for i in data]
+        return data
+
+    def _parse_to_obj(self, path, obj):
+        if not path.exists():
+            return
+
+        with open(path, 'r', encoding='utf-8') as f:
+            data = yaml.safe_load(f) or {}
+
+        for l0_key, l1_data in data.items():
+            if not isinstance(l1_data, dict):
+                setattr(obj, l0_key, l1_data)
+                continue
+
+            for l1_key, l2_data in l1_data.items():
+                if l1_key.startswith("config"):
+                    obj.has_config_flag = True
+                    if isinstance(l2_data, dict) and "DESCRIPTION" in l2_data:
+                        self.descriptions.append(f"{l0_key.upper()}: {l2_data['DESCRIPTION']}")
+
+                if isinstance(l2_data, dict):
+                    for key, value in l2_data.items():
+                        if "replace" in key.lower():
+                            self.replacements[key.upper()] = value
+
+            setattr(obj, l0_key, self._dict_to_namespace(l1_data))
 
     def _sync_and_freeze_plugins(self):
         self.DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -99,45 +179,37 @@ class AlisuConfig:
             self.cfg.LOADED_PLUGINS.append(name)
             target_plugin_dir = self.plugins_ROOT / name
             target_plugin_dir.mkdir(parents=True, exist_ok=True)
-            template_file = folder / ".env_template"
-            target_env = target_plugin_dir / ".env"
+            template_file = folder / "config_example.yaml"
+            target_file = target_plugin_dir / "config.yaml"
 
             plugin_obj = PluginConfig()
             plugin_obj.DATA_DIR = target_plugin_dir
             setattr(self.cfg, name, plugin_obj)
 
-            if template_file.exists() and not target_env.exists():
-                shutil.copy(template_file, target_env)
+            if template_file.exists() and not target_file.exists():
+                shutil.copy(template_file, target_file)
 
     def _load_env_only(self):
-        global_env = self.DATA_DIR / ".env"
-        if global_env.exists():
-            self._parse_to_obj(global_env, self.cfg.sys)
+        global_config = self.DATA_DIR / "config.yaml"
+        if not global_config.exists():
+            shutil.copy("config_example.yaml", global_config)
+            print(f'SYSTEM : Please copy update configfile in {self.DATA_DIR}')
+        
+        self._parse_to_obj(global_config, self.cfg)
         
         for name in self.cfg.LOADED_PLUGINS:
-            env_path = self.plugins_ROOT / name / ".env"
-            if env_path.exists():
-                self._parse_to_obj(env_path, getattr(self.cfg, name))
+            config_path = self.plugins_ROOT / name / "config.yaml"
+            if config_path.exists():
+                self._parse_to_obj(config_path, getattr(self.cfg, name))
+            else:
+                print(f'SYSTEM : Please copy update configfile in {config_path}')
 
-    def _generate_plugin_description_list(self):
-        all_lines = ""
-        for i, name in enumerate(self.cfg.LOADED_PLUGINS, start=1):
-            plugin_obj = getattr(self.cfg, name)
-            description = getattr(plugin_obj, "DESCRIPTION", "No description provided")
-            if description == "No description provided":
-                continue
-            all_lines += f"{name.upper()} ({description})\n"
-        
-        all_lines += "0: NONE (Nonsense, philosophy, or no clear action)"
-        
-        self.cfg.sys.REPLACE_PLUGINS = all_lines
-
-    def _load_all_yaml_and_payloads(self):
-        self._process_yaml_config(self.ROOT / "agents_config.yaml", self.cfg.sys)
+    def _load_all_yaml(self):
+        self._process_yaml_config(self.ROOT / "agents_config.yaml", self.cfg)
         
         for name in self.cfg.LOADED_PLUGINS:
             yaml_path = self.ROOT / "plugins" / name / "agents_config.yaml"
-            self._process_yaml_config(yaml_path, getattr(self.cfg, name))
+            self._process_yaml_config(yaml_path, self.cfg)
 
     def _process_yaml_config(self, yaml_path, parent_obj):
         if not yaml_path.exists():
@@ -146,64 +218,29 @@ class AlisuConfig:
         with open(yaml_path, 'r', encoding='utf-8') as f:
             data = yaml.safe_load(f) or {}
             
-            replacements = {k: v for k, v in vars(parent_obj).items() if k.startswith("REPLACE_")}
-
             for key, value in data.items():
                 ns_value = self._dict_to_namespace(value)
                 setattr(parent_obj, key, ns_value)
-                
-                self._apply_logic_to_agents(ns_value, replacements)
-
-    def _apply_logic_to_agents(self, obj, replacements):
-        if hasattr(obj, 'prompt') and isinstance(obj.prompt, str):
-            for r_key, r_val in replacements.items():
-                if r_val:
-                    obj.prompt = obj.prompt.replace(r_key, str(r_val))
             
-            self._create_payload(obj)
+            self._apply_logic_to_agents(ns_value)
+
+    def _apply_logic_to_agents(self, obj):
+        if hasattr(obj, 'prompt') and isinstance(obj.prompt, str):
+            for r_key, r_val in self.replacements.items():
+                if r_key in obj.prompt:
+                    val_str = ", ".join(map(str, r_val)) if isinstance(r_val, list) else str(r_val)
+                    obj.prompt = obj.prompt.replace(r_key, val_str)
             return
 
-        if isinstance(obj, SimpleNamespace):
+        if isinstance(obj, (SimpleNamespace, PluginConfig)):
             for k in vars(obj):
-                self._apply_logic_to_agents(getattr(obj, k), replacements)
-
-    def _dict_to_namespace(self, data):
-        if isinstance(data, dict):
-            return SimpleNamespace(**{k: self._dict_to_namespace(v) for k, v in data.items()})
-        elif isinstance(data, list):
-            return [self._dict_to_namespace(i) for i in data]
-        return data
-
-    def _parse_to_obj(self, path, obj):
-        values = dotenv_values(path)
-        for k, v in values.items():
-            if not v:
-                continue
-            
-            val = v
-            if k in "DESCRIPTION" or k.startswith("LINK_"):
-                val = v
-            elif k.startswith("LIST") or k == "AGENT_FEATURES":
-                val = [i.strip() for i in v.split(',')]
-            elif k.startswith("DICO_LIST"):
-                val = {}
-                for entry in v.split(';'):
-                    if ':' in entry:
-                        key, values_part = entry.split(':', 1)
-                        val[key.strip()] = [i.strip() for i in values_part.split(',')]
-            elif k.startswith("DICO"):
-                val = {i.split(':')[0].strip(): i.split(':')[1].strip() for i in v.split(',') if ':' in i}
-            
-            setattr(obj, k, val)
-
-    def _create_payload(self, agent):
-        agent._payload = {
-            "model": getattr(agent, 'model', self.cfg.sys.MODEL_NAME_MAIN),
-            "format": "json" if getattr(agent, 'use_json', False) else "",
-            "options": vars(agent.options) if hasattr(agent, 'options') else {},
-            "messages": [
-                {'role': 'system', 'content': agent.prompt}
-            ]
-        }
+                self._apply_logic_to_agents(getattr(obj, k))
+        elif isinstance(obj, list):
+            for item in obj:
+                self._apply_logic_to_agents(item)
 
 cfg = AlisuConfig().cfg
+# print(cfg.sys)
+# print(cfg.sys.config.WHISPER)
+print(cfg.ALL_PURPOSE.ROUTER_AGENT)
+# print(cfg.music_vlc)

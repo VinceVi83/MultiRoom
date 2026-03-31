@@ -1,0 +1,13 @@
+home_automation:
+  config:
+    DESCRIPTION: "Weather, lights, plugs, temperature control. EXCLUDING music/audio devices"
+    AGENT_FEATURES:
+      - "NONSENSE"
+      - "LIGHTS"
+      - "ACTION"
+      - "WEATHER"
+
+  home_assistant_config:
+    HA_TOKEN: "YOUR_HOME_ASSISTANT_TOKEN"
+    HA_HOSTNAME: "ha_hostname"
+    HA_WEATHER_LOCATION: "weather.city"
