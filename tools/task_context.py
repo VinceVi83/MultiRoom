@@ -100,7 +100,6 @@ class TaskContext:
 
     def _archive_and_rename(self):
         try:
-            print(self.category, self.sub_category)
             if "NONSENSE" in [self.category, self.sub_category]:
                 return self.clone_safe()
 

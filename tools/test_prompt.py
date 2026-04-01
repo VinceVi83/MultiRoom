@@ -5,52 +5,7 @@ from tools.llm_agent import llm
 from pathlib import Path
 import argparse
 import time
-
-class TaskContext:
-    """Task Context Manager for LLM Agent Testing
-    
-    Role: Manages task execution context, stores user input, results, and execution steps.
-    
-    Methods:
-        __init__(self, user_input) : Initialize context with user input and default values.
-        add_step(self, step_name, data) : Add execution step data to context.
-        __str__(self) : Return formatted string representation of context.
-        to_json(self) : Return context data as JSON dictionary.
-    """
-    def __init__(self, user_input):
-        self.user_input = user_input
-        self.user_input_origin = user_input
-        self.data = {}
-        self.time = 0
-        self.category = ''
-        self.sub_category = ''
-        self.location = ''
-        self.result = ''
-        self.return_code = cfg.RETURN_CODE.ERR
-
-    def add_step(self, step_name, data):
-        self.data[step_name] = data
-
-    def __str__(self):
-        output = f'\n{'='*20} TASK OVERVIEW {'='*20}\n'
-        output += f'QUERY        : {self.user_input}\n'
-        output += f'Time         : {self.time}\n'
-        output += f'Category     : {self.category}\n'
-        output += f'Sub_category : {self.sub_category}\n'
-        output += f'Location     : {self.location}\n'
-        output += f'Result       : {self.result}\n'
-        output += f'Return_code  : {self.return_code}\n'
-        output += f'{'-'*54}\n'
-        output += f'Result: {json.dumps(self.data, indent=2, ensure_ascii=False)}\n'
-        output += f'{'='*54}\n'
-        return output
-
-    def to_json(self):
-        return {
-            'user_input': self.user_input,
-            'data': self.data,
-            'time': self.time
-        }
+from tools.task_context import TaskContext
 
 def record_text(file, text):
     try:
@@ -303,7 +258,7 @@ def _handle_daily(context):
 
 def _handle_home_auto(context):
     get_location(context)
-    res = llm.execute(context.user_input, cfg.DOMOTIC_HA.DOMOTIC_AGENT, False, False)
+    res = llm.execute(context.user_input, cfg.HOME_AUTOMATION.DOMOTIC_AGENT, False, False)
     action, dtype = res.get('ACTION', 'NONE'), res.get('TYPE', 'NONE')
     context.sub_category = f"{dtype}:{action}"
     context.add_step('sub_category', res)

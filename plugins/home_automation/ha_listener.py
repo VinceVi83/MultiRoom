@@ -22,27 +22,24 @@ class HAListener:
     """
     def __init__(self, cfg):
         self.cfg = cfg
-        self.uri = f"ws://{self.cfg.home_automation.ha_config.HA_HOSTNAME}:8123/api/websocket"
-        self.token = self.cfg.home_automation.ha_config.HA_TOKEN
+        self.uri = f"ws://{self.cfg.ha_config.HA_HOSTNAME}:8123/api/websocket"
+        self.token = self.cfg.ha_config.HA_TOKEN
         self.mapping = {}
         self.pending_clicks = {}
         self._load_mapping()
 
         user = "system"
-        pwd = ""
-        for i in self.cfg.sys.LIST_USERS:
-            if i == "system" and i in self.cfg.sys.security.DICO_USERS.keys():
-                pwd = self.cfg.sys.security.DICO_USERS[user]
+        pwd = getattr(cfg.config.USERS, user, None) 
 
         self.messenger = HubMessenger(
             host="127.0.0.1",
-            port=self.cfg.sys.config.HUB_PORT,
+            port="28888",
             user=user,
             password=pwd
         )
 
     def _load_mapping(self):
-        mapping_file = os.path.join(self.cfg.home_automation.DATA_DIR, "ha_action_mapping.json")
+        mapping_file = os.path.join(self.cfg.DATA_DIR, "ha_action_mapping.json")
         try:
             if os.path.exists(mapping_file):
                 with open(mapping_file, "r", encoding="utf-8") as f:

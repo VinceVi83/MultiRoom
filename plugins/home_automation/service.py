@@ -37,8 +37,7 @@ class HomeAutomationService:
 
     def execute(self, context):
         try:
-            result = llm.execute(context.user_input, self.cfg.DOMOTIC_HA.DOMOTIC_AGENT)
-            
+            result = llm.execute(context.user_input, self.cfg.DOMOTIC_AGENT)
             action, dtype = result.get('ACTION', 'NONE'), result.get('TYPE', 'NONE')
             context.sub_category = f"{dtype}:{action}"
             context.add_step('sub_category', result)

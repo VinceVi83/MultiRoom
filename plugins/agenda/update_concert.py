@@ -153,9 +153,9 @@ def sync_tickets_to_calendar(verbose=False):
         except Exception:
             continue
 
-        res_artist = llm.execute(clean_text, cfg.AGENDA.EXTRACT_ARTIST_AGENT)
-        res_venue = llm.execute(clean_text, cfg.AGENDA.EXTRACT_VENUE_AGENT)
-        res_date = llm.execute(clean_text, cfg.AGENDA.EXTRACT_DATE_AGENT)
+        res_artist = llm.execute(clean_text, cfg.EXTRACT_ARTIST_AGENT)
+        res_venue = llm.execute(clean_text, cfg.EXTRACT_VENUE_AGENT)
+        res_date = llm.execute(clean_text, cfg.EXTRACT_DATE_AGENT)
 
         ticket_artist = str(res_artist.get('artist', 'UNKNOWN') if isinstance(res_artist, dict) else res_artist).strip().upper()
         ai_addr = str(res_venue.get('location', 'UNKNOWN') if isinstance(res_venue, dict) else res_venue).strip()

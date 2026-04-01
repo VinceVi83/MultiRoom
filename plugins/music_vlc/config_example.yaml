@@ -21,16 +21,15 @@ music_vlc:
         - "après"
         - "remets"
         
-  vlc_configuration:
-    VLC_PORT_START: 48888
-    LEN_ALBUMS_CACHE: 50
-
-  storage_and_playlists:
     REPLACE_PLAYLISTS:
       - "Default"
       - "Rock"
       - "Touhou"
     SMB_MOUNT_POINT: "PATH_TO_MUSIC_LIBRARY"
+        
+  vlc_configuration:
+    VLC_PORT_START: 48888
+    LEN_ALBUMS_CACHE: 50
 
   access_control:
     DICO_VLC_USERS:

@@ -25,30 +25,30 @@ class DailyService:
         for keyword in self.cfg.config.BYPASS_ROUTER.FRIDGE:
             keyword_lower = keyword.lower()
             if keyword_lower in user_input_lower:
-                return "FRIDGE"
-        return True
+                return True
+        return False
 
     def execute(self, context):
         try:
-            if self.bypass_router(context)
-                category_res = llm.execute(context.user_input, self.cfg.DAILY_USE.FRIDGE_AGENT)
+            if self.switch_fridge(context):
+                category_res = llm.execute(context.user_input, self.cfg.FRIDGE_AGENT)
                 context.add_step('sub_category', category_res)
                 action = category_res.get('ACTION', 'ERR')
                 context.sub_category = action
-                return self.cfg.ERR_NOT_IMPLEMENTED
+                return self.cfg.RETURN_CODE.ERR_NOT_IMPLEMENTED
             else:
-                category_res = llm.execute(context.user_input, self.cfg.DAILY_USE.DAILY_AGENT)
+                category_res = llm.execute(context.user_input, self.cfg.DAILY_AGENT)
                 action = category_res.get('ACTION', 'ERR')
                 context.sub_category = action
                 context.add_step('sub_category', category_res)
             
             if "_ADD" in action:
-                new_items = llm.execute(context.user_input, cfg.DAILY_USE.EXTRACT_FOOD_AGENT)
+                new_items = llm.execute(context.user_input, cfg.EXTRACT_FOOD_AGENT)
                 if action == "SHOP_ADD":
                     result = shopping.update_shopping_list(new_items)
                 else:
-                    self.cfg.ERR_NOT_IMPLEMENTED
-            elif:
+                    self.cfg.RETURN_CODE.ERR_NOT_IMPLEMENTED
+            else:
                 result = self.shopping_service()
 
             context.result = Utils.format_result(result)
@@ -64,13 +64,13 @@ class DailyService:
 
     def shopping_service(self):
         shopping = ShoppingService(self.cfg)
-            result = "NONSENSE"
-            elif action == "SHOP_DEL":
-                result = shopping.delete_shopping_list()
-            elif action == "SHOP_INFO":
-                result = shopping.report_shopping_list()
-            elif action == "SHOP_MAIL":
-                result = shopping.mail_shopping_list()
+        result = "NONSENSE"
+        if action == "SHOP_DEL":
+            result = shopping.delete_shopping_list()
+        elif action == "SHOP_INFO":
+            result = shopping.report_shopping_list()
+        elif action == "SHOP_MAIL":
+            result = shopping.mail_shopping_list()
         return result
 
     def get_status(self):

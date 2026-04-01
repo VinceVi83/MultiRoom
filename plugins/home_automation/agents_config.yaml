@@ -1,4 +1,4 @@
-DOMOTIC_HA:
+HOME_AUTOMATION:
   DOMOTIC_AGENT:
     model: "qwen2.5:3b"
     use_json: true

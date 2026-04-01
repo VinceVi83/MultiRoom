@@ -38,7 +38,6 @@ class HubMessenger:
         self.user = user
         self.password = password
         self.hw_signature = self._get_hw_sign()
-        print(self.host, self.port, self.hw_signature)
         
         if not cert_path:
             cert_path = Path(cfg.DATA_DIR) / "Certification" / "cert.pem"

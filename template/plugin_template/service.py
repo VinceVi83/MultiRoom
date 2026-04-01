@@ -24,7 +24,7 @@ class YourPluginService:
     def execute(self, context):
         logic = PluginLogic()
         
-        intent_result = llm.execute(context.user_input, self.config.PLUGIN_NAME.INTENT_AGENT)
+        intent_result = llm.execute(context.user_input, self.config.INTENT_AGENT)
         intent_id = int(intent_result.get('ID', '0'))
         
         context.sub_category = self.config.AGENT_FEATURES[intent_id]

@@ -25,7 +25,7 @@ class AgendaService:
                 return cfg.RETURN_CODE.ERR
             
             calendar = CalendarService()
-            res = llm.execute(context.user_input, cfg.AGENDA.CALENDAR_AGENT, False, False)
+            res = llm.execute(context.user_input, self.cfg.CALENDAR_AGENT, False, False)
             action = res.get('ACTION', 'NONE')
             context.sub_category = action
             context.add_step('sub_category', res)
@@ -44,11 +44,11 @@ class AgendaService:
 
             context.result = Utils.format_result(result)
             if result in ["NONSENSE"]:
-                return cfg.RETURN_CODE.ERR
-            return cfg.RETURN_CODE.SUCCESS
+                return self.cfg.RETURN_CODE.ERR
+            return self.cfg.RETURN_CODE.SUCCESS
         except Exception as e:
             print(f"[PLUGIN AGENDA ERROR] {e}")
-            return cfg.RETURN_CODE.ERR
+            return self.cfg.RETURN_CODE.ERR
 
     def get_status(self):
         return {"status": "online", "plugin": self.plugin_name}

@@ -28,14 +28,14 @@ class CommunicationHA:
     def __init__(self, cfg):
         self.cfg = cfg
         if not hasattr(self, 'initialized'):
-            self.url = f"http://{self.cfg.home_automation.ha_config.HA_HOSTNAME}:8123/api"
+            self.url = f"http://{self.cfg.ha_config.HA_HOSTNAME}:8123/api"
             self.headers = {
-                "Authorization": f"Bearer {self.cfg.home_automation.ha_config.HA_TOKEN}",
+                "Authorization": f"Bearer {self.cfg.ha_config.HA_TOKEN}",
                 "Content-Type": "application/json"
             }
             self.initialized = True
 
-            registry_file = os.path.join(self.cfg.home_automation.DATA_DIR, "ha_actuators.json")
+            registry_file = os.path.join(self.cfg.DATA_DIR, "ha_actuators.json")
             with open(registry_file, 'r', encoding='utf-8') as f:
                 data = json.load(f)
 

@@ -58,7 +58,6 @@ class RouterLLM:
                     service_class = getattr(module, class_name)
                     instance = service_class(cfg_final)
                     self.service_registry[plugin_name.upper()] = instance
-                    print("VNG", plugin_name, self.service_registry)
                 else:
                     print(f"  [!] Class {class_name} not found in {module_path}")
 
@@ -108,26 +107,22 @@ class RouterLLM:
 
     def select_plugin(self, context):
         category_res = self.bypass_router(context)
-        print(category_res)
         if not category_res:
             category_res = llm.execute(context.user_input, cfg.ALL_PURPOSE.ROUTER_AGENT)
 
         context.add_step('ROUTER_AGENT', category_res)
         context.category = category_res.get('PLUGIN', 'NONE')
-        print("VNG", context.category, cfg.LOADED_PLUGINS)
         return context.category.lower() in cfg.LOADED_PLUGINS
 
     def select_and_execute(self, context):
         start_total = time.time()
         try:
             if not self.select_plugin(context):
-                print("TEST")
                 context.return_code = cfg.RETURN_CODE.ERR
                 return context._archive_and_rename()
             plugin_obj = getattr(cfg, context.category.lower(), None)
             if plugin_obj.config.USE_LOCATION:
                 self.get_location(context)
-                print("FUCK", context)
         except Exception as e:
             print(f"[!] LLM execution failed: {e}")
             context.return_code = cfg.RETURN_CODE.ERR
@@ -135,7 +130,6 @@ class RouterLLM:
 
         try:
             service_instance = self.service_registry.get(context.category)
-            print("VNG", self.service_registry)
             if service_instance and hasattr(service_instance, 'execute'):
                 return_code = service_instance.execute(context)
                 context.return_code = Utils.format_result(return_code)

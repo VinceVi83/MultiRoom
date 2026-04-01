@@ -60,7 +60,7 @@ class OllamaClient:
             except:
                 pass
 
-    def execute(self, user_input, agent_cfg=None, debug=False, verbose=True):
+    def execute(self, user_input, agent_cfg=None, debug=False, verbose=False):
         if not self.is_ready:
             return {"error": "Ollama is offline", "status": "reconnecting"}
 

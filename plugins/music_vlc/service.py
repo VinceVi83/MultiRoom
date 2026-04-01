@@ -18,7 +18,6 @@ class MusicVlcService:
     def __init__(self, cfg):
         self.plugin_name = "Music VLC" 
         self.cfg = cfg
-        print(cfg)
         self.cfg.RETURN_CODE = cfg.RETURN_CODE
         self.active_instances = {}
         self.cfg.INTENT = ["UNKNOWN", "PLAYLIST_AGENT", "DISCOVERY", "VLC_AGENT", "DISCOVERY"]
@@ -44,7 +43,6 @@ class MusicVlcService:
         return None
 
     def execute(self, context):
-        print("Here")
         category_res = self.bypass_router(context)
         try:
             if category_res:

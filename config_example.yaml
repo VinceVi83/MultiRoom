@@ -9,16 +9,6 @@ sys:
     SCRIPT_TTS: "/home/[USER]/[PROJECT_PATH]/tts_test.py"
     SEARXNG_URL: "http://[SEARXNG_IP]:8080"
     SEARCH_LANG: "en-US"
-
-  security:
-    LIST_ALLOWED_SIGS:
-      - "[HASH_1]"
-      - "[HASH_2]"
-    DICO_USERS:
-      "[USER_1]": "[PASSWORD_1]"
-      "[USER_2]": "[PASSWORD_2]"
-
-  locations:
     REPLACE_LOCATIONS:
       - "Bedroom_1"
       - "Bedroom_2"
@@ -28,6 +18,14 @@ sys:
       - "Toilet"
       - "ALL" 
     REPLACE_RULE_LOCATIONS: "Everywhere, all, everything --> ALL"
+
+  security:
+    LIST_ALLOWED_SIGS:
+      - "[HASH_1]"
+      - "[HASH_2]"
+    DICO_USERS:
+      "[USER_1]": "[PASSWORD_1]"
+      "[USER_2]": "[PASSWORD_2]"
 
   port_management:
     HUB_PORT: 28888
