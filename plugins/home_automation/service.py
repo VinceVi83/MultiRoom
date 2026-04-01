@@ -1,5 +1,6 @@
 from plugins.home_automation.ha_communication import CommunicationHA
 from plugins.home_automation.ha_listener import HAListener
+from plugins.home_automation.ha_weather import WeatherHaApi, WeatherStatus
 from tools.llm_agent import llm
 from tools.utils import Utils
 
@@ -19,6 +20,7 @@ class HomeAutomationService:
         self.cfg = cfg
         self.ha_service = CommunicationHA(cfg)
         self.ha_listener = HAListener(cfg)
+        self.ha_weather = WeatherHaApi(cfg)
 
         if not self.cfg:
             print(f"[!] Error: Configuration for {self.plugin_name} not found.")
@@ -43,7 +45,7 @@ class HomeAutomationService:
             context.add_step('sub_category', result)
 
             if "WEATHER" in context.sub_category:
-                result = self.meteo.fetch_current_status()
+                result = self.ha_weather.fetch_current_status()
                 if isinstance(result, WeatherStatus):
                     context.result = result.display()
                     return self.cfg.RETURN_CODE.SUCCESS

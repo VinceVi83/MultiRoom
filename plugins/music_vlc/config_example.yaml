@@ -20,6 +20,7 @@ music_vlc:
         - "suivant"
         - "après"
         - "remets"
+        - "passe"
         
     REPLACE_PLAYLISTS:
       - "Default"

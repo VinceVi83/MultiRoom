@@ -97,13 +97,14 @@ class CommunicationHA:
     def handle_request(self, context):
         if context.location == "NONSENSE":
             return self.cfg.RETURN_CODE.ERR_INVALID_ARGUMENT
-
         try:
-            params = dict(item.split(":") for item in context.sub_category.split(","))
-            device_type = params.get("TYPE", "").lower()
-            action = params.get("ACTION", "")
-
-            if context.location == "ALL" and device_type == "light":
+            print("VNG handle_request")
+            params = context.sub_category.split(":")
+            device_type = params[0]
+            action = params[1]
+            print("VNG handle_request", context.sub_category, "sep" , params, "sep", action, "sep", device_type)
+            if context.location == "ALL" and device_type == "LIGHT":
+                print("VNG handle_request ALL", action)
                 if action == "ON":
                     return self.smart_toggle(action)
                 elif action == "OFF":
@@ -125,7 +126,8 @@ class CommunicationHA:
                 return self.devices.set_brightness_percent_all(100)
             return self.cfg.RETURN_CODE.ERR_INVALID_ARGUMENT
 
-        except Exception:
+        except Exception as e:
+            print(f"[!] CommunicationHA handle_request error: {e}")
             return self.cfg.RETURN_CODE.ERR
 
     def get_state(self, entity_id):

@@ -37,7 +37,6 @@ class VLCUserManager:
         self.user_session = session
         self.cfg = cfg
         self.smb_base = self.cfg.config.SMB_MOUNT_POINT
-        print("VNG", self.smb_base)
         history_path = Path(self.cfg.DATA_DIR) / f"history_user_{user_index}.json"
         self.store = SimpleStore(history_path, default_structure={"recently_played": []})
         self.music_monitor = MusicMonitor(self.cfg, user_index)
