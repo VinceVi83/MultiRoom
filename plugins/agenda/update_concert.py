@@ -10,8 +10,8 @@ from plugins.agenda.my_calendar import CalendarService
 
 TICKETS_DIR = Path(cfg.agenda.DATA_DIR) / "concert_tickets"
 INDEX_FILE = TICKETS_DIR / "concerts.json"
-BLACKLIST = [w.strip().upper() for w in cfg.agenda.BLACKLIST_NAMES.split(",")]
-KEYWORDS = [w.strip().upper() for w in cfg.agenda.ADDR_KEYWORDS.split(",")]
+BLACKLIST = [w.strip().upper() for w in cfg.agenda.filter.BLACKLIST_NAMES.split(",")]
+KEYWORDS = [w.strip().upper() for w in cfg.agenda.filter.ADDR_KEYWORDS.split(",")]
 
 def create_tmp_ics(pdf_name, info):
     artist = info.get("artist", "Unknown")
@@ -87,8 +87,8 @@ def extract_ticket_info(text):
     for m in re.finditer(r"\b(\d{1,2})\s+([a-zéû\.]+?)\s+(\d{2,4})\b", text, re.IGNORECASE):
         d, m_name, y = m.group(1).zfill(2), m.group(2).lower().replace('.', '')[:3], m.group(3)
         if len(y) == 2: y = "20" + y
-        if m_name in cfg.agenda.MONTH_DICT:
-            valid_matches.append((d, cfg.agenda.MONTH_DICT[m_name], y, m.start()))
+        if m_name in cfg.agenda.filter.MONTH_DICT:
+            valid_matches.append((d, cfg.agenda.filter.MONTH_DICT[m_name], y, m.start()))
 
     future_dates = []
     for d, m_val, y, pos in valid_matches:
@@ -113,7 +113,7 @@ def extract_ticket_info(text):
 
     for line in text.split('\n'):
         u_line = line.strip().upper()
-        for trigger, forced_addr in cfg.agenda.VENUE_DICT.items():
+        for trigger, forced_addr in cfg.agenda.filter.VENUE_DICT.items():
             if trigger in u_line:
                 addr = forced_addr
                 break
@@ -153,9 +153,9 @@ def sync_tickets_to_calendar(verbose=False):
         except Exception:
             continue
 
-        res_artist = llm.execute(clean_text, cfg.agenda.AGENDA.EXTRACT_ARTIST_AGENT)
-        res_venue = llm.execute(clean_text, cfg.agenda.AGENDA.EXTRACT_VENUE_AGENT)
-        res_date = llm.execute(clean_text, cfg.agenda.AGENDA.EXTRACT_DATE_AGENT)
+        res_artist = llm.execute(clean_text, cfg.AGENDA.EXTRACT_ARTIST_AGENT)
+        res_venue = llm.execute(clean_text, cfg.AGENDA.EXTRACT_VENUE_AGENT)
+        res_date = llm.execute(clean_text, cfg.AGENDA.EXTRACT_DATE_AGENT)
 
         ticket_artist = str(res_artist.get('artist', 'UNKNOWN') if isinstance(res_artist, dict) else res_artist).strip().upper()
         ai_addr = str(res_venue.get('location', 'UNKNOWN') if isinstance(res_venue, dict) else res_venue).strip()

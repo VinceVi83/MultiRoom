@@ -147,45 +147,43 @@ class AlisuConfig:
             data = yaml.safe_load(f) or {}
 
         for l0_key, l1_data in data.items():
-            print("VNG", l0_key)
             if not isinstance(l1_data, dict):
                 setattr(self.cfg, l0_key, l1_data)
                 continue
-            print("VNG-X", l0_key)
-            has_config_flag = False
             for l1_key, l2_data in l1_data.items():
                 if l1_key.startswith("config"):
                     if isinstance(l2_data, dict):
-                        print("VNG-Y", l2_data)
-                        # 1. Gestion de la DESCRIPTION pour le routeur
                         if "DESCRIPTION" in l2_data.keys():
-                            self.descriptions.append(f"{l0_key.upper()}: {l2_data['DESCRIPTION']}")
-                        
-
+                            if l2_data['DESCRIPTION']:
+                                self.descriptions.append(f"{l0_key.upper()}: {l2_data['DESCRIPTION']}")
                         for key, value in l2_data.items():
                             if "REPLACE_" in key:
                                 self.replacements[key.upper()] = value
 
-                        # 2. Traitement spécial pour BYPASS_ROUTER ou BYPASS_MAP
-                        # On cherche l'une ou l'autre des clés
-                        print("*********", l2_data.keys())
                         if "BYPASS_ROUTER" in l2_data.keys():
                             content = l2_data["BYPASS_ROUTER"]
                             final_list = []
-                            print("*********", l2_data)
                             if isinstance(content, list):
                                 final_list = content
-                            
                             elif isinstance(content, dict):
                                 for sub_list in content.values():
-                                    print("????", sub_list)
                                     if isinstance(sub_list, list):
                                         final_list.extend(sub_list)
                             
                             if final_list:
                                 self.cfg.ROUTER[l0_key.upper()] = final_list
 
-            setattr(self.cfg, l0_key, self._dict_to_namespace(l1_data))
+            new_data_ns = self._dict_to_namespace(l1_data)
+            if hasattr(self.cfg, l0_key):
+                existing_obj = getattr(self.cfg, l0_key)
+                
+                if isinstance(existing_obj, (SimpleNamespace, PluginConfig)) and isinstance(new_data_ns, (SimpleNamespace, PluginConfig)):
+                    for k, v in vars(new_data_ns).items():
+                        setattr(existing_obj, k, v)
+                else:
+                    setattr(self.cfg, l0_key, new_data_ns)
+            else:
+                setattr(self.cfg, l0_key, new_data_ns)
 
     def _sync_and_freeze_plugins(self):
         self.DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -265,24 +263,20 @@ class AlisuConfig:
 
 
 def print_config_paths(obj, current_path="cfg"):
-    # Si c'est un namespace (notre config), on explore ses attributs
     if isinstance(obj, (SimpleNamespace, PluginConfig)):
         for key, value in vars(obj).items():
             print_config_paths(value, f"{current_path}.{key}")
     
-    # Si c'est une liste, on explore les index (optionnel, selon vos besoins)
     elif isinstance(obj, list):
         for i, item in enumerate(obj):
             print_config_paths(item, f"{current_path}[{i}]")
     
-    # Sinon c'est une valeur finale, on affiche le chemin
     else:
         print(f"{current_path}")
 
 cfg = AlisuConfig().cfg
-# print("\n--- TOUS LES CHEMINS D'ACCÈS ---")
 # print_config_paths(cfg)
-print(cfg.ROUTER)
+# print(cfg.ROUTER)
 # print(cfg.sys.config.WHISPER)
 # print(cfg.ALL_PURPOSE.ROUTER_AGENT)
 # print(cfg.music_vlc)

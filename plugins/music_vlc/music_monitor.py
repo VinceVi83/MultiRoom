@@ -11,12 +11,18 @@ from plugins.music_vlc.vlc_control import VLCControl
 
 @dataclass
 class MusicInfo:
-    """Music Metadata Class
+    """Music metadata information container
     
-    Role: Stores music file metadata extracted from audio files.
+    Role: Stores song metadata extracted from audio files.
     
-    Methods:
-        __init__(self, title='', artist='', genre='', album='', comment='', language='', circle='') : Initialize with default empty values.
+    Fields:
+        title: Song title.
+        artist: Artist name.
+        genre: Music genre.
+        album: Album name.
+        comment: Additional comment.
+        language: Audio language.
+        circle: Organization/circle name.
     """
     title: str = ""
     artist: str = ""
@@ -27,16 +33,15 @@ class MusicInfo:
     circle: str = ""
 
 class MusicMetadata:
-    """Music Metadata Handler Class
+    """Music metadata handler for VLC audio files
     
     Role: Extracts and manages metadata from audio files using mutagen.
     
     Methods:
-        __init__(self) : Initialize the metadata handler.
-        update_metadata(self, song_path) : Update metadata for a given song path.
-        print_status(self) : Print current metadata status.
+        __init__(self) : Initialize metadata handler.
+        update_metadata(self, song_path) : Update metadata from audio file.
+        print_status(self) : Print current playback status.
     """
-
     METADATA_MAP = {
         "title": ["TIT2", "title", "nam"],
         "artist": ["TPE1", "artist", "ART"],
@@ -106,22 +111,22 @@ class MusicMetadata:
         print("="*50 + "\n")
 
 class MusicMonitor:
-    """VLC Music Monitor Class
+    """VLC music playback monitor
     
-    Role: Monitors VLC media player and tracks music playback status.
+    Role: Monitors VLC playback status and updates metadata periodically.
     
     Methods:
-        __init__(self, index) : Initialize the monitor with VLC port index.
-        update_status(self) : Update internal info from VLC.
-        force_update(self) : Trigger an update following a manual action.
-        _do_update(self) : Perform the actual update operation.
+        __init__(self, cfg, index, vlc=None) : Initialize monitor with config.
+        update_status(self) : Update playback status from VLC.
+        force_update(self) : Force immediate status update.
         _schedule_next_auto_update(self) : Schedule next automatic update.
-        stop_timer(self) : Stop the monitor and cancel any pending updates.
+        stop_timer(self) : Stop the update timer.
+        print_status(self) : Print monitor status summary.
     """
     def __init__(self, cfg, index, vlc=None):
         self.index = index
         self.cfg = cfg
-        self.port_ctrl = int(self.cfg.VLC_PORT_START) + index
+        self.port_ctrl = int(self.cfg.config.VLC_PORT_START) + index
         self.vlc_url = f"http://127.0.0.1:{self.port_ctrl}/requests/status.xml"
         self.current_music = ""
         self.full_path = ""

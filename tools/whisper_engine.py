@@ -26,15 +26,14 @@ if os.name == 'nt':
     initialize_cuda()
 
 class WhisperEngine:
-    """Whisper Engine
+    """Whisper Speech Recognition Engine
     
-    Role: Manages the Whisper model for speech recognition tasks.
+    Role: Initializes and manages Whisper model for audio transcription with VAD filtering.
     
     Methods:
-        __init__(self) : Initializes the Whisper model with GPU or CPU configuration based on system settings.
-        transcribe(self, audio) : Transcribes audio data to text using the loaded model with VAD filtering.
+        __init__(self, WHISPER_MODE, LANGUAGE) : Initialize Whisper model with GPU or CPU backend.
+        transcribe(self, audio) : Transcribe audio file and return cleaned text segments.
     """
-
     def __init__(self):
         if WHISPER_MODE == "GPU":
             self.model = WhisperModel("medium", device="cuda", compute_type="float16")

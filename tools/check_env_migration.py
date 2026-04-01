@@ -15,40 +15,34 @@ def append_missing_vars(target_file, missing_vars_dict, mode_label):
         return
 
     with open(target_file, 'a', encoding='utf-8') as f:
-        f.write(f"\n\n# --- MIGRATION: {mode_label} ---\n")
+        f.write(f"\n\n# MIGRATION: {mode_label} ---\n")
         for key, value in missing_vars_dict.items():
             val_str = value if value is not None else ""
             f.write(f"{key}={val_str}\n")
-            print(f"   [+] Added: {key}")
 
 def migrate_pair(source_path, target_path, mode_label):
     if not source_path.exists():
         return
 
     if not target_path.exists():
-        print(f"[*] Created: {target_path}")
         shutil.copy(source_path, target_path)
         return
 
-    print(f"[*] Comparing: {source_path.name} -> {target_path.name}")
     source_vars = get_env_vars(source_path)
     target_vars = get_env_vars(target_path)
 
     to_transfer = {k: v for k, v in source_vars.items() if k not in target_vars}
 
     if to_transfer:
-        print(f"   -> {len(to_transfer)} new variables found.")
         append_missing_vars(target_path, to_transfer, mode_label)
     else:
-        print("   -> OK (Already up to date).")
+        pass
 
 def run_migration(reverse=False):
     ROOT = Path(__file__).resolve().parent.parent 
     DATA_DIR = Path.home() / "Documents" / "ALISU_DATA"
     
     mode_label = "REVERSE (Data -> Template)" if reverse else "NORMAL (Template -> Data)"
-
-    print(f"=== ALISU MIGRATION: {mode_label} ===")
 
     if reverse:
         migrate_pair(DATA_DIR / ".env", ROOT / ".env_template", mode_label)
@@ -75,8 +69,6 @@ def run_migration(reverse=False):
                 dst_env = dst_dir / ".env"
 
             migrate_pair(src_env, dst_env, mode_label)
-
-    print("\n[END] Migration completed.")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

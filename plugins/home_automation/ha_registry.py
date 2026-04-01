@@ -8,12 +8,12 @@ class HomeAutomationRegistry:
     
     Methods:
         __init__(self) : Initialize registry with empty entity storage.
-        register_entity(self, entity_id: str, name: str, device_type: str) -> None : Register a new entity in the registry.
-        register_device(self, device_id: str, device_name: str) -> None : Register a new device in the registry.
-        get_entity(self, entity_id: str) -> dict | None : Retrieve an entity by its ID.
-        get_device(self, device_id: str) -> dict | None : Retrieve a device by its ID.
-        list_entities(self) -> list[dict] : Return a list of all registered entities.
-        list_devices(self) -> list[dict] : Return a list of all registered devices.
+        register_entity(self, entity_id: str, name: str, device_type: str) : Register a new entity in the registry.
+        register_device(self, device_id: str, device_name: str) : Register a new device in the registry.
+        get_entity(self, entity_id: str) : Retrieve an entity by its ID.
+        get_device(self, device_id: str) : Retrieve a device by its ID.
+        list_entities(self) : Return a list of all registered entities.
+        list_devices(self) : Return a list of all registered devices.
     """
 
     def __init__(self):

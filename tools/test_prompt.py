@@ -7,6 +7,16 @@ import argparse
 import time
 
 class TaskContext:
+    """Task Context Manager for LLM Agent Testing
+    
+    Role: Manages task execution context, stores user input, results, and execution steps.
+    
+    Methods:
+        __init__(self, user_input) : Initialize context with user input and default values.
+        add_step(self, step_name, data) : Add execution step data to context.
+        __str__(self) : Return formatted string representation of context.
+        to_json(self) : Return context data as JSON dictionary.
+    """
     def __init__(self, user_input):
         self.user_input = user_input
         self.user_input_origin = user_input
@@ -60,8 +70,6 @@ def load_json_tests():
         print(f"Error reading JSON: {e}")
         return []
 
-import time
-
 def run_batch_test_mode():
     while True:
         test_groups = load_json_tests()
@@ -105,7 +113,7 @@ def _execute_test_group(group: dict):
         clean_cmd = cmd.replace('test:', '')
         context = TaskContext(clean_cmd)
         
-        start_time = time.perf_counter() # More precise than time.time()
+        start_time = time.perf_counter()
         test_full_chain(context)
         context.time = time.perf_counter() - start_time
         
@@ -147,7 +155,7 @@ def _display_results(label: str, contexts: list):
         print(f"SOME TESTS FAILED ({successes}/{total}) - {rate:.2f}%")
         print(f"\n--- FAILED DETAILS ---")
         for ctx in ko_contexts:
-            print(ctx) # Displays the full TaskContext block for debug
+            print(ctx)
 
 def run_debug_server(host='0.0.0.0', port=28888):
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -200,17 +208,9 @@ def get_location(context):
     context.add_step('LOCATION_CLEANER_AGENT', local_res)
     return True
 
-import time
-
 def test_full_chain(context):
     print(f"\n=== Testing Input: {context.user_input} ===")
     
-    # pre_res = llm.execute(context.user_input, cfg.ALL_PURPOSE.PRE_PROCESS_AGENT, verbose=False, debug=False)
-    # context.add_step('pre_process_res', pre_res)
-    # if pre_res.get('valid') == 0:
-    #     print('NON VALID')
-    #     return
-
     route_res = llm.execute(context.user_input, cfg.ALL_PURPOSE.ROUTER_AGENT, verbose=False, debug=False)
     plugin_name = route_res.get('PLUGIN', 'NONE')
     

@@ -8,17 +8,16 @@ from tools.whisper_engine import WhisperEngine
 from tools.hub_messenger import HubMessenger
 
 class UnifiedSpeechSystem:
-    """Unified Speech System
+    """Unified Speech Processing System
     
-    Role: Manages microphone input and speech transcription (Whisper) or push-to-talk file transmission.
+    Role: Manages audio input, speech-to-text transcription, and push-to-talk operations.
     
     Methods:
-        __init__(self, mode, cert_path=None, user="test", password="test") : Initialize the system with STT or PTT mode.
-        start(self) : Start the audio processing loop.
-        _handle_stt_action(self, frames) : Transcribe audio and send text via HubMessenger.
-        _handle_ptt_action(self, frames) : Save audio file and send via HubMessenger.
+        __init__(self, mode, cert_path=None, user='test', password='test') : Initialize the system with operating mode and credentials.
+        start(self) : Start the audio processing loop for continuous input.
+        _handle_stt_action(self, frames) : Process audio frames through speech-to-text engine and send to hub.
+        _handle_ptt_action(self, frames) : Handle push-to-talk by saving audio and sending to hub.
     """
-
     def __init__(self, mode, cert_path=None, user="test", password="test"):
         self.mode = mode
         self.running = True

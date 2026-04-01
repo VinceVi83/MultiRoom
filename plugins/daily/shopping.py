@@ -7,17 +7,16 @@ from tools.utils import SimpleStore
 class ShoppingService:
     """Shopping Service Plugin
     
-    Role: Manages shopping lists with file persistence and email notifications.
+    Role: Manages shopping list operations including updates, deletion, reporting, and email notifications.
     
     Methods:
-        __new__(cls) : Singleton pattern to ensure only one instance of ShoppingService.
-        __init__() : Initializes the service with the necessary file path and mailer.
-        update_shopping_list(result) : Adds new unique items to the list.
-        delete_shopping_list() : Deletes the shopping list file permanently.
-        report_shopping_list() : Retrieves the raw list of items (format list).
-        mail_shopping_list() : Formats the list and sends it to the configured email address.
+        __new__(cls) : Singleton pattern implementation.
+        __init__(self) : Initialize the service with store and mailer.
+        update_shopping_list(self, result) : Add new items to the shopping list.
+        delete_shopping_list(self) : Delete/clear the shopping list.
+        report_shopping_list(self) : Get current shopping list items.
+        mail_shopping_list(self) : Send shopping list via email.
     """
-
     _instance = None
 
     def __new__(cls):
@@ -26,11 +25,11 @@ class ShoppingService:
             cls._instance._initialized = False
         return cls._instance
 
-    def __init__(self):
+    def __init__(self, cfg):
         if self._initialized:
             return
-        
-        file_path = Path(cfg.daily.DATA_DIR) / "shopping_list.json"
+        self.cfg = cfg
+        file_path = Path(self.cfg.daily.DATA_DIR) / "shopping_list.json"
         self.store = SimpleStore(file_path, default_structure={'items': []})
         self.mailer_proton = MailerProton()
         self._initialized = True
@@ -60,15 +59,15 @@ class ShoppingService:
     def mail_shopping_list(self):
         items = self.report_shopping_list()
         if not items:
-            return cfg.RETURN_CODE.SUCCESS_NOTHING_TO_DO
+            return self.cfg.RETURN_CODE.SUCCESS_NOTHING_TO_DO
 
         body = "Here is your shopping list:\n- " + "\n- ".join(items)
         success = self.mailer_proton.send_mail(
             subject="Shopping List",
             body=body,
-            to_email=f"system@{cfg.agenda.DOMAIN}"
+            to_email=f"system@{cfg.agenda.mail_server.DOMAIN}" # TODO internal request callback
         )
-        return cfg.RETURN_CODE.SUCCESS if success else cfg.RETURN_CODE.ERR
+        return self.cfg.RETURN_CODE.SUCCESS if success else self.cfg.RETURN_CODE.ERR
 
 if __name__ == "__main__":
     shopping = ShoppingService()

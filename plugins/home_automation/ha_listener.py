@@ -6,41 +6,43 @@ from config_loader import cfg
 from tools.hub_messenger import HubMessenger
 
 class HAListener:
-    """Home Assistant WebSocket Listener
+    """Home Assistant WebSocket Event Listener
     
-    Role: Listens for Home Assistant events and triggers actions based on button mappings.
+    Role: Monitors Home Assistant events and triggers corresponding actions via AI Hub.
     
     Methods:
-        __init__(self) : Initialize listener with URI, token, and load mapping.
-        start(self) : Start WebSocket connection and event listening loop.
+        __init__(self) : Initialize listener with config, mapping, and hub messenger.
+        _load_mapping(self) : Load action mapping from JSON file.
+        start(self) : Main loop to connect to WebSocket and process events.
         _auth(self, ws) : Authenticate with Home Assistant WebSocket.
-        _sub(self, ws) : Subscribe to Home Assistant events.
+        _sub(self, ws) : Subscribe to events.
         _process(self, event) : Process incoming event data.
-        trigger(self, eid, name, action, command) : Execute triggered action/command.
+        _delayed_trigger(self, eid, action) : Delayed action trigger with error handling.
+        trigger(self, eid, name, action, command) : Execute the actual command/service call.
     """
-
-    def __init__(self):
-        self.uri = f"ws://{cfg.home_automation.HA_HOSTNAME}:8123/api/websocket"
-        self.token = cfg.home_automation.HA_TOKEN
+    def __init__(self, cfg):
+        self.cfg = cfg
+        self.uri = f"ws://{self.cfg.home_automation.ha_config.HA_HOSTNAME}:8123/api/websocket"
+        self.token = self.cfg.home_automation.ha_config.HA_TOKEN
         self.mapping = {}
         self.pending_clicks = {}
         self._load_mapping()
 
         user = "system"
         pwd = ""
-        for i in cfg.sys.LIST_USERS:
-            if i == "system" and i in cfg.sys.DICO_USERS.keys():
-                pwd = cfg.sys.DICO_USERS[user]
+        for i in self.cfg.sys.LIST_USERS:
+            if i == "system" and i in self.cfg.sys.security.DICO_USERS.keys():
+                pwd = self.cfg.sys.security.DICO_USERS[user]
 
         self.messenger = HubMessenger(
-            host=getattr(cfg.home_automation, 'HUB_HOST', "172.21.8.200"),
-            port=getattr(cfg.home_automation, 'HUB_PORT', 28888),
+            host="127.0.0.1",
+            port=self.cfg.sys.config.HUB_PORT,
             user=user,
             password=pwd
         )
 
     def _load_mapping(self):
-        mapping_file = os.path.join(cfg.home_automation.DATA_DIR, "ha_action_mapping.json")
+        mapping_file = os.path.join(self.cfg.home_automation.DATA_DIR, "ha_action_mapping.json")
         try:
             if os.path.exists(mapping_file):
                 with open(mapping_file, "r", encoding="utf-8") as f:

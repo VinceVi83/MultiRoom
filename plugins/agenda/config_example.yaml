@@ -5,7 +5,7 @@ agenda:
     BYPASS_ROUTER:
       - "rendez-vous"
 
-  calendar_integration:
+  calendar:
     LINK_CALENDAR: "https://calendar.service.com/api/v1/user/token/calendar.ics"
     PATH_ICS_TEMPLATE: "plugins/agenda/template_concert.ics"
 
@@ -17,7 +17,7 @@ agenda:
     IP_MAIL: "127.0.0.1"
     PORT_SMTP_MAIL: 1025
 
-  filter:
+  ha_config:
     BLACKLIST_NAMES:
       - "SURNAME"
       - "GIVEN_NAME"
@@ -45,7 +45,7 @@ agenda:
       - "ROAD"
       - "WAY"
 
-  dictionaries:
+  dico:
     DICO_MONTHS:
       JAN: "01"
       FEB: "02"

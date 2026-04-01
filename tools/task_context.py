@@ -10,28 +10,29 @@ from tools.utils import Utils
 class TaskContext:
     """Task Context Manager
     
-    Role: Manages task context including user input, session, audio path, category, label, result, duration, and location.
+    Role: Manages task execution context, session data, and result reporting.
     
     Methods:
-        clone_safe(self) : Creates a safe clone of the TaskContext without the session.
-        from_json(json_str) : Creates a TaskContext instance from a JSON string.
-        to_dict(self) : Transforms the object into a dictionary for JSON transmission.
-        display_report(self, new_audio_name="None") : Displays a report of the task context.
-        update_record(self, name) : Updates the record file with current task data.
-        _archive_and_rename(self) : Archives the audio file and renames it.
+        __init__(self, user_input, session=None, audio_path=None, category='NONSENSE', label='NONSENSE', result='NONSENSE', duration_llm=0, duration=0, location='NONSENSE', start=None, data=None, return_code=None) : Initialize task context with input, session, and metadata.
+        add_step(self, step_name, data) : Add a step with data to the context.
+        clone_safe(self) : Create a safe clone of the context with formatted return code.
+        from_json(self, json_str) : Create TaskContext instance from JSON string.
+        to_dict(self) : Convert context to dictionary, excluding session.
+        display_report(self, new_audio_name='None') : Display formatted dispatch report.
+        update_record(self, name) : Update archive record with current task data.
+        _archive_and_rename(self) : Archive task files and rename with timestamp.
     """
-
     user_input: str
     session: any = None
     audio_path: str = None
     category: str = "NONSENSE"
-    label: str = "NONSENSE"
+    sub_category: str = "NONSENSE"
     result: str = "NONSENSE"
     duration_llm: int = 0
     duration: int = 0
     location: str = "NONSENSE"
     start: float = field(default_factory=time.time)
-    data: dict = field(default_factory=dict, init=False)
+    data: dict = field(default_factory=dict)
     return_code: ReturnCode = cfg.RETURN_CODE.ERR
 
     def add_step(self, step_name, data):
@@ -99,6 +100,7 @@ class TaskContext:
 
     def _archive_and_rename(self):
         try:
+            print(self.category, self.sub_category)
             if "NONSENSE" in [self.category, self.sub_category]:
                 return self.clone_safe()
 

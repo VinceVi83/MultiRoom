@@ -7,13 +7,14 @@ from config_loader import cfg
 class UserSession:
     """User Session Manager
     
-    Role: Manages user sessions, handling commands and broadcasting updates.
+    Role: Manages user sessions, services, and communication with connected devices.
     
     Methods:
-        __init__(self, username, index) : Initialize the user session with username and index.
+        __init__(self, username, index) : Initialize user session with username and index.
         add_new_service(self, service_name, service) : Add a new service to the session.
-        send_to_all_socks(self, text) : Send a message to all connected sockets.
+        send_to_all_socks(self, text) : Send text to all connected socks.
         cleanup_services(self) : Clean up inactive services.
+        stop_all_services(self) : Stop all services and clear them.
     """
 
     def __init__(self, username, index):
@@ -75,4 +76,3 @@ class UserSession:
     
         self.services.clear()
         self.stop_threads.set()
-    

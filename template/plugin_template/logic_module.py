@@ -5,13 +5,14 @@ from config_loader import cfg
 class PluginLogic:
     """Plugin Logic Module
     
-    Role: Singleton plugin logic handler for action execution.
+    Role: Singleton plugin logic handler for data operations.
     
     Methods:
-        __new__(cls) : Implement singleton pattern.
-        __init__(self) : Initialize plugin instance.
-        perform_action(self, data=None) : Execute plugin actions.
+        __new__(cls) : Singleton instance creation.
+        __init__(self) : Initialize plugin data path.
+        perform_action(self, data=None) : Execute plugin action.
     """
+
     _instance = None
 
     def __new__(cls):

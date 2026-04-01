@@ -22,23 +22,23 @@ from pathlib import Path
 class SessionManager:
     """Session Manager
     
-    Role: Manages user sessions and handles incoming requests.
+    Role: Manages user sessions, task routing, and client connections for the hub system.
     
     Methods:
-        __init__(self, disable_whisper=False) : Initializes the session manager.
-        _cleanup_inactive_sessions(self) : Cleans up inactive sessions.
-        _worker_loop(self) : Processes tasks from the queue.
-        _handle_direct_command(self, session, text) : Handles direct commands.
-        _handle_stt_request(self, session, url) : Handles speech-to-text requests.
-        _handle_auth(self, sock, username, password) : Handles user authentication.
-        handle_client(self, sock) : Handles client connections.
-        run_server(self) : Starts the SSL-secured Hub Server.
+        __init__(self, disable_whisper=False) : Initialize session manager with optional Whisper STT.
+        _cleanup_loop(self) : Background loop for cleaning inactive sessions.
+        _do_session_cleanup(self) : Perform cleanup of sessions exceeding timeout.
+        _worker_loop(self) : Background worker loop processing task queue.
+        _handle_direct_command(self, session, text) : Handle direct text commands from clients.
+        _handle_stt_request(self, session, url) : Handle speech-to-text requests via Whisper.
+        _handle_auth(self, sock, username, password) : Validate user authentication credentials.
+        handle_client(self, sock) : Handle incoming client socket connections.
+        run_server(self) : Start the SSL server and accept client connections.
     """
-
-    def __init__(self, disable_whisper=False):
-        self.host = cfg.sys.INTERFACE_IP
-        self.port = int(cfg.sys.HUB_PORT)
-        self.allowed_sigs = cfg.sys.LIST_ALLOWED_SIGS
+    def __init__(self, disable_whisper=True):
+        self.host = "0.0.0.0"
+        self.port = int(cfg.sys.config.HUB_PORT)
+        self.allowed_sigs = cfg.sys.security.LIST_ALLOWED_SIGS
         self.user_count = 0
         self.active_sessions = {}
         self.disable_whisper = disable_whisper
@@ -116,7 +116,7 @@ class SessionManager:
                 os.unlink(temp_file)
 
     def _handle_auth(self, sock, username, password):
-        stored_password = cfg.sys.DICO_USERS.get(username)
+        stored_password = getattr(cfg.sys.security.DICO_USERS, username, None)
         if stored_password and stored_password == password:
             if username in self.active_sessions.keys():
                 self.active_sessions[username].socks.append(sock)
@@ -137,7 +137,6 @@ class SessionManager:
 
                 parts = raw_data.decode('utf-8').strip().split(":", 2)
                 if len(parts) < 2: continue
-
                 hw_sig, action = parts[0], parts[1]
                 payload = parts[2] if len(parts) > 2 else ""
                 if hw_sig not in self.allowed_sigs:
@@ -190,7 +189,6 @@ class SessionManager:
         server_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         server_sock.bind((self.host, self.port))
         server_sock.listen(10)
-
         try:
             while True:
                 newsock, addr = server_sock.accept()
@@ -202,7 +200,7 @@ class SessionManager:
                 except Exception as e:
                     print(f"[!] Unexpected error in accept loop: {e}")
         except KeyboardInterrupt:
-            print("[*] Server shutting down...")
+            pass
         finally:
             try:
                 self.router.stop()

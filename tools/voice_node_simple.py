@@ -7,14 +7,14 @@ from collections import deque
 from tools.whisper_engine import WhisperEngine
 
 class SimpleVoiceNode:
-    """Simple Voice Node
+    """Simple Voice Node for audio transcription and command sending
     
-    Role: Captures audio, transcribes with Whisper, and sends to server.
+    Role: Captures audio input, transcribes speech using Whisper, and sends commands to a socket server.
     
     Methods:
-        __init__(self, host='127.0.0.1', port=28888) : Initialize voice node with host/port.
-        start(self) : Start audio capture and processing loop.
-        _handle_action(self, frames) : Process captured audio frames.
+        __init__(self, host='127.0.0.1', port=28888) : Initialize the voice node with host and port settings.
+        start(self) : Start the audio recording and processing loop.
+        _handle_action(self, frames) : Process transcribed audio and send to socket server.
     """
     def __init__(self, host='127.0.0.1', port=28888):
         self.host = host

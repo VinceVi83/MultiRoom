@@ -1,4 +1,3 @@
-from config_loader import cfg
 from plugins.agenda.my_calendar import CalendarService
 from tools.llm_agent import llm
 from tools.utils import Utils
@@ -6,19 +5,18 @@ from tools.utils import Utils
 class AgendaService:
     """Agenda Service Plugin
     
-    Role: Manages calendar agenda operations including fetching events, concerts, and mailing next concert notifications.
+    Role: Manages calendar events and concert scheduling through LLM agent.
     
     Methods:
-        __init__(self) : Initialize the service with configuration.
-        execute(self, context) : Execute the agenda service logic and return status.
-        get_status(self) : Check if the service is responding.
+        __init__(self) : Initialize plugin with configuration.
+        execute(self, context) : Process user input and execute calendar actions.
+        get_status(self) : Return plugin status information.
     """
-
-    def __init__(self):
+    def __init__(self, cfg):
         self.plugin_name = "Agenda" 
-        self.config = cfg.agenda
+        self.cfg = cfg
         
-        if not self.config:
+        if not self.cfg:
             print(f"[!] Error: Configuration for {self.plugin_name} not found.")
 
     def execute(self, context):
@@ -27,22 +25,22 @@ class AgendaService:
                 return cfg.RETURN_CODE.ERR
             
             calendar = CalendarService()
-            res = llm.execute(context.user_input, cfg.agenda.AGENDA.CALENDAR_AGENT, False, False)
+            res = llm.execute(context.user_input, cfg.AGENDA.CALENDAR_AGENT, False, False)
             action = res.get('ACTION', 'NONE')
             context.sub_category = action
             context.add_step('sub_category', res)
             
             result = "NONSENSE"
-            if context.sub_category == "NEXT_RDV":
+            if action == "NEXT_RDV":
                 result = calendar.fetch_calendar_events(limit=1)
-            elif context.sub_category == "NEXT_CONCERT":
-                result = calendar.get_next_concert_data()
-            elif context.sub_category == "CURRENT_WEEK":
-                result = calendar.get_week_events(0)
-            elif context.sub_category == "NEXT_WEEK":
-                result = calendar.get_week_events(1)
-            elif context.sub_category == "MAIL_NEXT_CONCERT":
+            elif action == "MAIL_NEXT_CONCERT" or "mail" in context.user_input:
                 result = calendar.mail_me_next_concert()
+            elif action == "NEXT_CONCERT":
+                result = calendar.get_next_concert_data()
+            elif action == "CURRENT_WEEK":
+                result = calendar.get_week_events(0)
+            elif action == "NEXT_WEEK":
+                result = calendar.get_week_events(1)
 
             context.result = Utils.format_result(result)
             if result in ["NONSENSE"]:

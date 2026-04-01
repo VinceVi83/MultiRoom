@@ -12,20 +12,19 @@ from plugins.agenda.mailer_proton import MailerProton
 class CalendarService:
     """Calendar Service
     
-    Role: Manages calendar events and provides functionalities to fetch and send concert tickets.
+    Role: Manages calendar event retrieval, filtering, and concert ticket notifications.
     
     Methods:
-        __new__(cls) -> CalendarService : Singleton pattern to ensure only one instance of CalendarService.
-        __init__() -> None : Initializes the service and runs a health check.
-        _run_health_check() -> dict : Checks the health of the service by verifying the existence of a JSON file and the availability of an iCal URL.
-        is_healthy() -> tuple : Returns the health status of the service.
-        _get_calendar_events() -> list : Fetches and parses the remote iCal file.
-        fetch_calendar_events(keyword, month, limit) -> list : Filters the iCal events based on optional keyword and month.
-        get_next_concert_data() -> dict : Analyzes the JSON dictionary of tickets to find the next concert.
-        mail_me_next_concert() -> str : Sends the next concert details by email with its attached file.
-        get_week_events(offset) -> list : Fetches events for the current or next week.
+        __new__(cls) : Singleton pattern implementation.
+        __init__(self) : Initialize the service with health checks.
+        _run_health_check(self) : Check if JSON file and ICal URL are accessible.
+        is_healthy(self) : Return health status of the service.
+        _get_calendar_events(self) : Fetch all events from calendar source.
+        fetch_calendar_events(self, keyword='', month='', limit=None) : Filter events by keyword, month, limit.
+        get_next_concert_data(self) : Get next concert from index file.
+        mail_me_next_concert(self) : Send email about next concert.
+        get_week_events(self, offset=0) : Get events for a specific week.
     """
-
     _instance = None
 
     def __new__(cls):
@@ -51,7 +50,7 @@ class CalendarService:
         else:
             print(f"[WARN] File not found: {self.index_path}")
         try:
-            r = requests.head(cfg.agenda.LINK_CALENDAR, timeout=5)
+            r = requests.head(cfg.agenda.calendar.LINK_CALENDAR, timeout=5)
             if r.status_code == 200:
                 checks["ical_url"] = True
         except requests.RequestException as e:
@@ -63,7 +62,7 @@ class CalendarService:
 
     def _get_calendar_events(self):
         try:
-            response = requests.get(cfg.agenda.LINK_CALENDAR, timeout=10)
+            response = requests.get(cfg.agenda.calendar.LINK_CALENDAR, timeout=10)
             response.raise_for_status()
             calendar = vobject.readOne(response.text)
         except (requests.RequestException, Exception) as e:
@@ -160,7 +159,7 @@ class CalendarService:
             success = self.mailer_proton.send_mail(
                 subject=subject,
                 body=body,
-                to_email=f"system@{cfg.agenda.DOMAIN}",
+                to_email=f"system@{cfg.agenda.mail_server.DOMAIN}",
                 attachment_path=str(attachment) if attachment.exists() else None
             )
             return f"Success ({summary})" if success else "Failed to send email"

@@ -3,10 +3,11 @@ import threading
 import json
 import time
 import importlib
-from config_loader import cfg
+from config_loader import cfg, PluginConfig
 from tools.llm_agent import llm
 from tools.task_context import TaskContext
 from tools.utils import Utils
+import copy
 
 class RouterLLM:
     """RouterLLM
@@ -14,16 +15,18 @@ class RouterLLM:
     Role: Manages LLM routing, plugin registration, and command queue processing.
     
     Methods:
-        __init__(self) : Initializes the RouterLLM instance with command queue, threading, and service instances.
-        add_to_queue(self, context) : Adds a TaskContext to the command queue for processing.
-        _initialize_service_registry(self) : Builds the service registry from loaded plugins.
-        execute_native(self, context) : Executes native format commands on registered services.
-        select_and_execute(self, context) : Detects intent via LLM and calls the appropriate service immediately.
-        inference_loop(self) : Background worker processing the command queue.
-        start(self) : Starts the inference loop in a separate daemon thread.
-        stop(self) : Stops the inference loop and waits for thread completion.
+        __init__(self) : Initialize router with service registry and start inference loop.
+        add_to_queue(self, context) : Add a TaskContext to the command queue.
+        _initialize_service_registry(self) : Initialize service registry from loaded plugins.
+        execute_native(self, context) : Execute native format commands.
+        get_location(self, context) : Get/clean location using LLM agent.
+        bypass_router(self, context) : Check if user input bypasses router.
+        select_plugin(self, context) : Select plugin based on user input.
+        select_and_execute(self, context) : Select plugin and execute it.
+        inference_loop(self) : Main inference loop for processing commands.
+        start(self) : Start the inference thread.
+        stop(self) : Stop the inference thread.
     """
-
     def __init__(self):
         self.command_queue = queue.Queue()
         self.service_registry = {}
@@ -53,10 +56,9 @@ class RouterLLM:
                         vars(cfg_final).update(copy.deepcopy(vars(plugin_obj_2)))
                     cfg_final.RETURN_CODE = copy.deepcopy(cfg.RETURN_CODE)
                     service_class = getattr(module, class_name)
-                    instance = service_class()
-                    instance.plugin_name = plugin_name
-                    instance.cfg = cfg_final
-                    self.service_registry[plugin_name] = instance
+                    instance = service_class(cfg_final)
+                    self.service_registry[plugin_name.upper()] = instance
+                    print("VNG", plugin_name, self.service_registry)
                 else:
                     print(f"  [!] Class {class_name} not found in {module_path}")
 
@@ -95,35 +97,37 @@ class RouterLLM:
         return True
 
     def bypass_router(self, context):
-        user_input_lower = user_input.lower().strip()
+        user_input_lower = context.user_input.lower()
         
         for category, keywords in cfg.ROUTER.items():
             for keyword in keywords:
-                keyword_lower = keyword.lower().strip()
-                
+                keyword_lower = keyword.lower()
                 if keyword_lower in user_input_lower:
-                    return {'PLUGIN': keyword_lower, 'bypass': 1}
+                    return {'PLUGIN': category, 'bypass': 1}
         return None
 
     def select_plugin(self, context):
-        category_res = self.bypass_router(self, context)
+        category_res = self.bypass_router(context)
+        print(category_res)
         if not category_res:
             category_res = llm.execute(context.user_input, cfg.ALL_PURPOSE.ROUTER_AGENT)
 
         context.add_step('ROUTER_AGENT', category_res)
         context.category = category_res.get('PLUGIN', 'NONE')
-
-        return context.category in cfg.LOADED_PLUGINS
+        print("VNG", context.category, cfg.LOADED_PLUGINS)
+        return context.category.lower() in cfg.LOADED_PLUGINS
 
     def select_and_execute(self, context):
         start_total = time.time()
         try:
-            if not self.select_plugin():
+            if not self.select_plugin(context):
+                print("TEST")
                 context.return_code = cfg.RETURN_CODE.ERR
                 return context._archive_and_rename()
-            plugin_obj = getattr(cfg, context.category, None)
-            if plugin_obj.config.USE_LOCATION
-            self.get_location()
+            plugin_obj = getattr(cfg, context.category.lower(), None)
+            if plugin_obj.config.USE_LOCATION:
+                self.get_location(context)
+                print("FUCK", context)
         except Exception as e:
             print(f"[!] LLM execution failed: {e}")
             context.return_code = cfg.RETURN_CODE.ERR
@@ -131,12 +135,13 @@ class RouterLLM:
 
         try:
             service_instance = self.service_registry.get(context.category)
+            print("VNG", self.service_registry)
             if service_instance and hasattr(service_instance, 'execute'):
                 return_code = service_instance.execute(context)
                 context.return_code = Utils.format_result(return_code)
   
         except Exception as e:
-            print(f"[!] Service {choice} execute failed: {e}")
+            print(f"[!] Service {context.category} execute failed: {e}")
             return context._archive_and_rename()
 
         context.duration_llm = time.time() - start_total
@@ -159,11 +164,10 @@ class RouterLLM:
                 if context.user_input.startswith('@'):
                     response_context = self.execute_native(context)
                 elif self.test:
-                    result = llm.execute(context.user_input, cfg.sys.ALL_PURPOSE.pre_process_agent)
+                    result = llm.execute(context.user_input, cfg.ALL_PURPOSE.pre_process_agent)
                     if result.get('valid', 0):
                         response_context = self.select_and_execute(context)
                     else:
-                        print("--- [Router] Input rejected: Does not meet criteria ---")
                         continue
                 else:
                     response_context = self.select_and_execute(context)

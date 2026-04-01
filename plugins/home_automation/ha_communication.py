@@ -1,25 +1,22 @@
 import requests
 import json
 import os
-from config_loader import cfg
 from plugins.home_automation.ha_mapping import DeviceCollection
-
 
 class CommunicationHA:
     """Home Assistant Service Plugin
     
-    Role: Manages Home Assistant interactions including device control, light toggling, brightness management, and command handling.
+    Role: Manages Home Assistant API interactions and device control.
     
     Methods:
-        __new__(cls, *args, **kwargs) : Singleton pattern for instance creation.
-        __init__() : Initialize service with URL, headers, and device registry.
-        call_action(domain, service, entity_id, data=None) : Call action on Home Assistant entity.
-        smart_toggle(action) : Toggle lights based on current state.
-        set_brightness_percent_all(level_percent) : Set brightness for all lights.
-        handle_request(context) : Execute command based on label and context.
-        get_state(entity_id) : Retrieve state of specific entity.
+        __new__(cls, *args, **kwargs) : Singleton pattern implementation.
+        __init__(self) : Initialize connection and load device registry.
+        call_action(self, domain, service, entity_id, data=None) : Send commands to Home Assistant services.
+        smart_toggle(self, action) : Toggle lights based on current state.
+        set_brightness_percent_all(self, level_percent) : Set brightness for all lights.
+        handle_request(self, context) : Process context requests.
+        get_state(self, entity_id) : Get state of an entity.
     """
-
     _instance = None
 
     def __new__(cls, *args, **kwargs):
@@ -28,16 +25,17 @@ class CommunicationHA:
             cls._instance._initialized = False
         return cls._instance
 
-    def __init__(self):
+    def __init__(self, cfg):
+        self.cfg = cfg
         if not hasattr(self, 'initialized'):
-            self.url = f"http://{cfg.home_automation.HA_HOSTNAME}:8123/api"
+            self.url = f"http://{self.cfg.home_automation.ha_config.HA_HOSTNAME}:8123/api"
             self.headers = {
-                "Authorization": f"Bearer {cfg.home_automation.HA_TOKEN}",
+                "Authorization": f"Bearer {self.cfg.home_automation.ha_config.HA_TOKEN}",
                 "Content-Type": "application/json"
             }
             self.initialized = True
 
-            registry_file = os.path.join(cfg.home_automation.DATA_DIR, "ha_actuators.json")
+            registry_file = os.path.join(self.cfg.home_automation.DATA_DIR, "ha_actuators.json")
             with open(registry_file, 'r', encoding='utf-8') as f:
                 data = json.load(f)
 
@@ -51,18 +49,16 @@ class CommunicationHA:
             payload.update(data)
         try:
             res = requests.post(endpoint, headers=self.headers, json=payload, timeout=10)
-
             if res.ok:
-                return cfg.RETURN_CODE.SUCCESS
-
-            return cfg.RETURN_CODE.ERR
+                return self.cfg.RETURN_CODE.SUCCESS
+            return self.cfg.RETURN_CODE.ERR
 
         except requests.exceptions.Timeout:
-            return cfg.RETURN_CODE.ERR_NOT_CONNECTED
+            return self.cfg.RETURN_CODE.ERR_NOT_CONNECTED
         except requests.exceptions.ConnectionError:
-            return cfg.RETURN_CODE.ERR_NOT_CONNECTED
+            return self.cfg.RETURN_CODE.ERR_NOT_CONNECTED
         except Exception:
-            return cfg.RETURN_CODE.ERR
+            return self.cfg.RETURN_CODE.ERR
 
     def smart_toggle(self, action):
         my_entity_ids = [l.id for l in self.devices.lights]
@@ -71,7 +67,7 @@ class CommunicationHA:
             response.raise_for_status()
             all_states = response.json()
         except Exception:
-            return cfg.RETURN_CODE.ERR_NOT_CONNECTED
+            return self.cfg.RETURN_CODE.ERR_NOT_CONNECTED
 
         lights_on = []
         lights_off = []
@@ -96,11 +92,11 @@ class CommunicationHA:
 
         if brightness_255 > 0:
             return self.call_action("light", "turn_on", all_ids, data=data)
-        return cfg.RETURN_CODE.ERR_INVALID_ARGUMENT
+        return self.cfg.RETURN_CODE.ERR_INVALID_ARGUMENT
 
     def handle_request(self, context):
         if context.location == "NONSENSE":
-            return cfg.RETURN_CODE.ERR_INVALID_ARGUMENT
+            return self.cfg.RETURN_CODE.ERR_INVALID_ARGUMENT
 
         try:
             params = dict(item.split(":") for item in context.sub_category.split(","))
@@ -112,11 +108,11 @@ class CommunicationHA:
                     return self.smart_toggle(action)
                 elif action == "OFF":
                     return self.smart_toggle(action)
-                return cfg.RETURN_CODE.ERR_INVALID_ARGUMENT
+                return self.cfg.RETURN_CODE.ERR_INVALID_ARGUMENT
 
             target = self.devices.search(context.location, device_type)
             if not target:
-                return cfg.RETURN_CODE.ERR_UNKNOWN_DEVICE
+                return self.cfg.RETURN_CODE.ERR_UNKNOWN_DEVICE
             if action == "OFF":
                 return target.turn_off()
             elif action == "ON":
@@ -127,10 +123,10 @@ class CommunicationHA:
                 return self.devices.set_brightness_percent_all(5)
             elif action == "DAY_MODE":
                 return self.devices.set_brightness_percent_all(100)
-            return cfg.RETURN_CODE.ERR_INVALID_ARGUMENT
+            return self.cfg.RETURN_CODE.ERR_INVALID_ARGUMENT
 
         except Exception:
-            return cfg.RETURN_CODE.ERR
+            return self.cfg.RETURN_CODE.ERR
 
     def get_state(self, entity_id):
         try:

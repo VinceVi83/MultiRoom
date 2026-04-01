@@ -9,30 +9,29 @@ import shlex
 class VLCControl:
     """VLC Media Player Control Service
     
-    Role: Manages VLC media player control and playlist management.
+    Role: Manages VLC media player instances via HTTP control interface for music playback.
     
     Methods:
-        __init__(self, cfg, index, playlist='') : Initialize VLC control instance.
-        interpret_vlc_command(self, cmd_tokens) : Interpret and execute VLC commands.
-        handle_simple_command(self, action) : Handle simple VLC commands.
-        change_playlist(self, target) : Change the current playlist.
-        start_vlc(self, path=None) : Start the VLC media player.
-        kill_vlc(self) : Terminate the VLC media player.
-        get_remaining_seconds(self) : Get remaining seconds for current track.
-        get_total_remaining_seconds(self) : Get total remaining seconds in playlist.
+        __init__(self, cfg, index, playlist="") : Initialize VLC control instance with config.
+        _vlc_request(self, endpoint, params=None) : Make HTTP request to VLC control port.
+        handle_simple_command(self, action) : Handle simple VLC commands via command mapping.
+        change_playlist(self, target) : Change the current playlist to target path.
+        start_vlc(self, path="default") : Start VLC with given playlist path.
+        kill_vlc(self) : Stop and clean up VLC process.
+        get_remaining_seconds(self) : Get remaining time for current track.
+        get_total_remaining_seconds(self) : Get total remaining time including queue.
         get_current_state(self) : Get current playback state.
-        __del__(self) : Cleanup on destruction.
+        __del__(self) : Cleanup on object deletion.
     """
-
     def __init__(self, cfg, index, playlist=""):
         self.index = index
         self.cfg = cfg
-        self.port_ctrl = str(int(self.cfg.VLC_PORT_START) + index)
-        self.port_stream = str(int(self.cfg.VLC_PORT_START) + 1000 + index)
-        self.password = self.cfg.DICO_VLC_USERS.get('test', 'test')
-        self.base_url = f"http://127.0.0.1:{self.port_ctrl}/requests"
-
         self.process = None
+        self.port_ctrl = str(int(self.cfg.config.VLC_PORT_START) + index)
+        self.port_stream = str(int(self.cfg.config.VLC_PORT_START) + 1000 + index)
+        self.password = getattr(self.cfg.security.VLC_USERS, "test", None)
+        self.base_url = f"http://127.0.0.1:{self.port_ctrl}/requests"
+        
         self.is_initialized = False
         self.is_playing = False
         self.current_path = playlist
@@ -64,7 +63,7 @@ class VLCControl:
             if result.returncode == 0:
                 return result.stdout
             else:
-                print(f"VLC Error (Code {result.returncode}) on {endpoint}")
+                return None
         except Exception as e:
             print(f"Request Exception: {e}")
         return None
@@ -146,8 +145,8 @@ class VLCControl:
                 
                 if found_current:
                     duration_val = leaf.get('duration')
-                    if duration:
-                        total_after_current += int(duration)
+                    if duration_val:
+                        total_after_current += int(duration_val)
                         
             return current_remaining + total_after_current
         except Exception:

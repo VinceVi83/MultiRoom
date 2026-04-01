@@ -10,32 +10,33 @@ from plugins.music_vlc.playlist_manager import PlaylistManager
 import urllib.parse
 
 class VLCUserManager:
-    """VLC User Manager
+    """VLC Music Player Manager
     
-    Role: Manages VLC playback with Smart Shuffle Jukebox and persistent history.
+    Role: Manages VLC instance, playlist operations, music monitoring, and user session for music playback.
     
     Methods:
-        __init__(self, cfg, session, user_index) : Initialize manager with session and user index.
-        interpret_vlc_command(self, context) : Router for AI agent commands.
-        execute_playlist(self, context) : Execute playlist actions.
-        execute_vlc(self, context) : Execute VLC control commands.
-        manage_monitor_playlist(self, delay=2) : Manage monitor playlist thread.
-        _auto_switch_logic(self, initial_delay) : Auto-switch album logic.
-        play_random_album(self) : Pick and play random album.
-        _schedule_cache_update(self) : Schedule cache update timer.
-        _update_playlist_cache(self, path=None) : Update playlist cache from XML.
+        __init__(self, cfg, session, user_index) : Initialize the VLC user manager with configuration and session.
+        interpret_vlc_command(self, context) : Route VLC commands based on sub-category (DISCOVER, PLAYLIST, MUSIC).
+        execute_playlist(self, context) : Handle playlist operations (play, create, add, delete, info).
+        execute_vlc(self, context) : Handle direct VLC commands (play, pause, next, previous, info).
+        manage_monitor_playlist(self, delay=2) : Manage auto-switch playlist logic with delay.
+        _auto_switch_logic(self, initial_delay) : Auto-switch between albums when track ends.
+        play_random_album(self) : Play a random album not in recently played list.
+        _schedule_cache_update(self) : Schedule playlist cache update timer.
+        _update_playlist_cache(self, path=None) : Update playlist cache from VLC XML data.
         is_alive(self) : Check if VLC instance is running.
-        _start_vlc_if_needed(self, path="") : Start VLC if not already running.
-        build_playlist_map(self) : Build map of playlist names to paths.
-        _get_albums(self) : Cache list of directories from SMB mount.
-        print_playlist_summary(self) : Print playlist cache summary.
-        stop(self) : Stop auto-switch thread and cleanup.
+        _start_vlc_if_needed(self, path="") : Start VLC instance if not running.
+        build_playlist_map(self) : Build mapping of playlist directories to paths.
+        _get_albums(self) : Get list of albums from SMB mount point.
+        print_playlist_summary(self) : Print playlist cache summary to console.
+        stop(self) : Stop VLC instance and cleanup resources.
+        __del__(self) : Destructor cleanup method.
     """
     def __init__(self, cfg, session, user_index):
         self.user_index = user_index
         self.user_session = session
         self.cfg = cfg
-        self.smb_base = self.cfg.SMB_MOUNT_POINT
+        self.smb_base = self.cfg.config.SMB_MOUNT_POINT
         history_path = Path(self.cfg.DATA_DIR) / f"history_user_{user_index}.json"
         self.store = SimpleStore(history_path, default_structure={"recently_played": []})
         self.music_monitor = MusicMonitor(self.cfg, user_index)
@@ -145,7 +146,7 @@ class VLCUserManager:
 
         if self.current_album_name not in self.recently_played:
             self.recently_played.append(self.current_album_name)
-            if len(self.recently_played) > int(self.cfg.LEN_ALBUMS_CACHE):
+            if len(self.recently_played) > int(self.cfg.config.LEN_ALBUMS_CACHE):
                 self.recently_played.pop(0)
             self.store.update_and_save("recently_played", self.recently_played)
 

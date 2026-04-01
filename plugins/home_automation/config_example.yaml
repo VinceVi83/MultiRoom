@@ -15,7 +15,7 @@ home_automation:
       - "ACTION"
       - "WEATHER"
 
-  home_assistant_config:
+  ha_config:
     HA_TOKEN: "YOUR_HOME_ASSISTANT_TOKEN"
     HA_HOSTNAME: "ha_hostname"
     HA_WEATHER_LOCATION: "weather.city"

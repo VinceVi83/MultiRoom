@@ -10,32 +10,40 @@ import time
 from http.server import SimpleHTTPRequestHandler, HTTPServer
 import glob
 import sys
+from config_loader import cfg
+from pathlib import Path
 
 class HubMessenger:
     """Hub Messenger Service Plugin
     
-    Role: Manages secure communication with the hub server including authentication, text-to-speech (STT) and push-to-talk (PTT) file transfers via SSL/TLS.
+    Role: Manages secure socket connections and message transmission to hub.
     
     Methods:
-        __init__(self, host='172.21.8.200', port=28888, cert_path=None, user='test', password='test') : Initialize the messenger with connection settings.
-        _get_hw_sign(self) : Generate hardware signature for authentication.
+        __init__(self, host, port, cert_path, user, password) : Initialize messenger with connection settings.
+        _resolve_cert_path(self, cert_path) : Resolve certificate file path.
+        is_wsl(self) : Check if running in WSL environment.
+        _get_hw_sign(self) : Get hardware signature for authentication.
         _get_secure_context(self) : Create SSL context for secure connections.
-        _authenticate(self, ssock) : Authenticate with the hub server.
-        _send_raw(self, tag, content, wait_response=False) : Send raw packets to the hub.
-        send_stt(self, text, wait_response=False) : Send text-to-speech request.
+        _get_connection(self) : Establish secure socket connection.
+        _authenticate(self, ssock) : Authenticate with remote server.
+        _send_raw(self, tag, content, wait_response) : Send raw message packet.
+        send_stt(self, text, wait_response) : Send single text to speech message.
+        send_multiple_stt(self, text, wait_response) : Send multiple text to speech messages.
         send_ptt(self, file_path) : Send push-to-talk file via HTTP server.
     """
-    
-    def __init__(self, host="172.21.8.200", port=28888, cert_path=None, user="test", password="test"):
+    def __init__(self, host="127.0.0.1", port=cfg.sys.config.HUB_PORT, cert_path=None, user="test", password="test"):
         self.host = host
-        self.port = port
+        self.port = int(port)
         self.http_port = 8090
         self.user = user
         self.password = password
         self.hw_signature = self._get_hw_sign()
+        print(self.host, self.port, self.hw_signature)
         
-        self.cert_file = self._resolve_cert_path(cert_path)
-        self.key_file = self.cert_file.replace("cert.pem", "key.pem") if self.cert_file else None
+        if not cert_path:
+            cert_path = Path(cfg.DATA_DIR) / "Certification" / "cert.pem"
+        self.cert_file = self._resolve_cert_path(cert_path.resolve())
+        self.key_file = self.cert_file.with_name("key.pem") if self.cert_file else None
         
         self.ssl_context = self._get_secure_context()
         self._ssock = None

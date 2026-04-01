@@ -5,19 +5,19 @@ from config_loader import cfg
 from tools.llm_agent import llm
 
 class SchedulerService:
-    def __init__(self):
+    def __init__(self, cfg):
         self.plugin_name = "scheduler"
-        self.config = getattr(cfg, self.plugin_name.lower(), None)
+        self.cfg = getattr(cfg, self.plugin_name.lower(), None)
         self.base_dir = Path(cfg.scheduler.DATA_DIR)
         self.db_path = self.base_dir / "cron_tasks.json"
-        self.handler_script = Path(cfg.root) / "tools" / "hub_messenger.py"
+        self.handler_script = self.base_dir.parent.parent.parent / "tools" / "hub_messenger.py"
         self.python_bin = "python3"
         self._ensure_db()
 
     def execute(self, context):
         try:
-            time_data = llm.execute(context.user_input, self.config.SCHEDULER.TIME_EXTRACTOR_AGENT)
-            action = llm.execute(context.user_input, self.config.SCHEDULER.INTENT_AGENT)
+            time_data = llm.execute(context.user_input, self.SCHEDULER.TIME_EXTRACTOR_AGENT)
+            action = llm.execute(context.user_input, self.SCHEDULER.INTENT_AGENT)
             raw_cmd = action.get("action", context.user_input)
             tid = f"task_{int(datetime.now().timestamp())}"
             sched, run_time = self._build_schedule(time_data)
@@ -69,7 +69,7 @@ class SchedulerService:
         return f"{target.minute} {target.hour} {target.day} {target.month} *", target
 
     def _prepare_command(self, tid, cmd, p_type):
-        mode = llm.execute(cmd, self.config.SCHEDULER.SYSTEM_AGENT)
+        mode = llm.execute(cmd, self.SCHEDULER.SYSTEM_AGENT)
         clean = f" && crontab -l | grep -v '#ID:{tid}' | crontab -" if p_type != "RECURRING" else ""
         exe = self.handler_script if mode.get("type", "SYSTEM") == "SYSTEM" else Path(cfg.root) / cfg.sys.SCRIPT_TTS
         return f"{self.python_bin} {exe} {shlex.quote(cmd)}{clean}"

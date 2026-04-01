@@ -12,17 +12,17 @@ from tools.task_context import TaskContext
 class STTClientSimulator:
     """STTClientSimulator
     
-    Role: Simulates STT/PTT client behavior using HubMessenger for sending and HTTPS synchronous server.
+    Role: Simulates STT client operations and validates responses against expected results.
     
     Methods:
-        __init__(self, path, mode, host="127.0.0.1", user="test", password="test") : Initialize simulator with JSON path, mode, and optional certificate.
-        load_and_verify(self) : Load JSON file and verify audio files in PTT mode.
-        check_result(self, response) : Verify if Hub response is correct using TaskContext.
-        display_mismatch(self, context, exp, item_idx) : Display mismatch details for failed tests.
-        send_to_hub(self, entry) : Send a JSON entry to Hub via Messenger.
-        interactive_mode(self) : Manual interactive testing mode.
-        auto_mode(self) : Automatic sequential testing mode.
-        show_final_summary(self) : Display final test summary statistics.
+        __init__(self, path, mode, host='127.0.0.1', user='test', password='test') : Initialize simulator with file path, mode, and credentials.
+        load_and_verify(self) : Load JSON records and verify file exists.
+        display_mismatch(self, context, exp, item_idx, is_verify=False) : Display mismatch details between expected and obtained results.
+        check_result(self, response) : Check if response matches expected results.
+        send_to_hub(self, entry) : Send command to hub and process response.
+        show_final_summary(self) : Display final test results summary.
+        interactive_mode(self) : Run in interactive mode with user input.
+        auto_mode(self) : Run in automatic mode through all records.
     """
     def __init__(self, path, mode, host="127.0.0.1", user="test", password="test"):
         self.messenger = HubMessenger(user=user, password=password)

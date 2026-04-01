@@ -3,6 +3,9 @@ music_vlc:
     DESCRIPTION: "Music, playlists, VLC"
     USE_LOCATION: 1
     BYPASS_ROUTER:
+      OTHERS:
+        - "musique"
+        - "music"
       PLAYLIST:
         - "playlist"
       MUSIC:

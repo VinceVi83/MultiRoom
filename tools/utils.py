@@ -6,17 +6,16 @@ from pathlib import Path
 from config_loader import cfg
 
 class Utils:
-    """Utility class for file operations
+    """Utility Functions for File Operations and Data Formatting
     
-    Role: Provides utility functions for managing file paths, ensuring unique filenames to avoid collisions, and handling directory creation with proper error handling.
+    Role: Provides helper methods for file path management, data formatting, and type conversion.
     
     Methods:
-        get_unique_path(dir_path, base_name, extension=".wav") : Generates a unique file path by appending counter suffixes if the file already exists.
-        format_result(result) : Format the playlist result from LLM response.
-        to_int(data, key) : Convert value to int, return -1 on error.
-        to_str(data, key) : Convert value to str, return "ERROR" if empty.
+        get_unique_path(dir_path, base_name, extension='.wav') : Generate unique file path with counter.
+        format_result(result) : Format dict or other result as string.
+        to_int(data, key) : Convert value to integer or return -1 on error.
+        to_str(data, key) : Convert value to string or return 'ERROR' on empty/None.
     """
-
     @staticmethod
     def get_unique_path(dir_path, base_name, extension=".wav"):
         directory = Path(dir_path)
@@ -59,19 +58,18 @@ class Utils:
 
 
 class SimpleStore:
-    """Simple file-based key-value store
+    """Simple Key-Value Store with JSON Persistence
     
-    Role: Manages simple JSON file storage with load/save operations and default structure handling.
+    Role: Manages persistent storage of data structures with load/save operations.
     
     Methods:
-        __init__(self, file_path, default_structure=None) : Initialize the store with a file path and optional default structure.
-        load(self) : Load data from the file or use default if file doesn't exist.
-        save(self) : Save current data to the file.
+        __init__(self, file_path, default_structure=None) : Initialize store with file path and default structure.
+        load(self) : Load data from file or use default structure.
+        save(self) : Save current data to file.
         get(self, key) : Get value by key.
-        update_and_save(self, key, value) : Update a key and save to file.
+        update_and_save(self, key, value) : Update key value and persist to file.
         delete(self) : Reset data to default structure.
     """
-
     def __init__(self, file_path, default_structure=None):
         self.file_path = Path(file_path) if file_path else None
         self.default = default_structure if default_structure is not None else {"items": []}

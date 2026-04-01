@@ -1,7 +1,3 @@
-"""
-Web scraping and search aggregation module.
-Handles multi-engine search results, scoring, and deep content extraction.
-"""
 import requests
 import sys
 import json
@@ -13,19 +9,19 @@ from tools.llm_agent import llm
 
 
 class ScraperService:
-    """Web scraping and search aggregation service (Singleton)
+    """Web Scraping Service Plugin
     
-    Role: Orchestrates web scraping, search result scoring, content extraction, and weather reporting.
+    Role: Manages web search, content extraction, and weather reporting.
     
     Methods:
-        __new__(cls) : Singleton pattern implementation to ensure only one instance exists.
-        __init__(self, debug=False) : Initializes service configuration and debug mode.
-        get_search_candidates(self, query, count=8, lang=None, time_boost=False) : Retrieves and scores search results from external engines.
-        scrape_full_content(self, url) : Extracts full text content from a given URL.
-        get_web_summary(self, query, agent_cfg) : Generates a quick summary using aggregated snippets.
-        get_web_discovery(self, query, time_boost=False) : Provides an interface for interactive selection of search candidates.
-        get_web_extraction(self, query, selected_candidate, agent_cfg) : Performs deep scraping and extraction on a selected candidate.
-        print_weather_report(self, data) : Formats and prints weather data from Home Assistant.
+        __new__(cls) : Singleton pattern implementation.
+        __init__(self, debug=False) : Initialize the service instance.
+        get_search_candidates(self, query, count=8, lang=None, time_boost=False) : Search for web candidates with scoring.
+        scrape_full_content(self, url) : Extract full content from a URL.
+        get_web_summary(self, query, agent_cfg) : Get summarized content from search results.
+        get_web_discovery(self, query, time_boost=False) : Get web discovery results.
+        get_web_extraction(self, query, selected_candidate, agent_cfg) : Extract content with LLM.
+        print_weather_report(self, data) : Print weather report.
     """
     _instance = None
 
@@ -54,7 +50,7 @@ class ScraperService:
                 "language": lang,
                 "safesearch": 1
             }
-            response = requests.get(cfg.SEARXNG_URL, params=params, timeout=10)
+            response = requests.get(cfg.sys.config.SEARXNG_URL, params=params, timeout=10)
             response.raise_for_status()
             results = response.json().get('results', [])
         except Exception as e:
@@ -67,8 +63,8 @@ class ScraperService:
             url = res.get('url', '').lower()
             score = 0
 
-            if any(domain in url for domain in cfg.LIST_PRIORITY_DOMAINS):
-                score += 1.5
+            # if any(domain in url for domain in cfg.LIST_PRIORITY_DOMAINS):
+            #     score += 1.5
 
             date_str = res.get('publishedDate')
             if date_str:
@@ -159,5 +155,5 @@ class ScraperService:
 if __name__ == "__main__":
     scraper = ScraperService()
     query = " ".join(sys.argv[1:]) if len(sys.argv) > 1 else "Weather Paris"
-    report = scraper.get_web_summary(query, cfg.sys.ALL_PURPOSE.weather_forecast)
+    report = scraper.get_web_summary(query, cfg.ALL_PURPOSE.weather_forecast)
     scraper.print_weather_report(report)

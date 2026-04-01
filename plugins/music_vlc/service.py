@@ -1,25 +1,24 @@
-from config_loader import cfg
 from tools.llm_agent import llm
 from plugins.music_vlc.vlc_user_manager import VLCUserManager
 from tools.utils import Utils
 
 class MusicVlcService:
-    """MusicVlc Service
+    """Music VLC Service Plugin
     
-    Role: Manages music playback services using VLC with LLM integration for playlist and media control.
+    Role: Manages VLC music playback, playlist operations, and user session management.
     
     Methods:
-        __init__(self) : Initialize the MusicVLC service.
-        execute(self, context) : Execute the main service logic with given context.
-        execute_native(self, context) : Execute native service logic.
-        _get_free_index(self) : Get a free instance index.
-        check_user_use_service(self, context) : Check and create user service manager.
-        get_status(self) : Check if the service responds and return status.
+        __init__(self): Initialize the service with configuration and active instances.
+        execute(self, context): Process user input and execute music commands via LLM.
+        execute_native(self, context): Execute native VLC commands through user manager.
+        _get_free_index(self): Get or create a free instance index for active instances.
+        check_user_use_service(self, context): Check and create user service manager.
+        get_status(self): Return service status information.
     """
-
-    def __init__(self):
+    def __init__(self, cfg):
         self.plugin_name = "Music VLC" 
-        self.cfg = cfg.music_vlc
+        self.cfg = cfg
+        print(cfg)
         self.cfg.RETURN_CODE = cfg.RETURN_CODE
         self.active_instances = {}
         self.cfg.INTENT = ["UNKNOWN", "PLAYLIST_AGENT", "DISCOVERY", "VLC_AGENT", "DISCOVERY"]
@@ -30,36 +29,44 @@ class MusicVlcService:
         if not self.cfg:
             return
 
+    def bypass_router(self, context):
+        user_input_lower = context.user_input.lower()
+        
+        for keyword in self.cfg.config.BYPASS_ROUTER.PLAYLIST:
+            keyword_lower = keyword.lower()
+            if keyword_lower in user_input_lower:
+                return "PLAYLIST"
+
+        for keyword in self.cfg.config.BYPASS_ROUTER.MUSIC:
+            keyword_lower = keyword.lower()
+            if keyword_lower in user_input_lower:
+                return "MUSIC"
+        return None
+
     def execute(self, context):
-        bypass_map = {
-            'PLAYLIST': ['playlist'],
-            'MUSIC': ['vlc', 'augmente', 'monte', 'baisse', 'diminue', 'moins', 'plus', 'précédent', 'suivant', 'après', 'remets']
-        }
-
-        matched = next((k for k, v in bypass_map.items() if any(w in context.user_input.lower() for w in v)), None)
-
-        if matched:
-            context.sub_category = matched
-            context.add_step('sub_category', {'label': matched, 'bypass': 1})
-        else:
-            try:
-                res = llm.execute(context.user_input, self.cfg.MUSIC_VLC.MUSIC_AGENT)
-                context.sub_category = res.get('CATEGORY', 'NONE')
-                context.add_step('sub_category', res)
-            except Exception as e:
-                print(f"[PLUGIN MusicVlcService MUSIC_AGENT ERROR] {e}")
-                return self.cfg.RETURN_CODE.ERR
+        print("Here")
+        category_res = self.bypass_router(context)
         try:
+            if category_res:
+                context.add_step('sub_category', {'label': category_res, 'bypass': 1})
+                context.sub_category = category_res
+            else:
+                category_res = llm.execute(context.user_input, self.cfg.MUSIC_AGENT)
+                context.sub_category = category_res.get('CATEGORY', 'NONE')
+                context.add_step('sub_category', category_res)
+ 
             if context.sub_category == 'PLAYLIST':
-                res = llm.execute(context.user_input, self.cfg.MUSIC_VLC.PLAYLIST_AGENT)
+                res = llm.execute(context.user_input, self.cfg.PLAYLIST_AGENT)
             elif context.sub_category == 'MUSIC':
-                res = llm.execute(context.user_input, self.cfg.MUSIC_VLC.VLC_AGENT)
+                res = llm.execute(context.user_input, self.cfg.VLC_AGENT)
+
         except Exception as e:
-                print(f"[PLUGIN MusicVlcService MUSIC_AGENT 2 ERROR] {e}")
+                print(f"[PLUGIN MusicVlcService MUSIC_AGENT ERROR] {e}")
                 return self.cfg.RETURN_CODE.ERR
 
         action = res.get('ACTION', 'ERR')
         context.add_step('Result', res)
+        context.result = action
         return self.execute_native(context)
 
     def execute_native(self, context):

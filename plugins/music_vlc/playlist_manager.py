@@ -2,18 +2,17 @@ import os
 from pathlib import Path
 
 class PlaylistManager:
-    """Music VLC Playlist Manager
+    """Music Playlist Manager
     
-    Role: Manages VLC playlist creation, adding, and removing music tracks.
+    Role: Manages VLC playlist creation, song addition, and deletion.
     
     Methods:
-        __init__(self, base_dir_playlist) : Initialize the manager with base directory from config.
-        _get_path(self, name) : Clean name and return full file path for playlist.
-        create_playlist(self, name) : Create a new empty playlist with standard header.
-        add_music(self, name, song_path) : Add a music track to a playlist.
-        delete_music(self, name, song_path) : Remove a song from the playlist.
+        __init__(self, base_dir_playlist) : Initialize playlist manager with base directory.
+        _get_path(self, name) : Get safe file path for playlist.
+        create_playlist(self, name) : Create a new empty playlist file.
+        add_music(self, name, song_path) : Add a song to an existing playlist.
+        delete_music(self, name, song_path) : Remove a song from a playlist.
     """
-
     def __init__(self, base_dir_playlist):
         if base_dir_playlist is None:
             raise ValueError("base_dir_playlist cannot be None")

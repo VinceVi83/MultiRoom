@@ -5,16 +5,15 @@ from tools.utils import Utils
 from plugins.your_plugin.logic_module import PluginLogic
 
 class YourPluginService:
-    """YourPlugin Service
+    """YourPlugin Service Plugin
     
-    Role: Executes plugin logic with intent detection and action handling.
+    Role: Executes plugin logic with LLM-based intent recognition and action handling.
     
     Methods:
-        __init__(self) : Initialize plugin service with configuration.
-        execute(self, context) : Execute plugin logic based on user input.
-        get_status(self) : Return online status of the plugin.
+        __init__(self) : Initialize plugin with configuration.
+        execute(self, context) : Process user input and execute plugin actions.
+        get_status(self) : Return plugin status information.
     """
-
     def __init__(self):
         self.plugin_name = "YourPlugin"
         self.config = getattr(cfg, self.plugin_name.lower(), None)

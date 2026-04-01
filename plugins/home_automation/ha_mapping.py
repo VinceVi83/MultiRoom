@@ -4,12 +4,12 @@ from config_loader import cfg
 
 
 class BaseEntity(ABC):
-    """Home Assistant Entity Plugin
+    """Base Entity for Home Automation devices
     
-    Role: Base class for all entities in Home Assistant providing common entity attributes and service integration.
+    Role: Abstract base class for all HA device entities.
     
     Methods:
-        __init__(self, data, service) : Initializes the entity with data and a service.
+        __init__(self, data, service) : Initialize entity with data and service.
     """
     def __init__(self, data, service):
         self.id = data['id']
@@ -18,16 +18,16 @@ class BaseEntity(ABC):
 
 
 class DeviceCollection(ABC):
-    """Home Assistant Device Collection Plugin
+    """Device collection for managing lights and switches
     
-    Role: Manages collections of devices (lights and switches) with inventory listing and search capabilities.
+    Role: Manages inventory and search functionality for HA devices.
     
     Methods:
-        __init__(self, json_data=None, service=None) : Initializes the device collection with JSON data and a service.
-        _initialize(self, data) : Populates the collection with devices from JSON data.
-        list_inventory(self) : Lists all devices in the collection.
-        similarity(self, a, b) : Calculates the similarity score between two strings.
-        search(self, query_name, device_type) : Searches for a device by name and type.
+        __init__(self, json_data=None, service=None) : Initialize collection with optional data.
+        _initialize(self, data) : Parse and categorize devices from JSON data.
+        list_inventory(self) : Print formatted inventory of all devices.
+        similarity(self, a, b) : Calculate similarity score between two strings.
+        search(self, query_name, device_type) : Search for matching device by name.
     """
     def __init__(self, json_data=None, service=None):
         self.lights = []
@@ -82,17 +82,17 @@ class DeviceCollection(ABC):
 
 
 class LightEntity(BaseEntity):
-    """Home Assistant Light Entity Plugin
+    """Light device entity for Home Automation
     
-    Role: Represents a light entity in Home Assistant with state management, brightness control, and on/off operations.
+    Role: Controls light devices including state, brightness, and toggling.
     
     Methods:
-        get_state(self) : Retrieves the current state of the light.
-        get_current_brightness(self) : Retrieves the current brightness level.
-        turn_on(self) : Turns on the light with an optional brightness level.
-        turn_off(self) : Turns off the light.
-        toggle(self) : Toggles the light.
-        set_brightness_percent(self, percent) : Sets the brightness level of the light.
+        get_state(self) : Get current state of the light.
+        get_current_brightness(self) : Get current brightness as percentage.
+        turn_on(self) : Turn the light on.
+        turn_off(self) : Turn the light off.
+        toggle(self) : Toggle the light on/off.
+        set_brightness_percent(self, percent: int) : Set brightness to percentage.
     """
     def get_state(self):
         state_data = self.service.get_state(self.id)
@@ -113,7 +113,7 @@ class LightEntity(BaseEntity):
     def turn_off(self):
         if self.get_state() == 'on':
             return self.service.call_action("light", "toggle", self.id)
-        return cfg.RETURN_CODE.SUCCESS_NOTHING_TO_DO
+        return None
     
     def toggle(self):
         return self.service.call_action("light", "toggle", self.id)
@@ -124,14 +124,14 @@ class LightEntity(BaseEntity):
 
 
 class SwitchEntity(BaseEntity):
-    """Home Assistant Switch Entity Plugin
+    """Switch device entity for Home Automation
     
-    Role: Represents a switch entity in Home Assistant with on/off toggle operations.
+    Role: Controls switch devices including on/off and toggle operations.
     
     Methods:
-        turn_on(self) : Turns on the switch.
-        turn_off(self) : Turns off the switch.
-        toggle(self) : Toggles the switch.
+        turn_on(self) : Turn the switch on.
+        turn_off(self) : Turn the switch off.
+        toggle(self) : Toggle the switch on/off.
     """
     def turn_on(self):
         return self.service.call_action("switch", "turn_on", self.id)

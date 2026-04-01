@@ -9,17 +9,19 @@ import threading
 
 
 class OllamaClient:
-    """Ollama Client
+    """Ollama API Client for LLM interactions
     
-    Role: Thread-safe singleton client to manage Ollama interactions and VRAM optimization.
+    Role: Manages Ollama connections, model management, and executes LLM queries.
     
     Methods:
-        __init__(self) : Initializes the client using centralized configuration.
-        execute(self, user_input, agent_cfg=None, debug=False, verbose=False) : Executes a synchronized LLM request for a specific agent.
-        manage_vram(self, target_model) : Unloads the current model if a different one is requested.
-        _prepare(self, c, user_input) : Formats the cfg object for self.client.chat(**...).
+        __init__(self, base_url, client, main_model, current_model, _lock, is_ready, retry_count, max_delay): Initialize the Ollama client with configuration.
+        _check_connection(self): Verify Ollama server connectivity.
+        _start_reconnect_thread(self): Start background reconnection thread.
+        _reconnect_loop(self): Loop to reconnect when offline.
+        execute(self, user_input, agent_cfg=None, debug=False, verbose=False): Execute LLM query.
+        manage_vram(self, target_model): Manage VRAM by switching models.
+        _prepare(self, c, user_input): Prepare request parameters.
     """
-
     def __init__(self):
         self.base_url = cfg.sys.config.OLLAMA_SERVER
         self.client = ollama.Client(host=self.base_url)
@@ -58,7 +60,7 @@ class OllamaClient:
             except:
                 pass
 
-    def execute(self, user_input, agent_cfg=None, debug=False, verbose=False):
+    def execute(self, user_input, agent_cfg=None, debug=False, verbose=True):
         if not self.is_ready:
             return {"error": "Ollama is offline", "status": "reconnecting"}
 
@@ -122,7 +124,6 @@ class OllamaClient:
 
 
 def create_agent_config(prompt, model=None, use_json=True, **custom_options):
-    """Generates an agent config using MODEL_NAME_MAIN by default"""
     base_options = {
         "seed": 42,
         "temperature": 0.0,

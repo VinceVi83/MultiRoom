@@ -1,4 +1,3 @@
-from config_loader import cfg
 from plugins.daily.shopping import ShoppingService
 from tools.llm_agent import llm
 from tools.utils import Utils
@@ -6,46 +5,51 @@ from tools.utils import Utils
 class DailyService:
     """Daily Service Plugin
     
-    Role: Manages daily shopping list operations.
+    Role: Manages daily tasks including fridge queries and shopping list operations.
     
     Methods:
-        __init__(self) : Initialize the Daily Service plugin.
-        execute(self, context) : Execute daily service commands based on LLM response.
-        get_status(self) : Check if the service is responding.
+        __init__(self) : Initialize the DailyService plugin with configuration.
+        execute(self, context) : Process daily commands and execute shopping actions.
+        get_status(self) : Return plugin status information.
     """
-
-    def __init__(self):
+    def __init__(self, cfg):
         self.plugin_name = "Daily" 
-        self.config = cfg.daily
+        self.cfg = cfg
         
-        if not self.config:
+        if not self.cfg:
             print(f"[!] Error: Configuration for {self.plugin_name} not found.")
+
+    def switch_fridge(self, context):
+        user_input_lower = context.user_input.lower()
+        
+        for keyword in self.cfg.config.BYPASS_ROUTER.FRIDGE:
+            keyword_lower = keyword.lower()
+            if keyword_lower in user_input_lower:
+                return "FRIDGE"
+        return True
 
     def execute(self, context):
         try:
-            is_fridge = any(w in context.user_input.lower() for w in ['frigo', 'fridge'])
-            agent = cfg.daily.DAILY_USE.FRIDGE_AGENT if is_fridge else cfg.daily.DAILY_USE.DAILY_AGENT
-            shopping = ShoppingService()
-
-            res = llm.execute(context.user_input, agent)
-            action = res.get('ACTION', 'NONE')
-            context.sub_category = action
-            context.add_step('sub_category', res)
+            if self.bypass_router(context)
+                category_res = llm.execute(context.user_input, self.cfg.DAILY_USE.FRIDGE_AGENT)
+                context.add_step('sub_category', category_res)
+                action = category_res.get('ACTION', 'ERR')
+                context.sub_category = action
+                return self.cfg.ERR_NOT_IMPLEMENTED
+            else:
+                category_res = llm.execute(context.user_input, self.cfg.DAILY_USE.DAILY_AGENT)
+                action = category_res.get('ACTION', 'ERR')
+                context.sub_category = action
+                context.add_step('sub_category', category_res)
             
-            if "_ADD" in context.sub_category:
-                new_items = llm.execute(context.user_input, cfg.daily.DAILY_USE.EXTRACT_FOOD_AGENT)
-            elif action == 'NONE':
-                return cfg.RETURN_CODE.ERR
-
-            result = "NONSENSE"
-            if context.sub_category == "SHOP_ADD":
-                result = shopping.update_shopping_list(new_items)
-            elif context.sub_category == "SHOP_DEL":
-                result = shopping.delete_shopping_list()
-            elif context.sub_category == "SHOP_INFO":
-                result = shopping.report_shopping_list()
-            elif context.sub_category == "SHOP_MAIL":
-                result = shopping.mail_shopping_list()
+            if "_ADD" in action:
+                new_items = llm.execute(context.user_input, cfg.DAILY_USE.EXTRACT_FOOD_AGENT)
+                if action == "SHOP_ADD":
+                    result = shopping.update_shopping_list(new_items)
+                else:
+                    self.cfg.ERR_NOT_IMPLEMENTED
+            elif:
+                result = self.shopping_service()
 
             context.result = Utils.format_result(result)
             if result == "NONSENSE":
@@ -57,6 +61,17 @@ class DailyService:
         except (ValueError, Exception) as e:
             print(f"[PLUGIN DailyService ERROR] {e}")
             return cfg.RETURN_CODE.ERR
+
+    def shopping_service(self):
+        shopping = ShoppingService(self.cfg)
+            result = "NONSENSE"
+            elif action == "SHOP_DEL":
+                result = shopping.delete_shopping_list()
+            elif action == "SHOP_INFO":
+                result = shopping.report_shopping_list()
+            elif action == "SHOP_MAIL":
+                result = shopping.mail_shopping_list()
+        return result
 
     def get_status(self):
         return {"status": "online", "plugin": self.plugin_name}
