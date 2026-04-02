@@ -27,7 +27,6 @@ class VLCUserManager:
         is_alive(self) : Check if VLC instance is running.
         _start_vlc_if_needed(self, path="") : Start VLC instance if not running.
         build_playlist_map(self) : Build mapping of playlist directories to paths.
-        _get_albums(self) : Get list of albums from SMB mount point.
         print_playlist_summary(self) : Print playlist cache summary to console.
         stop(self) : Stop VLC instance and cleanup resources.
         __del__(self) : Destructor cleanup method.
@@ -55,6 +54,7 @@ class VLCUserManager:
         self.auto_switch_thread = None
         self.cache_timer = None
         self.build_playlist_map()
+        self._init_album_cache()
 
     def interpret_vlc_command(self, context):
         if context.sub_category == "DISCOVER":
@@ -153,18 +153,17 @@ class VLCUserManager:
         self.play_random_album()
 
     def play_random_album(self):
-        all_albums = self._get_albums()
-        if not all_albums:
+        if not self.album_cache:
             return self.cfg.RETURN_CODE.ERR_FILE_NOT_FOUND
-
+        print("play_random_album")
         available = [
-            a for a in all_albums 
+            a for a in self.album_cache 
             if os.path.basename(a) not in self.recently_played
         ]
         
         if not available: 
             self.recently_played = []
-            available = all_albums
+            available = self.album_cache
             self.store.update_and_save("recently_played", [])
 
         selection = random.choice(available)
@@ -239,10 +238,15 @@ class VLCUserManager:
                     self.playlists[Path(entry.name).stem.lower()] = entry.path
         except FileNotFoundError: pass
 
-    def _get_albums(self):
-        if not self.album_cache and os.path.exists(self.smb_base):
-            self.album_cache = [f.path for f in os.scandir(self.smb_base) if f.is_dir()]
-        return self.album_cache
+    def _init_album_cache(self):
+        cache = []
+        for directory in self.smb_base:
+            if os.path.exists(directory):
+                with os.scandir(directory) as it:
+                    for entry in it:
+                        if entry.is_dir():
+                            cache.append(entry.path)
+        return cache
 
     def print_playlist_summary(self):
         duration_str = time.strftime('%H:%M:%S', time.gmtime(self.total_duration_sec))

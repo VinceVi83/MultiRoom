@@ -2,6 +2,7 @@ import asyncio
 import websockets
 import json
 import os
+import threading
 from config_loader import cfg
 from tools.hub_messenger import HubMessenger
 
@@ -46,6 +47,18 @@ class HAListener:
                     self.mapping = json.load(f)
         except Exception as e:
             print(f"Error loading mapping: {e}")
+
+    def run_ha_listener(self):
+        def _target():
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                loop.run_until_complete(self.start())
+            except Exception as e:
+                print(f"[HAListener Thread Error] {e}")
+
+        thread = threading.Thread(target=_target, daemon=True)
+        thread.start()
 
     async def start(self):
         while True:

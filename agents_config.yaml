@@ -119,16 +119,14 @@ ALL_PURPOSE:
 
         ### STRICT RULES
         - Output ONLY the JSON object.
-        - If you fail, output: {"location": "unknown", "cleaned_command": "none"}        
+        - If you fail, output: {"location": "unknown"}        
         - Mapping: "toutes les", "Everywhere", "all rooms", "whole house", "everything" -> ALL
         - If NO location is found, return "Unknown" for location.
         - If a location is found, return the EXACT name from the allowed list.
-        - The 'cleaned_command' must be the original text without the location phrase and DO NOT TRANSLATE.
 
         ### OUTPUT FORMAT (Strict JSON)
         {
           "location": "ExactName",
-          "cleaned_command": "Extracted command text"
         }
 
         ### EXAMPLES

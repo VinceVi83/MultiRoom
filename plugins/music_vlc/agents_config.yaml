@@ -9,7 +9,7 @@ MUSIC_VLC:
     prompt: |
       Task: Classify the input command into one of these 3 CATEGORY:
       
-      MUSIC (VLC/Playback control ONLY: stop, pause, next, volume. 'relance la music', 'stop la music', 'passe la music', 'Remets la musique')
+      MUSIC (VLC/Playback control ONLY: stop, pause, next, volume. 'relance la music', 'stop la music', 'passe la music', 'Remets la musique', 'baisse le son')
       DISCOVER (General requests to start playback: 'balance ' 'mets de la musique', 'mets du son', 'joue quelque chose')
       NONE (Not related to media playback)
       

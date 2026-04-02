@@ -60,7 +60,7 @@ class DeviceCollection(ABC):
         return fuzz.token_set_ratio(a.lower(), b.lower())
 
     def search(self, query_name, device_type):
-        pool = self.lights if device_type == "light" else self.switches
+        pool = self.lights if device_type == "LIGHT" else self.switches
         
         best_match = None
         highest_score = 0

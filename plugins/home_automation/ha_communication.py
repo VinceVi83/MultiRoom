@@ -98,13 +98,10 @@ class CommunicationHA:
         if context.location == "NONSENSE":
             return self.cfg.RETURN_CODE.ERR_INVALID_ARGUMENT
         try:
-            print("VNG handle_request")
             params = context.sub_category.split(":")
             device_type = params[0]
             action = params[1]
-            print("VNG handle_request", context.sub_category, "sep" , params, "sep", action, "sep", device_type)
             if context.location == "ALL" and device_type == "LIGHT":
-                print("VNG handle_request ALL", action)
                 if action == "ON":
                     return self.smart_toggle(action)
                 elif action == "OFF":

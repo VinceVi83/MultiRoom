@@ -1,5 +1,6 @@
 from plugins.home_automation.ha_communication import CommunicationHA
 from plugins.home_automation.ha_listener import HAListener
+from plugins.home_automation.ha_registry import HomeAutomationRegistry
 from plugins.home_automation.ha_weather import WeatherHaApi, WeatherStatus
 from tools.llm_agent import llm
 from tools.utils import Utils
@@ -18,8 +19,11 @@ class HomeAutomationService:
     def __init__(self, cfg):
         self.plugin_name = "Home Automation"
         self.cfg = cfg
+        self.ha_register = HomeAutomationRegistry(cfg)
+        self.ha_register.update_device()
         self.ha_service = CommunicationHA(cfg)
         self.ha_listener = HAListener(cfg)
+        self.ha_listener.run_ha_listener()
         self.ha_weather = WeatherHaApi(cfg)
 
         if not self.cfg:

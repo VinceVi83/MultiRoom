@@ -57,6 +57,11 @@ class MusicVlcService:
                 res = llm.execute(context.user_input, self.cfg.PLAYLIST_AGENT)
             elif context.sub_category == 'MUSIC':
                 res = llm.execute(context.user_input, self.cfg.VLC_AGENT)
+            elif context.sub_category == 'DISCOVER':
+                context.result = 'Done'
+                return self.cfg.RETURN_CODE.SUCCESS
+            else:
+                res = {'ACTION': 'ERR'}
 
         except Exception as e:
                 print(f"[PLUGIN MusicVlcService MUSIC_AGENT ERROR] {e}")

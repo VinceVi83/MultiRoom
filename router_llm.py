@@ -75,7 +75,7 @@ class RouterLLM:
         context.location = parts[1] if parts[1] else "Unknown"
         context.sub_category = parts[2].upper()
         context.result   = parts[3]
-        service_instance = self.service_registry.get(plugin_name)
+        service_instance = self.service_registry.get(plugin_name.upper())
         if service_instance and hasattr(service_instance, 'execute_native'):
             try:
                 context.return_code = service_instance.execute_native(context)
