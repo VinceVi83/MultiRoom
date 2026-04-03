@@ -35,7 +35,7 @@ class SessionManager:
         handle_client(self, sock) : Handle incoming client socket connections.
         run_server(self) : Start the SSL server and accept client connections.
     """
-    def __init__(self, disable_whisper=True):
+    def __init__(self, disable_whisper=False):
         self.host = "0.0.0.0"
         self.port = int(cfg.sys.config.HUB_PORT)
         self.allowed_sigs = cfg.sys.security.LIST_ALLOWED_SIGS
@@ -128,51 +128,59 @@ class SessionManager:
             return True
         return False
 
+    def _handle_client_action(self, sock, action, payload):
+        if action == "Auth":
+            user, pwd = payload.split(":", 1)
+            if self._handle_auth(sock, user, pwd):
+                sock.sendall(b"AUTH_SUCCESS")
+            else:
+                sock.sendall(b"ERROR: Auth Failed\n")
+        elif action == "PTT":
+            self.task_queue.put((self.active_sessions["system"], payload))
+        elif action in self.active_sessions.keys():
+            current_session = self.active_sessions[action]
+            if sock in current_session.socks:
+                if payload.startswith("END"):
+                    sock.close()
+                    return True
+                self.task_queue.put((current_session, payload))
+            else:
+                sock.sendall(b"ERROR: Auth Required")
+        return False
+
+    def _cleanup_session_for_socket(self, sock):
+        for username, session in self.active_sessions.items():
+            if username == "system":
+                continue
+            if sock in session.socks:
+                try:
+                    session.socks.remove(sock)
+                except (ValueError, AttributeError):
+                    pass
+                if not session.socks:
+                    session.last_seen = time.time()
+
     def handle_client(self, sock):
         sock.settimeout(7200.0)
         try:
             while True:
                 raw_data = sock.recv(4096)
-                if not raw_data: break
+                if not raw_data:
+                    break
 
                 parts = raw_data.decode('utf-8').strip().split(":", 2)
-                if len(parts) < 2: continue
+                if len(parts) < 2:
+                    continue
                 hw_sig, action = parts[0], parts[1]
                 payload = parts[2] if len(parts) > 2 else ""
                 if hw_sig not in self.allowed_sigs:
                     sock.sendall(b"ERROR: Unauthorized Hardware")
                     break
-                if action == "Auth":
-                    user, pwd = payload.split(":", 1)
-                    if self._handle_auth(sock, user, pwd):
-                        sock.sendall(b"AUTH_SUCCESS")
-                    else:
-                        sock.sendall(b"ERROR: Auth Failed\n")
-                elif action == "PTT":
-                    self.task_queue.put((self.active_sessions["system"], payload))
-
-                elif action in self.active_sessions.keys():
-                    current_session = self.active_sessions[action]
-                    if sock in current_session.socks:
-                        if payload.startswith("END"):
-                            sock.close()
-                            continue
-                        self.task_queue.put((current_session, payload))
-                    else:
-                        sock.sendall(b"ERROR: Auth Required")
+                self._handle_client_action(sock, action, payload)
         except Exception as e:
             print(f"[!] Connection error: {e}")
         finally:
-            for username, session in self.active_sessions.items():
-                if username == "system":
-                    continue
-                if sock in session.socks:
-                    try:
-                        session.socks.remove(sock)
-                    except (ValueError, AttributeError):
-                        pass
-                    if not session.socks:
-                        session.last_seen = time.time()
+            self._cleanup_session_for_socket(sock)
             try:
                 sock.close()
             except:

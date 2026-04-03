@@ -162,7 +162,7 @@ class CalendarService:
                 to_email=f"system@{cfg.agenda.mail_server.DOMAIN}",
                 attachment_path=str(attachment) if attachment.exists() else None
             )
-            return f"Success ({summary})" if success else "Failed to send email"
+            return f"Success ({summary})" if success == cfg.RETURN_CODE.SUCCESS else "Failed to send email"
 
         except Exception as e:
             return f"Critical Error in Mail Service: {e}"

@@ -22,6 +22,9 @@ PLUGIN_NAME:
   EXTRACT_DATA:
     model: "qwen2.5:3b"
     use_json: true
+    options:
+      temperature: 0.0
+      num_ctx: 2048
     prompt: |
       Task: Extract relevant entities from the input.
       Format: {"entities": ["item1", "item2"]}

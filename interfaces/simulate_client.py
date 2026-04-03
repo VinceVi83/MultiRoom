@@ -24,6 +24,14 @@ class STTClientSimulator:
         interactive_mode(self) : Run in interactive mode with user input.
         auto_mode(self) : Run in automatic mode through all records.
     """
+    # Constants for separators and labels
+    SEP_DOUBLE = "═" * 95
+    SEP_SIMPLE = "─" * 95
+    SEP_HEADER = "─" * 90
+    HEADER = "{'TYPE':<12} | {'CATEGORY':<15} | {'SUBCAT':<15} | {'LOC':<15} | {'CODE':<15} | {'RES'}"
+    STATUS_VERIFY = "TO VERIFY (Subtle Diff)"
+    STATUS_MISMATCH = "MISMATCH DETECTED"
+    
     def __init__(self, path, mode, host="127.0.0.1", user="test", password="test"):
         self.messenger = HubMessenger(user=user, password=password)
         self.json_path = Path(path)
@@ -56,17 +64,14 @@ class STTClientSimulator:
         self.stats["total"] = len(self.records)
 
     def display_mismatch(self, context, exp, item_idx, is_verify=False):
-        sep = "─" * 90
-        status_label = "TO VERIFY (Subtle Diff)" if is_verify else "MISMATCH DETECTED"
-        header = f"{'TYPE':<12} | {'CATEGORY':<15} | {'SUBCAT':<15} | {'LOC':<15} | {'CODE':<15} | {'RES'}"
-        
+        status_label = self.STATUS_VERIFY if is_verify else self.STATUS_MISMATCH
         print(f"\n{status_label} on item #{item_idx}: '{context.user_input}'")
-        print(sep)
-        print(header)
-        print(sep)
+        print(self.SEP_HEADER)
+        print(self.HEADER)
+        print(self.SEP_HEADER)
         print(f"{'OBTAINED':<12} | {context.category:<15} | {context.sub_category:<15} | {context.location:<15} | {context.return_code:<15} | {context.result}")
         print(f"{'EXPECTED':<12} | {exp.get('Category'):<15} | {exp.get('Subcategory'):<15} | {exp.get('Location'):<15} | {exp.get('ReturnCode'):<15} | {exp.get('Result')}")
-        print(sep)
+        print(self.SEP_HEADER)
 
     def check_result(self, response):
         if not response or not self.current_object:
@@ -78,16 +83,14 @@ class STTClientSimulator:
             context = TaskContext.from_json(response)
             exp = self.current_object
 
-            data_match = (
-                context.category == exp.get('Category') and
-                context.sub_category == exp.get('Subcategory') and
-                str(context.return_code) == str(exp.get('ReturnCode'))
-            )
+            category_match = context.category == exp.get('Category')
+            subcategory_match = context.sub_category == exp.get('Subcategory')
+            return_code_match = str(context.return_code) == str(exp.get('ReturnCode'))
+            data_match = category_match and subcategory_match and return_code_match
 
-            has_subtle_diff = (
-                context.location.lower() != exp.get('Location', '').lower() or
-                context.result.lower() != exp.get('Result', '').lower()
-            )
+            location_match = context.location.lower() == exp.get('Location', '').lower()
+            result_match = context.result.lower() == exp.get('Result', '').lower()
+            has_subtle_diff = not location_match or not result_match
 
             if data_match:
                 if has_subtle_diff:
@@ -125,12 +128,9 @@ class STTClientSimulator:
                 self.stats["failed_ids"].append(self.current_idx)
 
     def show_final_summary(self):
-        sep_double = "═" * 95
-        sep_simple = "─" * 95
-
-        print(f"\n{sep_double}")
+        print(f"\n{self.SEP_DOUBLE}")
         print(f"RESULTS REVIEW PHASE")
-        print(f"{sep_double}")
+        print(f"{self.SEP_DOUBLE}")
 
         if self.stats["verify_ids"]:
             print(f"\n[SECTION 1/2] ITEMS TO VERIFY ({len(self.stats['verify_ids'])} items)")
@@ -148,10 +148,9 @@ class STTClientSimulator:
                     print(f"\n[!] ID #{idx}: No context received (Server error or timeout)")
                 time.sleep(0.1)
 
-        sep_stats = "=" * 40
-        print(f"\n{sep_stats}")
+        print(f"\n{'=' * 40}")
         print(f"       FINAL TEST SUMMARY")
-        print(sep_stats)
+        print(f"{'=' * 40}")
         print(f"  Total         : {self.stats['total']}")
         print(f"  Success       : {self.stats['success']}")
         print(f"  To Verify     : {self.stats['to_verify']}")
@@ -160,13 +159,14 @@ class STTClientSimulator:
         if self.stats['total'] > 0:
             ratio = ((self.stats['success'] + self.stats['to_verify']) / self.stats['total']) * 100
             print(f"  Pass Rate     : {ratio:.1f}%")
-        print(f"{sep_stats}\n")
+        print(f"{'=' * 40}\n")
 
     def interactive_mode(self):
         while True:
             prompt = f"ID [{self.current_idx}/{len(self.records)-1}] (n=next / q=quit / ID) > "
             choice = input(prompt).strip().lower()
-            if choice == 'q': break
+            if choice == 'q':
+                break
             if choice in ('n', ''):
                 if self.current_idx < len(self.records):
                     self.send_to_hub(self.records[self.current_idx])
@@ -186,7 +186,8 @@ class STTClientSimulator:
         for i, entry in enumerate(self.records):
             self.current_idx = i
             self.send_to_hub(entry)
-            if self.mode == "stt": time.sleep(1)
+            if self.mode == "stt":
+                time.sleep(1)
         self.show_final_summary()
 
 if __name__ == "__main__":

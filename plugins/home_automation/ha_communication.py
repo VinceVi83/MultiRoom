@@ -10,7 +10,7 @@ class CommunicationHA:
     
     Methods:
         __new__(cls, *args, **kwargs) : Singleton pattern implementation.
-        __init__(self) : Initialize connection and load device registry.
+        __init__(self, cfg) : Initialize connection and load device registry.
         call_action(self, domain, service, entity_id, data=None) : Send commands to Home Assistant services.
         smart_toggle(self, action) : Toggle lights based on current state.
         set_brightness_percent_all(self, level_percent) : Set brightness for all lights.
@@ -20,26 +20,38 @@ class CommunicationHA:
     _instance = None
 
     def __new__(cls, *args, **kwargs):
-        if not cls._instance:
-            cls._instance = super(CommunicationHA, cls).__new__(cls)
-            cls._instance._initialized = False
+        if cls._instance is None:
+            try:
+                cls._instance = super(CommunicationHA, cls).__new__(cls)
+                # Utilise un nom d'attribut unique et interne
+                cls._instance._ready_flag = False 
+            except Exception as e:
+                print(f"[CRITICAL] Failed to create CommunicationHA instance: {e}")
+                return None # Ici c'est dangereux, mais au moins on trace
         return cls._instance
 
     def __init__(self, cfg):
+        if getattr(self, '_ready_flag', False):
+            return
+            
         self.cfg = cfg
-        if not hasattr(self, 'initialized'):
-            self.url = f"http://{self.cfg.ha_config.HA_HOSTNAME}:8123/api"
-            self.headers = {
-                "Authorization": f"Bearer {self.cfg.ha_config.HA_TOKEN}",
-                "Content-Type": "application/json"
-            }
-            self.initialized = True
-
-            registry_file = os.path.join(self.cfg.DATA_DIR, "ha_actuators.json")
-            with open(registry_file, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-
-            self.devices = DeviceCollection(data, self)
+        self.url = f"http://{self.cfg.ha_config.HA_HOSTNAME}:8123/api"
+        self.headers = {
+            "Authorization": f"Bearer {self.cfg.ha_config.HA_TOKEN}",
+            "Content-Type": "application/json"
+        }
+        
+        registry_file = os.path.join(self.cfg.DATA_DIR, "ha_actuators.json")
+        try:
+            if os.path.exists(registry_file):
+                with open(registry_file, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                self.devices = DeviceCollection(data, self)
+                self._ready_flag = True
+            else:
+                print(f"[!] Registry file missing: {registry_file}")
+        except Exception as e:
+            print(f"[!] Error initializing devices: {e}")
 
     def call_action(self, domain, service, entity_id, data=None):
         endpoint = f"{self.url}/services/{domain}/{service}"

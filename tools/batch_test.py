@@ -4,38 +4,46 @@ import argparse
 import sys
 from pathlib import Path
 
-# Tentative d'import des outils du projet
 try:
     from tools.hub_messenger import HubMessenger
     from tools.task_context import TaskContext
 except ImportError:
-    print("[!] Erreur : Dossier 'tools' ou fichiers requis introuvables.")
+    print("[!] Error: Folder 'tools' or required files not found.")
     sys.exit(1)
 
 class HubTester:
-    def __init__(self, user="test", password="test"):
-        self.messenger = HubMessenger(user=user, password=password)
+    """Hub Testing Automation Framework
+    
+    Role: Executes and validates test groups against a Hub server.
+    
+    Methods:
+        __init__(self, host="127.0.0.1", user="test", password="test") : Initialize with server credentials.
+        _check_success(self, ctx, label) : Validate if server response matches expected label.
+        _execute_group(self, group) : Execute a specific group of commands.
+        run_interactive_mode(self, test_groups) : Interactive mode to select test groups.
+        run_auto_mode(self, test_groups) : Auto mode to run all test groups sequentially.
+        _display_global_report(self) : Display formatted final test report.
+    """
+    def __init__(self, host="127.0.0.1", user="test", password="test"):
+        self.messenger = HubMessenger(host=host, user=user, password=password)
         self.all_results = []
 
     def _check_success(self, ctx, label):
-        """Valide si le retour serveur correspond à l'attendu (label du JSON)"""
         cat_ok = ctx.category in label
         sub_ok = (ctx.sub_category in label) if ctx.sub_category != 'NONE' else True
-        # res_ok = (ctx.result in label) if ctx.result != 'NONE' else True
-        return cat_ok and sub_ok # and res_ok
+        return cat_ok and sub_ok
 
     def _execute_group(self, group):
-        """Exécute un groupe de commandes précis"""
         label = group.get('expected', 'Unknown')
         commands = group.get('ordre', [])
         group_contexts = []
 
-        print(f"\n>>> GROUPE : {label}")
+        print(f"\n>>> GROUP: {label}")
         
         for cmd in commands:
             clean_cmd = cmd.replace('test:', '')
-            print(f"[*] Envoi : {clean_cmd[:40]:<40}", end="\r")
-            
+            print(f"[*] Sending: {clean_cmd[:40]:<40}", end="\r")
+            time.sleep(1)
             start_time = time.perf_counter()
             try:
                 response = self.messenger.send_stt(clean_cmd, wait_response=True)
@@ -54,14 +62,13 @@ class HubTester:
         self.all_results.append({'label': label, 'contexts': group_contexts})
 
     def run_interactive_mode(self, test_groups):
-        """Mode interactif pour choisir son groupe (Scrappé du Fichier 1)"""
         while True:
-            print(f"\n{'='*10} LISTE DES TESTS {'='*10}")
+            print(f"\n{'='*10} TEST LIST {'='*10}")
             for i, group in enumerate(test_groups, 1):
                 print(f"[{i}] {group.get('expected', 'Unnamed')}")
             print(f"{'='*32}")
             
-            choice = input('\nSélectionnez un numéro (ou [Q] pour quitter, [A] pour tout lancer) : ').strip().lower()
+            choice = input('\nSelect a number (or [Q] to quit, [A] to run all) : ').strip().lower()
 
             if choice == 'q': break
             if choice == 'a':
@@ -71,23 +78,21 @@ class HubTester:
             try:
                 idx = int(choice) - 1
                 if 0 <= idx < len(test_groups):
-                    self.all_results = [] # Reset pour ce test précis
+                    self.all_results = []
                     self._execute_group(test_groups[idx])
                     self._display_global_report()
                 else:
-                    print("[!] Index hors limites.")
+                    print("[!] Index out of bounds.")
             except ValueError:
-                print("[!] Entrée invalide.")
+                print("[!] Invalid input.")
 
     def run_auto_mode(self, test_groups):
-        """Mode automatique : lance tout à la suite"""
-        print(f"\n🚀 LANCEMENT AUTOMATIQUE ({len(test_groups)} groupes)")
+        print(f"\nAUTO RUN ({len(test_groups)} groups)")
         for group in test_groups:
             self._execute_group(group)
         self._display_global_report()
 
     def _display_global_report(self):
-        """Rapport final formaté"""
         total_queries = 0
         total_success = 0
         failed_list = []
@@ -106,34 +111,37 @@ class HubTester:
                     failed_list.append((label, ctx))
 
         if failed_list:
-            print(f"\n❌ ÉCHECS ({len(failed_list)}):")
+            print(f"\nFAILURES ({len(failed_list)}):")
             for label, ctx in failed_list:
-                print(f"  - Attendu: {label} | Reçu: {ctx.category} {ctx.sub_category} (Query: {ctx.user_input})")
+                print(f"  - Expected: {label} | Received: {ctx.category} {ctx.sub_category} (Query: {ctx.user_input})")
 
         rate = (total_success / total_queries * 100) if total_queries > 0 else 0
         print(f"\n{'='*60}")
-        print(f"SCORE FINAL   : {total_success}/{total_queries} ({rate:.2f}%)")
-        print(f"TEMPS TOTAL   : {total_time:.2f}s")
+        print(f"FINAL SCORE   : {total_success}/{total_queries} ({rate:.2f}%)")
+        print(f"TOTAL TIME    : {total_time:.2f}s")
         print(f"{'='*60}\n")
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("file", type=str, help="Fichier JSON de tests")
-    parser.add_argument("-a", "--auto", action="store_true", help="Mode auto")
+    parser.add_argument("file", type=str, help="Test JSON file")
+    parser.add_argument("-a", "--auto", action="store_true", help="Auto mode")
+    parser.add_argument("-r", "--rpi", action="store_true", help="RPI test")
     parser.add_argument("--user", default="test")
     parser.add_argument("--passw", default="test")
     args = parser.parse_args()
 
-    # Chargement du JSON
     p = Path(args.file)
     if not p.exists():
-        print(f"Fichier non trouvé: {args.file}")
+        print(f"File not found: {args.file}")
         sys.exit(1)
         
     with open(p, 'r', encoding='utf-8') as f:
         data = json.load(f)
 
-    tester = HubTester(user=args.user, password=args.passw)
+    if args.rpi:
+        tester = HubTester(host="192.168.0.35", user=args.user, password=args.passw)
+    else:
+        tester = HubTester(user=args.user, password=args.passw)
 
     if args.auto:
         tester.run_auto_mode(data)

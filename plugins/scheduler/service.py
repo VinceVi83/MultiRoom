@@ -13,7 +13,7 @@ class SchedulerService:
         self.python_bin = "python3"
         self._ensure_db()
 
-    def execute(self, context):
+    def execute(self, context, callback_internal_request_api):
         try:
             time_data = llm.execute(context.user_input, self.cfg.TIME_EXTRACTOR_AGENT)
             action = llm.execute(context.user_input, self.cfg.INTENT_AGENT)

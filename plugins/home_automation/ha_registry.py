@@ -8,14 +8,16 @@ class HomeAutomationRegistry:
     Role: Manages Home Assistant device synchronization including actuators, buttons, and battery monitoring with validation and filtering.
     
     Methods:
-        __init__(self) : Initialize the service with configuration parameters.
+        __init__(self, cfg) : Initialize the service with configuration parameters.
         _fetch_ha_data(self) : Fetch raw data from Home Assistant API (states and services).
         _safe_load_json(self, filename) : Load JSON file safely with error handling.
         _safe_save_json(self, data, filename) : Save JSON file with proper formatting.
         _is_valid_actuator(self, eid, name) : Determine if an actuator should be kept or ignored.
+        _check_blacklist(self, eid, name, blacklist) : Check if entity matches any blacklist keywords.
         sync_actuators(self) : Synchronize actuators with filtering via _is_valid_actuator.
         sync_button_mapping(self) : Synchronize button mapping without overwriting manual config.
         sync_batteries(self) : Generate battery status report for all devices.
+        update_device(self) : Run all synchronization methods in sequence.
     """
 
     def __init__(self, cfg):
@@ -48,6 +50,15 @@ class HomeAutomationRegistry:
             "unavailable", "unknown", "none"
         ]
 
+    def _check_blacklist(self, eid, name, blacklist):
+        eid_low = eid.lower()
+        name_low = name.lower()
+        combined_blacklist = self.global_blacklist + blacklist
+        for kw in combined_blacklist:
+            if kw in eid_low or kw in name_low:
+                return True
+        return False
+
     def _fetch_ha_data(self):
         try:
             states = requests.get(f"{self.url}/states", headers=self.headers, timeout=10).json()
@@ -76,8 +87,7 @@ class HomeAutomationRegistry:
         eid_low = eid.lower()
         name_low = name.lower()
 
-        combined_blacklist = self.global_blacklist + self.actuator_blacklist
-        if any(kw in eid_low or kw in name_low for kw in combined_blacklist):
+        if self._check_blacklist(eid, name, self.actuator_blacklist):
             return False
 
         for model_key, suffix in self.model_strict_suffixes.items():
@@ -88,7 +98,8 @@ class HomeAutomationRegistry:
 
     def sync_actuators(self):
         states, services = self._fetch_ha_data()
-        if not states: return 0
+        if not states:
+            return 0
         
         domain_actions = {d['domain']: list(d['services'].keys()) for d in services}
         inventory = []
@@ -117,7 +128,8 @@ class HomeAutomationRegistry:
 
     def sync_button_mapping(self):
         states, _ = self._fetch_ha_data()
-        if not states: return 0
+        if not states:
+            return 0
 
         mapping_file = "ha_action_mapping.json"
         current_mapping = self._safe_load_json(mapping_file)
@@ -127,17 +139,22 @@ class HomeAutomationRegistry:
         for s in states:
             eid = s['entity_id'].lower()
             domain = eid.split('.')[0]
-            if domain not in ["event", "button"]: continue
+            if domain not in ["event", "button"]:
+                continue
             
             attr = s.get('attributes', {})
             name = attr.get('friendly_name', eid)
 
-            if any(kw in eid or kw in name.lower() for kw in self.global_blacklist + self.button_blacklist):
+            if self._check_blacklist(eid, name, self.button_blacklist):
                 continue
             
             event_types = attr.get('event_types', ["single", "double", "hold"])
-            clean_actions = [a for a in event_types if a not in self.black_actions]
-            if not clean_actions: continue
+            clean_actions = []
+            for a in event_types:
+                if a not in self.black_actions:
+                    clean_actions.append(a)
+            if not clean_actions:
+                continue
 
             if eid in current_mapping:
                 new_mapping[eid] = current_mapping[eid]
@@ -156,7 +173,8 @@ class HomeAutomationRegistry:
 
     def sync_batteries(self):
         states, _ = self._fetch_ha_data()
-        if not states: return 0
+        if not states:
+            return 0
 
         report = {}
         for s in states:

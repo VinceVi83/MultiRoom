@@ -1,10 +1,11 @@
 MUSIC_VLC:
   MUSIC_AGENT:
+    name: "MUSIC_AGENT"
     model: "qwen2.5:3b"
     use_json: true
     options:
       temperature: 0.0
-      num_predict: 20
+      num_predict: 100
       num_ctx: 2048
     prompt: |
       Task: Classify the input command into one of these 3 CATEGORY:
@@ -22,11 +23,12 @@ MUSIC_VLC:
       Example: {"CATEGORY": "MUSIC"}
 
   PLAYLIST_AGENT:
+    name: "PLAYLIST_AGENT"
     model: "qwen2.5:3b"
     use_json: true
     options:
       temperature: 0.0
-      num_predict: 50
+      num_predict: 100
       num_ctx: 2048
     prompt: |
       ### ROLE
@@ -62,12 +64,12 @@ MUSIC_VLC:
       Output: {"ACTION": "DEL", "NAME": "CURRENT"}
 
   VLC_AGENT:
+    name: "VLC_AGENT"
     model: "qwen2.5:3b"
     use_json: true
     options:
-      seed: 42
       temperature: 0.0
-      num_predict: 20
+      num_predict: 100
       num_ctx: 2048
     prompt: |
       ### ROLE

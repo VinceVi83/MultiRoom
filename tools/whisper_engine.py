@@ -4,7 +4,7 @@ try:
     from config_loader import cfg
     WHISPER_MODE = cfg.sys.WHISPER
     LANGUAGE = cfg.sys.LANGUAGE
-except (ImportError, AttributeError):
+except Exception as e:
     WHISPER_MODE = "GPU"
     LANGUAGE = "fr"
 

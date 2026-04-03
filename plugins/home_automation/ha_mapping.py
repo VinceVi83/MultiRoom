@@ -59,6 +59,9 @@ class DeviceCollection(ABC):
     def similarity(self, a, b):
         return fuzz.token_set_ratio(a.lower(), b.lower())
 
+    def _process_name_for_search(self, name):
+        return name.lower().replace("_", " ").replace("light", "").strip()
+
     def search(self, query_name, device_type):
         pool = self.lights if device_type == "LIGHT" else self.switches
         
@@ -69,7 +72,7 @@ class DeviceCollection(ABC):
         query_clean = query_name.lower().strip()
 
         for device in pool:
-            name_processed = device.name.lower().replace("_", " ").replace("light", "").strip()
+            name_processed = self._process_name_for_search(device.name)
             score = fuzz.token_set_ratio(query_clean, name_processed)
             
             if score > highest_score and score >= threshold:
@@ -120,7 +123,7 @@ class LightEntity(BaseEntity):
 
     def set_brightness_percent(self, percent: int):
         data = {"brightness_pct": min(max(percent, 0), 100)}
-        return self.call_action("light", "turn_on", self.id, data=data)
+        return self.service.call_action("light", "turn_on", self.id, data=data)
 
 
 class SwitchEntity(BaseEntity):

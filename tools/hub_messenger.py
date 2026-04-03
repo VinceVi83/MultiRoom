@@ -10,7 +10,6 @@ import time
 from http.server import SimpleHTTPRequestHandler, HTTPServer
 import glob
 import sys
-from config_loader import cfg
 from pathlib import Path
 
 class HubMessenger:
@@ -31,19 +30,22 @@ class HubMessenger:
         send_multiple_stt(self, text, wait_response) : Send multiple text to speech messages.
         send_ptt(self, file_path) : Send push-to-talk file via HTTP server.
     """
-    def __init__(self, host="127.0.0.1", port=cfg.sys.config.HUB_PORT, cert_path=None, user="test", password="test"):
+    def __init__(self, host="127.0.0.1", port="28888", cert_path=None, user="test", password="test"):
         self.host = host
         self.port = int(port)
         self.http_port = 8090
         self.user = user
         self.password = password
         self.hw_signature = self._get_hw_sign()
-        
-        if not cert_path:
-            cert_path = Path(cfg.DATA_DIR) / "Certification" / "cert.pem"
-        self.cert_file = self._resolve_cert_path(cert_path.resolve())
-        self.key_file = self.cert_file.with_name("key.pem") if self.cert_file else None
-        
+        resolved = self._resolve_cert_path(cert_path)
+
+        if resolved:
+            self.cert_file = Path(resolved)
+            if isinstance(self.cert_file, Path):
+                self.key_file = self.cert_file.with_name("key.pem")
+            else:
+                self.key_file = Path(str(self.cert_file)).with_name("key.pem")
+            
         self.ssl_context = self._get_secure_context()
         self._ssock = None
         self._server_thread = None
@@ -51,16 +53,15 @@ class HubMessenger:
     def _resolve_cert_path(self, cert_path):
         if cert_path and os.path.exists(cert_path):
             return cert_path
-        
-        try:
-            from config_loader import cfg
-            path_from_cfg = os.path.join(cfg.DATA_DIR, "Certification", "cert.pem")
-            if os.path.exists(path_from_cfg):
-                return path_from_cfg
-        except (ImportError, AttributeError, Exception) as e:
-            print(f"[HubMessenger] Config error: {e}")
-            pass
-        
+        else:
+            try:
+                from config_loader import cfg
+                cert_path = Path(cfg.DATA_DIR) / "Certification" / "cert.pem"
+                path_from_cfg = os.path.join(cfg.DATA_DIR, "Certification", "cert.pem")
+                if os.path.exists(path_from_cfg):
+                    return path_from_cfg
+            except:
+                pass
         local_fallback = os.path.join("Certification", "cert.pem")
         if os.path.exists(local_fallback):
             return local_fallback

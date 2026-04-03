@@ -9,7 +9,7 @@ class MusicVlcService:
     
     Methods:
         __init__(self): Initialize the service with configuration and active instances.
-        execute(self, context): Process user input and execute music commands via LLM.
+        execute(self, context, callback_internal_request_api): Process user input and execute music commands via LLM.
         execute_native(self, context): Execute native VLC commands through user manager.
         _get_free_index(self): Get or create a free instance index for active instances.
         check_user_use_service(self, context): Check and create user service manager.
@@ -31,18 +31,22 @@ class MusicVlcService:
     def bypass_router(self, context):
         user_input_lower = context.user_input.lower()
         
-        for keyword in self.cfg.config.BYPASS_ROUTER.PLAYLIST:
+        fusion_list = self.cfg.config.BYPASS_ROUTER.PLAYLIST
+        fusion_list += self.cfg.extra.BYPASS_PLAYLIST
+        for keyword in fusion_list:
             keyword_lower = keyword.lower()
             if keyword_lower in user_input_lower:
                 return "PLAYLIST"
 
-        for keyword in self.cfg.config.BYPASS_ROUTER.MUSIC:
+        fusion_list = self.cfg.config.BYPASS_ROUTER.MUSIC
+        fusion_list += self.cfg.extra.BYPASS_MUSIC
+        for keyword in fusion_list:
             keyword_lower = keyword.lower()
             if keyword_lower in user_input_lower:
                 return "MUSIC"
         return None
 
-    def execute(self, context):
+    def execute(self, context, callback_internal_request_api):
         category_res = self.bypass_router(context)
         try:
             if category_res:

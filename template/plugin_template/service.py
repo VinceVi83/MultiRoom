@@ -11,7 +11,7 @@ class YourPluginService:
     
     Methods:
         __init__(self) : Initialize plugin with configuration.
-        execute(self, context) : Process user input and execute plugin actions.
+        execute(self, context, callback_internal_request_api) : Process user input and execute plugin actions.
         get_status(self) : Return plugin status information.
     """
     def __init__(self):
@@ -21,7 +21,7 @@ class YourPluginService:
         if not self.config:
             print(f"[!] Error: Configuration for {self.plugin_name} not found.")
 
-    def execute(self, context):
+    def execute(self, context, callback_internal_request_api):
         logic = PluginLogic()
         
         intent_result = llm.execute(context.user_input, self.config.INTENT_AGENT)

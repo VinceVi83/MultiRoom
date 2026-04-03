@@ -115,25 +115,48 @@ class VLCControl:
         self.current_path = ""
         return self.cfg.RETURN_CODE.SUCCESS
 
+    def _parse_status_xml(self, xml_data):
+        if not xml_data:
+            return None
+        
+        try:
+            root = ET.fromstring(xml_data)
+            return {
+                "time": int(root.findtext('time', '0')),
+                "length": int(root.findtext('length', '0')),
+                "state": root.findtext('state', 'unknown').lower()
+            }
+        except Exception:
+            return None
+
     def get_remaining_seconds(self):
         xml_data = self._vlc_request("status.xml")
-        if xml_data:
-            try:
-                root = ET.fromstring(xml_data)
-                curr_time = int(root.findtext('time', '0'))
-                total_length = int(root.findtext('length', '0'))
-                return max(0, total_length - curr_time)
-            except Exception:
-                return -1
-        return -1
+        parsed_data = self._parse_status_xml(xml_data)
+        
+        if parsed_data is None:
+            return -1
+        
+        curr_time = parsed_data["time"]
+        total_length = parsed_data["length"]
+        return max(0, total_length - curr_time)
 
-    def get_total_remaining_seconds(self): 
+    def get_total_remaining_seconds(self):
+        current_remaining = self.get_remaining_seconds()
+        xml_data = self._vlc_request("playlist.xml")
+        
+        if not xml_data:
+            return current_remaining
+        
+        parsed_playlist = self._parse_playlist_xml(xml_data)
+        total_after_current = parsed_playlist.get("total_after_current", 0) if parsed_playlist else 0
+        
+        return current_remaining + total_after_current
+
+    def _parse_playlist_xml(self, xml_data):
+        if not xml_data:
+            return None
+        
         try:
-            current_remaining = self.get_remaining_seconds()
-            xml_data = self._vlc_request("playlist.xml")
-            
-            if not xml_data:
-                return current_remaining
             root = ET.fromstring(xml_data)
             total_after_current = 0
             found_current = False
@@ -148,19 +171,18 @@ class VLCControl:
                     if duration_val:
                         total_after_current += int(duration_val)
                         
-            return current_remaining + total_after_current
+            return {"total_after_current": total_after_current}
         except Exception:
-            return current_remaining
+            return None
 
     def get_current_state(self):
         xml_data = self._vlc_request("status.xml")
-        if xml_data:
-            try:
-                root = ET.fromstring(xml_data)
-                return root.findtext('state', 'unknown').lower()
-            except Exception:
-                pass
-        return "unknown"
+        parsed_data = self._parse_status_xml(xml_data)
+        
+        if parsed_data is None:
+            return "unknown"
+        
+        return parsed_data["state"]
 
     def __del__(self):
         self.kill_vlc()

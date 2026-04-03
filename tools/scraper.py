@@ -63,9 +63,6 @@ class ScraperService:
             url = res.get('url', '').lower()
             score = 0
 
-            # if any(domain in url for domain in cfg.LIST_PRIORITY_DOMAINS):
-            #     score += 1.5
-
             date_str = res.get('publishedDate')
             if date_str:
                 try:

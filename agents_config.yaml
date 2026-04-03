@@ -1,17 +1,12 @@
-# Agent Configuration File
-# This YAML file defines agent configurations for the routing and location systems.
-# Each section contains an agent with model settings, options, and prompts.
-
 ALL_PURPOSE:
   ROUTER_AGENT:
+    name: "ROUTER_AGENT"
     model: "qwen2.5:3b"
     use_json: true
     options:
       temperature: 0.0
-      num_predict: 20
+      num_predict: 100
       num_ctx: 2048
-      top_k: 1
-      top_p: 0.0
     prompt: |
       ### ROLE
       Classify input into exactly one Plugin based on keywords and context. 
@@ -40,6 +35,7 @@ ALL_PURPOSE:
       Output: {"PLUGIN": "PLUGIN_NAME"}
 
   LOCATION_AGENT:
+    name: "LOCATION_AGENT"
     model: "qwen2.5:3b"
     use_json: true
     options:
@@ -68,6 +64,7 @@ ALL_PURPOSE:
       Input: "Turn on the kitchen" -> {"location": "Kitchen"}
 
   PRE_PROCESS_AGENT:
+    name: "PRE_PROCESS_AGENT"
     model: "qwen2.5:3b"
     use_json: true
     options:
@@ -98,43 +95,42 @@ ALL_PURPOSE:
       Input: Be ready -> {"valid": 0}
 
   LOCATION_CLEANER_AGENT:
-      model: "qwen2.5:3b"
-      use_json: true
-      options:
-        temperature: 0
-        num_predict: 100
-        num_ctx: 2048
-        top_k: 1
-        top_p: 0.0
-      prompt: |
-        ### ROLE
-        Expert Entity Extractor for Home Automation.
+    name: "LOCATION_CLEANER_AGENT"
+    model: "qwen2.5:3b"
+    use_json: true
+    options:
+      temperature: 0
+      num_predict: 100
+      num_ctx: 2048
+    prompt: |
+      ### ROLE
+      Expert Entity Extractor for Home Automation.
 
-        ### OBJECTIVE
-        1. Identify the 'location' from the user input.
-        2. Generate a 'cleaned_command' by removing the location and DO NOT TRANSLATE.
+      ### OBJECTIVE
+      1. Identify the 'location' from the user input.
+      2. if user input has a location, generate a 'cleaned_command' by removing the location and DO NOT TRANSLATE.
 
-        ### LOCATIONS
-        Allowed: REPLACE_LOCATIONS
+      ### LOCATIONS
+      Allowed: REPLACE_LOCATIONS
 
-        ### STRICT RULES
-        - Output ONLY the JSON object.
-        - If you fail, output: {"location": "unknown"}        
-        - Mapping: "toutes les", "Everywhere", "all rooms", "whole house", "everything" -> ALL
-        - If NO location is found, return "Unknown" for location.
-        - If a location is found, return the EXACT name from the allowed list.
+      ### STRICT RULES
+      - Output ONLY the JSON object.
+      - If you fail, output: {"location": "unknown"}        
+      - Mapping: "toutes les", "Everywhere", "all rooms", "whole house", "everything" -> ALL
+      - If NO location is found, return "Unknown" for location.
+      - If a location is found, return the EXACT name from the allowed list.
 
-        ### OUTPUT FORMAT (Strict JSON)
-        {
-          "location": "ExactName",
-        }
+      ### OUTPUT FORMAT (Strict JSON)
+      {
+        "location": "ExactName",
+      }
 
-        ### EXAMPLES
-        Input: "Turn on the light in the Salon"
-        Output: {"location": "Salon", "cleaned_command": "Turn on the light"}
+      ### EXAMPLES
+      Input: "Allume la lumière du Salon"
+      Output: {"location": "Salon", "cleaned_command": "Allume la lumière"}
 
-        Input: "Turn off everything in the house"
-        Output: {"location": "ALL", "cleaned_command": "coupe/éteint toutes les lumières"}
+      Input: "Éteins tout dans la maison"
+      Output: {"location": "ALL", "cleaned_command": "Éteins tout"}
 
-        Input: "Play some music"
-        Output: {"location": "Unknown", "cleaned_command": "Play some music"}
+      Input: "Mets de la musique"
+      Output: {"location": "Unknown", "cleaned_command": "Mets de la musique"}

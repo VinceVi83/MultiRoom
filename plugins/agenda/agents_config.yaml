@@ -1,5 +1,6 @@
 AGENDA:
   CALENDAR_AGENT:
+    name: "CALENDAR_AGENT"
     model: "qwen2.5:3b"
     use_json: true
     options:
@@ -27,6 +28,7 @@ AGENDA:
       Example: {"ACTION": "NEXT_RDV"}
 
   CALENDAR_REPORTER:
+    name: "CALENDAR_REPORTER"
     use_json: false
     options:
       seed: 42
@@ -34,11 +36,9 @@ AGENDA:
       top_k: 1
       top_p: 0.0
       num_predict: 800
-      num_ctx: 4096
+      num_ctx: 2048
       repeat_penalty: 1.1
       repeat_last_n: 64
-      options:
-        temperature: 0.7
     prompt: |
       Task: Act as a friendly and efficient personal assistant.
       
@@ -54,27 +54,33 @@ AGENDA:
       Constraint: The response must be ready to be read by a text-to-speech system.
 
   EXTRACT_ARTIST_AGENT:
+    name: "EXTRACT_ARTIST_AGENT"
     model: "qwen2.5:3b"
     use_json: true
     options:
+      num_ctx: 2048
       temperature: 0.0
     prompt: |
       Extract the main artist name. 
       Respond with JSON format: {"artist": "NAME"}
   
   EXTRACT_VENUE_AGENT:
+    name: "EXTRACT_VENUE_AGENT"
     model: "qwen2.5:3b"
     use_json: true
     options:
+      num_ctx: 2048
       temperature: 0.0
     prompt: |
       Extract the venue and city.
       Respond with JSON format: {"location": "VENUE, CITY"}
 
   EXTRACT_DATE_AGENT:
+    name: "EXTRACT_DATE_AGENT"
     model: "qwen2.5:3b"
     use_json: true
     options:
+      num_ctx: 2048
       temperature: 0.0
     prompt: |
       Extract date of the event, be careful it may have date of creation of ticket, brought dates.

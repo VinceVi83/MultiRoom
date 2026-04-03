@@ -23,13 +23,31 @@ class PlaylistManager:
         safe_name = name.lower().replace(" ", "_")
         return self.base_dir / f"{safe_name}.m3u8"
 
+    def _write_header(self, file_path):
+        with open(file_path, "w", encoding="utf-8") as f:
+            f.write("#EXTM3U\n")
+        return True
+
+    def _read_lines(self, file_path):
+        if not file_path.exists():
+            return []
+        with open(file_path, "r", encoding="utf-8") as f:
+            return f.readlines()
+
+    def _write_lines(self, file_path, lines):
+        with open(file_path, "w", encoding="utf-8") as f:
+            f.writelines(lines)
+
+    def _append_line(self, file_path, line):
+        with open(file_path, "a", encoding="utf-8") as f:
+            f.write(f"{line}\n")
+
     def create_playlist(self, name):
         file_path = self._get_path(name.lower())
         if file_path.exists():
             return False
         
-        with open(file_path, "w", encoding="utf-8") as f:
-            f.write("#EXTM3U\n")
+        self._write_header(file_path)
         
         return True
 
@@ -41,12 +59,12 @@ class PlaylistManager:
 
         song_path_clean = song_path.strip()
 
-        with open(file_path, "r", encoding="utf-8") as f:
-            if any(line.strip() == song_path_clean for line in f):
-                return False
+        lines = self._read_lines(file_path)
+        
+        if any(line.strip() == song_path_clean for line in lines):
+            return False
 
-        with open(file_path, "a", encoding="utf-8") as f:
-            f.write(f"{song_path_clean}\n")
+        self._append_line(file_path, song_path_clean)
         
         return True
 
@@ -57,14 +75,11 @@ class PlaylistManager:
 
         song_path_clean = song_path.strip()
         
-        with open(file_path, "r", encoding="utf-8") as f:
-            lines = f.readlines()
-
+        lines = self._read_lines(file_path)
         new_lines = [l for l in lines if l.strip() != song_path_clean]
 
         if len(lines) == len(new_lines):
             return False
 
-        with open(file_path, "w", encoding="utf-8") as f:
-            f.writelines(new_lines)
+        self._write_lines(file_path, new_lines)
         return True

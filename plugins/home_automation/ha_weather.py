@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from typing import List, Optional
 from datetime import datetime
 
+
 @dataclass
 class WeatherHour:
     """Weather Hour Plugin
@@ -70,7 +71,7 @@ class WeatherHaApi:
     Role: API to interact with Home Assistant for weather data including current status, hourly and daily forecasts.
     
     Methods:
-        __init__(self, city) : Initializes the API with the entity ID.
+        __init__(self, cfg) : Initializes the API with the entity ID.
         fetch_current_status(self) -> WeatherStatus : Fetches the current weather status.
         fetch_hourly_forecast(self) -> List[WeatherHour] : Fetches the hourly weather forecast.
         fetch_daily_forecast(self) -> List[WeatherDay] : Fetches the daily weather forecast.
@@ -87,6 +88,19 @@ class WeatherHaApi:
             "Content-Type": "application/json"
         }
 
+    def base_url_services(self):
+        return f"{self.host}/services/weather/get_forecasts"
+
+    def _fetch_forecast(self, forecast_type):
+        url = f"{self.base_url_services()}?return_response"
+        payload = {"city": self.city, "type": forecast_type}
+        
+        r = requests.post(url, json=payload, headers=self.headers)
+        r.raise_for_status()
+        raw_list = r.json()["service_response"][self.city]["forecast"]
+        
+        return raw_list
+
     def fetch_current_status(self) -> WeatherStatus:
         r = requests.get(f"{self.host}/states/{self.city}", headers=self.headers)
         r.raise_for_status()
@@ -101,39 +115,32 @@ class WeatherHaApi:
         )
 
     def fetch_hourly_forecast(self) -> List[WeatherHour]:
-        url = f"{self.base_url_services()}?return_response"
-        payload = {"city": self.city, "type": "hourly"}
+        raw_list = self._fetch_forecast("hourly")
         
-        r = requests.post(url, json=payload, headers=self.headers)
-        raw_list = r.json()["service_response"][self.city]["forecast"]
-        
-        return [
-            WeatherHour(
+        hourly_list = []
+        for h in raw_list:
+            hourly_list.append(WeatherHour(
                 timestamp=datetime.fromisoformat(h['datetime']),
                 condition=h['condition'],
                 temperature=h['temperature'],
                 humidity=h.get('humidity', 0),
                 wind_speed=h.get('wind_speed', 0),
                 precipitation=h.get('precipitation', 0)
-            ) for h in raw_list
-        ]
+            ))
+        
+        return hourly_list
 
     def fetch_daily_forecast(self) -> List[WeatherDay]:
-        url = f"{self.base_url_services()}?return_response"
-        payload = {"city": self.city, "type": "daily"}
+        raw_list = self._fetch_forecast("daily")
         
-        r = requests.post(url, json=payload, headers=self.headers)
-        raw_list = r.json()["service_response"][self.city]["forecast"]
-        
-        return [
-            WeatherDay(
+        daily_list = []
+        for j in raw_list:
+            daily_list.append(WeatherDay(
                 timestamp=datetime.fromisoformat(j['datetime']),
                 condition=j['condition'],
                 temp_max=j.get('temperature'),
                 temp_min=j.get('templow'),
                 precipitation_probability=j.get('precipitation_probability')
-            ) for j in raw_list
-        ]
-
-    def base_url_services(self):
-        return f"{self.host}/services/weather/get_forecasts"
+            ))
+        
+        return daily_list

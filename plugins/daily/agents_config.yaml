@@ -1,5 +1,6 @@
 DAILY:
   DAILY_AGENT:
+    name: "DAILY_AGENT"
     model: "qwen2.5:3b"
     use_json: true
     options:
@@ -22,6 +23,7 @@ DAILY:
       3. Nonsense/General chat? -> NONE.
 
   FRIDGE_AGENT:
+    name: "FRIDGE_AGENT"
     model: "qwen2.5:3b"
     use_json: true
     options:
@@ -44,6 +46,7 @@ DAILY:
       3. Nonsense/General chat? -> NONE.
 
   EXTRACT_FOOD_AGENT:
+    name: "EXTRACT_FOOD_AGENT"
     model: "qwen2.5:3b"
     use_json: true
     options:

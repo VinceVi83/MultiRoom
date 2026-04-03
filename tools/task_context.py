@@ -33,6 +33,7 @@ class TaskContext:
     location: str = "NONSENSE"
     start: float = field(default_factory=time.time)
     data: dict = field(default_factory=dict)
+    data_request: dict = field(default_factory=dict)
     return_code: ReturnCode = cfg.RETURN_CODE.ERR
 
     def add_step(self, step_name, data):

@@ -17,21 +17,23 @@ class UnifiedSpeechSystem:
         start(self) : Start the audio processing loop for continuous input.
         _handle_stt_action(self, frames) : Process audio frames through speech-to-text engine and send to hub.
         _handle_ptt_action(self, frames) : Handle push-to-talk by saving audio and sending to hub.
+        stop(self) : Stop the audio processing loop and cleanup resources.
     """
     def __init__(self, mode, cert_path=None, user="test", password="test"):
         self.mode = mode
         self.running = True
         self.temp_wav = "temp_voice.wav"
         self.pre_roll = deque(maxlen=40)
+        self.stream = None
         
         try:
             self.messenger = HubMessenger(
-            cert_path=cert_path, 
-            user=user, 
-            password=password
+                host="172.21.8.200",
+                cert_path=cert_path, 
+                user=user, 
+                password=password
             )
 
-            self.messenger = HubMessenger(cert_path=cert_path, user=user, password=password)
             if self.mode == "stt":
                 self.whisper = WhisperEngine()
             self.pa = pyaudio.PyAudio()
@@ -42,7 +44,7 @@ class UnifiedSpeechSystem:
     def start(self):
         stream = self.pa.open(format=pyaudio.paInt16, channels=1, rate=16000, 
                              input=True, frames_per_buffer=1024)
-
+        self.stream = stream
         BAR_WIDTH = 20
         MAX_RMS = 2500
         
@@ -113,6 +115,11 @@ class UnifiedSpeechSystem:
             wf.writeframes(b''.join(frames))
         
         self.messenger.send_ptt(self.temp_wav)
+
+    def stop(self):
+        self.stream.stop_stream()
+        self.stream.close()
+        self.pa.terminate()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

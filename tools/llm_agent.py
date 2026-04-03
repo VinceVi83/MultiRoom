@@ -14,13 +14,15 @@ class OllamaClient:
     Role: Manages Ollama connections, model management, and executes LLM queries.
     
     Methods:
-        __init__(self, base_url, client, main_model, current_model, _lock, is_ready, retry_count, max_delay): Initialize the Ollama client with configuration.
-        _check_connection(self): Verify Ollama server connectivity.
-        _start_reconnect_thread(self): Start background reconnection thread.
-        _reconnect_loop(self): Loop to reconnect when offline.
-        execute(self, user_input, agent_cfg=None, debug=False, verbose=False): Execute LLM query.
-        manage_vram(self, target_model): Manage VRAM by switching models.
-        _prepare(self, c, user_input): Prepare request parameters.
+        __init__(self) : Initialize the Ollama client with configuration.
+        _check_connection(self) : Verify Ollama server connectivity.
+        _start_reconnect_thread(self) : Start background reconnection thread.
+        _reconnect_loop(self) : Loop to reconnect when offline.
+        _print_verbose(self, message) : Print message if verbose mode is enabled.
+        _print_debug(self, message) : Print message if debug mode is enabled.
+        execute(self, user_input, agent_cfg=None, debug=False, verbose=False) : Execute LLM query.
+        manage_vram(self, target_model) : Manage VRAM by switching models.
+        _prepare(self, c, user_input) : Prepare request parameters.
     """
     def __init__(self):
         self.base_url = cfg.sys.config.OLLAMA_SERVER
@@ -60,7 +62,24 @@ class OllamaClient:
             except:
                 pass
 
+    def _print_debug(self, message):
+        if not self.is_ready:
+            return
+        if not self.debug:
+            return
+        print(message)
+        
+    def _print_verbose(self, message):
+        if not self.is_ready:
+            return
+        if not self.verbose:
+            return
+        print(message)
+
     def execute(self, user_input, agent_cfg=None, debug=False, verbose=False):
+        self.verbose = verbose
+        self.debug = debug
+        
         if not self.is_ready:
             return {"error": "Ollama is offline", "status": "reconnecting"}
 
@@ -70,22 +89,18 @@ class OllamaClient:
             agent_cfg_final.user_input = user_input
 
             try:
-                if verbose:
-                    print(f"\n{'='*20} VERBOSE MODE {'='*20}")
-                    print(f"TARGET MODEL  : {agent_cfg_final.model}")
-                    print(f"SYSTEM PROMPT : {agent_cfg_final.prompt}...")
-                    print(f"USER INPUT    : {user_input}")
+                self._print_verbose("TARGET MODEL  : " + agent_cfg_final.model)
+                self._print_verbose("SYSTEM PROMPT : " + agent_cfg_final.prompt + "...")
+                self._print_verbose("USER INPUT    : " + user_input)
 
                 response = self.client.chat(**self._prepare(agent_cfg, user_input))
 
                 content = response['message']['content'].strip()
                 result = json.loads(content) if agent_cfg_final.use_json else content
 
-                if verbose:
-                    print(f"RESULT        : {result}")
-                    print(f"{'='*54}")
+                self._print_verbose("RESULT        : " + str(result))
 
-                if debug:
+                if self.debug:
                     o_load   = response.get('load_duration', 0) / 1e9
                     o_p_eval = response.get('prompt_eval_duration', 0) / 1e9
                     o_eval   = response.get('eval_duration', 0) / 1e9
@@ -93,10 +108,10 @@ class OllamaClient:
 
                     inference_time = o_p_eval + o_eval
 
-                    print(f"\n--- PERFORMANCE ---")
-                    print(f"Load Time (VRAM)   : {o_load:.3f}s")
-                    print(f"Inference (GPU)    : {inference_time:.3f}s")
-                    print(f"TOTAL DURATION     : {o_total:.3f}s\n")
+                    self._print_debug("MODEL & AGENT      : " + f"{agent_cfg.name} {agent_cfg.model} \n")
+                    self._print_debug("Load Time (VRAM)   : " + str(o_load) + ".3fs")
+                    self._print_debug("Inference (GPU)    : " + str(inference_time) + ".3fs")
+                    self._print_debug("TOTAL DURATION     : " + str(o_total) + ".3fs\n")
 
                 return result
 
@@ -106,7 +121,8 @@ class OllamaClient:
                 return {'ID': '0', 'error': str(e)}
 
     def manage_vram(self, target_model):
-        if self.current_model and self.current_model != target_model:
+        if self.current_model is not None and self.current_model != target_model:
+            self._print_debug("manage_vram change model")
             try:
                 requests.post(
                     f"{self.base_url}/api/generate",

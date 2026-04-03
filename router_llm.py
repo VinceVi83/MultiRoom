@@ -22,10 +22,11 @@ class RouterLLM:
         get_location(self, context) : Get/clean location using LLM agent.
         bypass_router(self, context) : Check if user input bypasses router.
         select_plugin(self, context) : Select plugin based on user input.
-        select_and_execute(self, context) : Select plugin and execute it.
+        select_and_execute(self, context, callback_internal_request_api) : Select plugin and execute it.
         inference_loop(self) : Main inference loop for processing commands.
         start(self) : Start the inference thread.
         stop(self) : Stop the inference thread.
+        callback_internal_request_api(self, context) : Handle internal API requests.
     """
     def __init__(self):
         self.command_queue = queue.Queue()
@@ -88,12 +89,30 @@ class RouterLLM:
         return context._archive_and_rename()
 
     def get_location(self, context):
+        if self.bypass_location(context):
+            return
+
         local_res = llm.execute(context.user_input, cfg.ALL_PURPOSE.LOCATION_CLEANER_AGENT, verbose=False, debug=False)
         if local_res.get('cleaned_command') != 'none':
             context.location = local_res.get('location')
-            context.user_input = local_res.get('cleaned_command')
+            # context.user_input = local_res.get('cleaned_command')
         context.add_step('LOCATION_CLEANER_AGENT', local_res)
-        return True
+        return
+
+    def bypass_location(self, context):
+        user_input_lower = context.user_input.lower()
+        for keyword in cfg.sys.config.BYPASS_ALL:
+            if keyword.lower() in user_input_lower:
+                context.location = "ALL"
+                context.add_step('bypass_location', {'Location': "ALL", 'bypass': 1})
+                return True
+
+        for keyword in cfg.sys.config.REPLACE_LOCATIONS:
+            if keyword.lower() in user_input_lower:
+                context.location = keyword
+                context.add_step('bypass_location', {'Location': keyword, 'bypass': 1})
+                return True
+        return False
 
     def bypass_router(self, context):
         user_input_lower = context.user_input.lower()
@@ -111,14 +130,14 @@ class RouterLLM:
             category_res = llm.execute(context.user_input, cfg.ALL_PURPOSE.ROUTER_AGENT)
 
         context.add_step('ROUTER_AGENT', category_res)
-        context.category = category_res.get('PLUGIN', 'NONE')
+        context.category = category_res.get('PLUGIN', 'UNKNOWN')
         return context.category.lower() in cfg.LOADED_PLUGINS
 
     def select_and_execute(self, context):
         start_total = time.time()
         try:
             if not self.select_plugin(context):
-                context.return_code = cfg.RETURN_CODE.ERR
+                context.return_code = cfg.RETwURN_CODE.ERR
                 return context._archive_and_rename()
             plugin_obj = getattr(cfg, context.category.lower(), None)
             if plugin_obj.config.USE_LOCATION:
@@ -131,7 +150,7 @@ class RouterLLM:
         try:
             service_instance = self.service_registry.get(context.category)
             if service_instance and hasattr(service_instance, 'execute'):
-                return_code = service_instance.execute(context)
+                return_code = service_instance.execute(context, self.callback_internal_request_api)
                 context.return_code = Utils.format_result(return_code)
   
         except Exception as e:
@@ -141,6 +160,26 @@ class RouterLLM:
         context.duration_llm = time.time() - start_total
         context.duration = time.time() - context.start
         return context._archive_and_rename()
+
+    def callback_internal_request_api(self, context):
+        if not context.data_request:
+            return cfg.RETURN_CODE.ERR
+        
+        data = context.data_request.get("internal_api")
+        if not data:
+            return cfg.RETURN_CODE.ERR
+
+        plugin_name = data["plugin"]
+        
+        service_instance = self.service_registry.get(data.get(plugin_name, "None").upper())
+        if service_instance and hasattr(service_instance, 'execute_api'):
+            try:
+                context.return_code = service_instance.execute_api(data)
+            except Exception as e:
+                print(f"[!] Service {plugin_name} execute_native failed: {e}")
+                context.return_code = cfg.RETURN_CODE.ERR
+        else:
+            context.return_code = cfg.RETURN_CODE.ERR
 
     def inference_loop(self):
         llm.execute("Be ready", cfg.ALL_PURPOSE.ROUTER_AGENT)

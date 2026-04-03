@@ -10,5 +10,4 @@ music_assistant.txt
 settings.json
 test.py
 *wav
-tests/
 .vscode

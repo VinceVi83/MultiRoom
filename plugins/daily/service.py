@@ -9,13 +9,13 @@ class DailyService:
     
     Methods:
         __init__(self) : Initialize the DailyService plugin with configuration.
-        execute(self, context) : Process daily commands and execute shopping actions.
+        execute(self, context, callback_internal_request_api) : Process daily commands and execute shopping actions.
         get_status(self) : Return plugin status information.
     """
     def __init__(self, cfg):
         self.plugin_name = "Daily" 
         self.cfg = cfg
-        
+        self.shopping = ShoppingService(self.cfg)
         if not self.cfg:
             print(f"[!] Error: Configuration for {self.plugin_name} not found.")
 
@@ -28,7 +28,7 @@ class DailyService:
                 return True
         return False
 
-    def execute(self, context):
+    def execute(self, context, callback_internal_request_api):
         try:
             if self.switch_fridge(context):
                 category_res = llm.execute(context.user_input, self.cfg.FRIDGE_AGENT)
@@ -41,36 +41,38 @@ class DailyService:
                 action = category_res.get('ACTION', 'ERR')
                 context.sub_category = action
                 context.add_step('sub_category', category_res)
-            
             if "_ADD" in action:
-                new_items = llm.execute(context.user_input, cfg.EXTRACT_FOOD_AGENT)
+                new_items = llm.execute(context.user_input, self.cfg.EXTRACT_FOOD_AGENT)
                 if action == "SHOP_ADD":
-                    result = shopping.update_shopping_list(new_items)
+                    result = self.shopping.update_shopping_list(new_items)
                 else:
-                    self.cfg.RETURN_CODE.ERR_NOT_IMPLEMENTED
+                    return self.cfg.RETURN_CODE.ERR_NOT_IMPLEMENTED
             else:
-                result = self.shopping_service()
+                result = self.shopping_service(context, callback_internal_request_api)
 
             context.result = Utils.format_result(result)
             if result == "NONSENSE":
-                return cfg.RETURN_CODE.ERR
-            elif type(result) is type(cfg.RETURN_CODE.SUCCESS):
+                return self.cfg.RETURN_CODE.ERR
+            elif type(result) is type(self.cfg.RETURN_CODE.SUCCESS):
                 return result
-            return cfg.RETURN_CODE.SUCCESS
+            return self.cfg.RETURN_CODE.SUCCESS
         
         except (ValueError, Exception) as e:
             print(f"[PLUGIN DailyService ERROR] {e}")
-            return cfg.RETURN_CODE.ERR
+            return self.cfg.RETURN_CODE.ERR
 
-    def shopping_service(self):
-        shopping = ShoppingService(self.cfg)
+    def shopping_service(self, context, callback_internal_request_api):
+        
         result = "NONSENSE"
-        if action == "SHOP_DEL":
-            result = shopping.delete_shopping_list()
-        elif action == "SHOP_INFO":
-            result = shopping.report_shopping_list()
-        elif action == "SHOP_MAIL":
-            result = shopping.mail_shopping_list()
+        if context.sub_category == "SHOP_DEL":
+            result = self.shopping.delete_shopping_list()
+        elif context.sub_category == "SHOP_INFO":
+            result = self.shopping.report_shopping_list()
+        elif context.sub_category == "SHOP_MAIL":
+            result = self.shopping.mail_shopping_list_legacy()
+
+            # context.data_request = shopping.mail_shopping_list()
+            # return callback_internal_request_api(context)
         return result
 
     def get_status(self):

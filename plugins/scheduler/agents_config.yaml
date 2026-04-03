@@ -1,8 +1,10 @@
 SCHEDULER:
   TIME_EXTRACTOR_AGENT:
+    name: "TIME_EXTRACTOR_AGENT"
     model: "qwen2.5:3b"
     use_json: true
     options:
+      num_ctx: 2048
       temperature: 0.0
     prompt: |
       Extract timing data for a Cron task. 
@@ -32,9 +34,11 @@ SCHEDULER:
       - "Mardi prochain à 10h" -> {"mode": "FIXED", "hour": 10, "minute": 0, "target_day": "tuesday", "timeframe": "1_week"}
   
   INTENT_AGENT:
+    name: "INTENT_AGENT"
     model: "qwen2.5:3b"
     use_json: true
     options:
+      num_ctx: 2048
       temperature: 0.0
       num_predict: 100
     prompt: |
@@ -57,9 +61,11 @@ SCHEDULER:
       {"action": "string"}
 
   SYSTEM_AGENT:
+    name: "SYSTEM_AGENT"
     model: "qwen2.5:3b"
     use_json: true
     options:
+      num_ctx: 2048
       temperature: 0.0
     prompt: |
       Task: Classify the action into the correct Numeric ID.

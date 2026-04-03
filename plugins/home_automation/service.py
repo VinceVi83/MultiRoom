@@ -13,7 +13,7 @@ class HomeAutomationService:
     Methods:
         __init__(self) : Initialize the service with configuration, HA communication, and weather API.
         execute_native(self, context) : Execute native requests with parameter parsing from sub_category.
-        execute(self, context) : Main execution method that processes LLM commands and handles weather/HA requests.
+        execute(self, context, callback_internal_request_api) : Main execution method that processes LLM commands and handles weather/HA requests.
         get_status(self) : Return the plugin status information.
     """
     def __init__(self, cfg):
@@ -41,7 +41,7 @@ class HomeAutomationService:
             print(f"Error parsing params in service: {e}")
             return self.cfg.RETURN_CODE.ERR
 
-    def execute(self, context):
+    def execute(self, context, callback_internal_request_api):
         try:
             result = llm.execute(context.user_input, self.cfg.DOMOTIC_AGENT)
             action, dtype = result.get('ACTION', 'NONE'), result.get('TYPE', 'NONE')

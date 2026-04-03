@@ -56,6 +56,17 @@ class MusicMetadata:
         self.data = MusicInfo()
         self._last_path = None
 
+    def _get_metadata_value(self, audio, tag):
+        if tag in audio:
+            value = audio[tag]
+            if hasattr(value, 'text') and value.text:
+                return value.text[0]
+            elif isinstance(value, list) and len(value) > 0:
+                return str(value[0])
+            else:
+                return str(value)
+        return None
+
     def update_metadata(self, song_path):
         if not song_path or song_path == self._last_path:
             return
@@ -75,19 +86,16 @@ class MusicMetadata:
 
             for attr, tags in self.METADATA_MAP.items():
                 for tag in tags:
-                    if tag in audio:
-                        value = audio[tag]
-                        if hasattr(value, 'text') and value.text:
-                            final_val = value.text[0]
-                        elif isinstance(value, list) and len(value) > 0:
-                            final_val = str(value[0])
-                        else:
-                            final_val = str(value)
-                        
-                        setattr(self.data, attr, final_val)
+                    value = self._get_metadata_value(audio, tag)
+                    if value is not None:
+                        setattr(self.data, attr, value)
                         break
         except Exception as e:
             logging.error(f"Metadata error: {e}")
+
+    def _print_metadata_field(self, field_name, value, default_value):
+        actual_value = value if value else default_value
+        print(f"{field_name}          : {actual_value}")
 
     def print_status(self):
         m = self.metadata_handler.data
@@ -101,13 +109,13 @@ class MusicMetadata:
         print("-" * 50)
         print("                METADATA")
         print("-" * 50)
-        print(f"TITLE          : {m.title if m.title else 'Unknown'}")
-        print(f"ARTIST         : {m.artist if m.artist else 'Unknown'}")
-        print(f"ALBUM          : {m.album if m.album else 'Unknown'}")
-        print(f"GENRE          : {m.genre if m.genre else 'Unknown'}")
-        print(f"CIRCLE/ORG     : {m.circle if m.circle else 'N/A'}")
-        print(f"LANGUAGE       : {m.language if m.language else 'N/A'}")
-        print(f"COMMENT        : {m.comment if m.comment else ''}")
+        self._print_metadata_field("TITLE", m.title, "Unknown")
+        self._print_metadata_field("ARTIST", m.artist, "Unknown")
+        self._print_metadata_field("ALBUM", m.album, "Unknown")
+        self._print_metadata_field("GENRE", m.genre, "Unknown")
+        self._print_metadata_field("CIRCLE/ORG", m.circle, "N/A")
+        self._print_metadata_field("LANGUAGE", m.language, "N/A")
+        self._print_metadata_field("COMMENT", m.comment, "")
         print("="*50 + "\n")
 
 class MusicMonitor:

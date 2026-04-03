@@ -1,5 +1,6 @@
 HOME_AUTOMATION:
   DOMOTIC_AGENT:
+    name: "DOMOTIC_AGENT"
     model: "qwen2.5:3b"
     use_json: true
     options:
@@ -31,6 +32,7 @@ HOME_AUTOMATION:
       Output: {"TYPE": "NONE", "ACTION": "NONE"}
 
   INFO_AGENT:
+    name: "INFO_AGENT"
     model: "qwen2.5:3b"
     use_json: true
     options:

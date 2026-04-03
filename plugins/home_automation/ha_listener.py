@@ -12,8 +12,9 @@ class HAListener:
     Role: Monitors Home Assistant events and triggers corresponding actions via AI Hub.
     
     Methods:
-        __init__(self) : Initialize listener with config, mapping, and hub messenger.
+        __init__(self, cfg) : Initialize listener with config, mapping, and hub messenger.
         _load_mapping(self) : Load action mapping from JSON file.
+        run_ha_listener(self) : Start listener in daemon thread.
         start(self) : Main loop to connect to WebSocket and process events.
         _auth(self, ws) : Authenticate with Home Assistant WebSocket.
         _sub(self, ws) : Subscribe to events.

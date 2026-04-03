@@ -11,7 +11,7 @@ class ShoppingService:
     
     Methods:
         __new__(cls) : Singleton pattern implementation.
-        __init__(self) : Initialize the service with store and mailer.
+        __init__(self, cfg) : Initialize the service with store and mailer.
         update_shopping_list(self, result) : Add new items to the shopping list.
         delete_shopping_list(self) : Delete/clear the shopping list.
         report_shopping_list(self) : Get current shopping list items.
@@ -19,30 +19,50 @@ class ShoppingService:
     """
     _instance = None
 
-    def __new__(cls):
+    def __new__(cls, cfg):
         if cls._instance is None:
             cls._instance = super(ShoppingService, cls).__new__(cls)
             cls._instance._initialized = False
+            cls._instance.cfg = cfg
         return cls._instance
 
     def __init__(self, cfg):
         if self._initialized:
             return
         self.cfg = cfg
-        file_path = Path(self.cfg.daily.DATA_DIR) / "shopping_list.json"
+        file_path = Path(self.cfg.DATA_DIR) / "shopping_list.json"
         self.store = SimpleStore(file_path, default_structure={'items': []})
         self.mailer_proton = MailerProton()
         self._initialized = True
 
+    def _parse_items(self, items):
+        if isinstance(items, str):
+            parsed_items = []
+            for item in items.split(','):
+                item = item.strip()
+                if item:
+                    parsed_items.append(item)
+            return parsed_items
+        return items
+
+    def _get_existing_items(self):
+        return self.store.get('items')
+
+    def _get_unique_items(self, new_items, existing_items):
+        existing_set = set(existing_items)
+        unique_items = []
+        for item in new_items:
+            if item not in existing_set:
+                unique_items.append(item)
+        return unique_items
+
     def update_shopping_list(self, result):
-        current_items = self.store.get('items')
+        current_items = self._get_existing_items()
         
         new_items = result.get('items', [])
-        if isinstance(new_items, str):
-            new_items = [i.strip() for i in new_items.split(',') if i.strip()]
+        new_items = self._parse_items(new_items)
 
-        existing_items = set(current_items)
-        unique_to_add = [i for i in new_items if i not in existing_items]
+        unique_to_add = self._get_unique_items(new_items, current_items)
 
         if unique_to_add:
             current_items.extend(unique_to_add)
@@ -56,7 +76,7 @@ class ShoppingService:
     def report_shopping_list(self):
         return self.store.get('items')
 
-    def mail_shopping_list(self):
+    def mail_shopping_list_legacy(self):
         items = self.report_shopping_list()
         if not items:
             return self.cfg.RETURN_CODE.SUCCESS_NOTHING_TO_DO
@@ -68,6 +88,23 @@ class ShoppingService:
             to_email=f"system@{cfg.agenda.mail_server.DOMAIN}" # TODO internal request callback
         )
         return self.cfg.RETURN_CODE.SUCCESS if success else self.cfg.RETURN_CODE.ERR
+
+    def mail_shopping_list(self):
+        items = self.report_shopping_list()
+        if not items:
+            return None
+
+        body = "Here is your shopping list:\n- " + "\n- ".join(items)
+        data = { 
+            "internal_api": {
+                "plugin": "AGENDA",
+                "api_name": "send_mail",
+                "subject": "Shopping List",
+                "body": body,
+                "attachment": None 
+            }
+        }
+        return data
 
 if __name__ == "__main__":
     shopping = ShoppingService()

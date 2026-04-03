@@ -29,7 +29,7 @@ class MailerProton:
             if s.connect_ex((target_ip, smtp_port)) != 0:
                 print(f"[!] Network Error: Windows Host {target_ip}:{smtp_port} is unreachable.")
                 print("[!] Fix: Enable 'Allow LAN' in Proton Bridge and open Windows Firewall port 1025.")
-                return False
+                return cfg.RETURN_CODE.ERR
 
         msg = MIMEMultipart()
         msg['From'] = f"{cfg.agenda.mail_server.USERNAME} <{cfg.agenda.mail_server.USER_MAIL}>"
@@ -48,13 +48,12 @@ class MailerProton:
                 msg.attach(part)
             except Exception as e:
                 if debug: print(f"Attachment Error: {e}")
-                return False
+                return cfg.RETURN_CODE.ERR
 
         try:
             context = ssl.create_default_context()
             context.check_hostname = False
             context.verify_mode = ssl.CERT_NONE
-
             with smtplib.SMTP(target_ip, smtp_port, timeout=10) as server:
                 server.starttls(context=context)
                 server.login(cfg.agenda.mail_server.USER_MAIL, cfg.agenda.mail_server.PWD_MAIL)
@@ -63,21 +62,17 @@ class MailerProton:
             if debug:
                 duration = time.time() - start_time
                 print(f"Mail delivered via {target_ip} in {duration:.2f}s")
-
-            return True
+            return cfg.RETURN_CODE.SUCCESS
 
         except smtplib.SMTPAuthenticationError as e:
             print(f"SMTP Authentication Error: {e}")
-            return False
         except smtplib.SMTPConnectError as e:
             print(f"SMTP Connection Error: {e}")
-            return False
         except smtplib.SMTPException as e:
             print(f"SMTP Exception: {e}")
-            return False
         except Exception as e:
             print(f"SMTP Error: {e}")
-            return False
+            return cfg.RETURN_CODE.ERR
 
 
 if __name__ == "__main__":

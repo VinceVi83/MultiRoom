@@ -135,7 +135,8 @@ class VLCUserManager:
         self.auto_switch_thread.start()
 
     def _auto_switch_logic(self, initial_delay):
-        if not self.vlc_instance: return
+        if not self.vlc_instance:
+            return
         if self.stop_event.wait(timeout=initial_delay):
             return
         remaining = self.vlc_instance.get_total_remaining_seconds()
@@ -155,11 +156,11 @@ class VLCUserManager:
     def play_random_album(self):
         if not self.album_cache:
             return self.cfg.RETURN_CODE.ERR_FILE_NOT_FOUND
-        print("play_random_album")
-        available = [
-            a for a in self.album_cache 
-            if os.path.basename(a) not in self.recently_played
-        ]
+        
+        available = []
+        for a in self.album_cache:
+            if os.path.basename(a) not in self.recently_played:
+                available.append(a)
         
         if not available: 
             self.recently_played = []
@@ -236,7 +237,8 @@ class VLCUserManager:
             with os.scandir(self.base_dir_playlist) as entries:
                 for entry in entries:
                     self.playlists[Path(entry.name).stem.lower()] = entry.path
-        except FileNotFoundError: pass
+        except FileNotFoundError:
+            pass
 
     def _init_album_cache(self):
         cache = []
