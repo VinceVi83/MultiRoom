@@ -8,8 +8,10 @@ class DailyService:
     Role: Manages daily tasks including fridge queries and shopping list operations.
     
     Methods:
-        __init__(self) : Initialize the DailyService plugin with configuration.
+        __init__(self, cfg) : Initialize the DailyService plugin with configuration.
+        switch_fridge(self, context) : Check if user input matches fridge bypass keywords.
         execute(self, context, callback_internal_request_api) : Process daily commands and execute shopping actions.
+        shopping_service(self, context, callback_internal_request_api) : Handle shopping list operations.
         get_status(self) : Return plugin status information.
     """
     def __init__(self, cfg):

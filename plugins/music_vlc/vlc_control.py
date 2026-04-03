@@ -21,6 +21,8 @@ class VLCControl:
         get_remaining_seconds(self) : Get remaining time for current track.
         get_total_remaining_seconds(self) : Get total remaining time including queue.
         get_current_state(self) : Get current playback state.
+        _parse_status_xml(self, xml_data) : Parse status XML response.
+        _parse_playlist_xml(self, xml_data) : Parse playlist XML response.
         __del__(self) : Cleanup on object deletion.
     """
     def __init__(self, cfg, index, playlist=""):

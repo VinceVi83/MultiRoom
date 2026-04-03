@@ -9,7 +9,8 @@ class AgendaService:
     Role: Manages calendar events and concert scheduling through LLM agent.
     
     Methods:
-        __init__(self) : Initialize plugin with configuration.
+        __init__(self, cfg) : Initialize plugin with configuration.
+        execute_api(self, data) : Process API requests for mail sending.
         execute(self, context, callback_internal_request_api) : Process user input and execute calendar actions.
         get_status(self) : Return plugin status information.
     """
@@ -23,12 +24,12 @@ class AgendaService:
 
     def execute_api(self, data):
         if data.get("api_name", None) == "send_mail":
-            return send_mail(data["subject"], data["body"], data["attachment"], debug=False)
+            return self.mail.send_mail(data["subject"], data["body"], data["attachment"], debug=False)
 
     def execute(self, context, callback_internal_request_api):
         try:
             if context is None:
-                return cfg.RETURN_CODE.ERR
+                return self.cfg.RETURN_CODE.ERR
             
             res = llm.execute(context.user_input, self.cfg.CALENDAR_AGENT, False, False)
             action = res.get('ACTION', 'NONE')

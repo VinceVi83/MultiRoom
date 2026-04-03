@@ -15,14 +15,8 @@ class MusicInfo:
     
     Role: Stores song metadata extracted from audio files.
     
-    Fields:
-        title: Song title.
-        artist: Artist name.
-        genre: Music genre.
-        album: Album name.
-        comment: Additional comment.
-        language: Audio language.
-        circle: Organization/circle name.
+    Methods:
+        __init__(self) : Initialize metadata container with default empty values.
     """
     title: str = ""
     artist: str = ""

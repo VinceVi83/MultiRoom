@@ -8,7 +8,8 @@ class MusicVlcService:
     Role: Manages VLC music playback, playlist operations, and user session management.
     
     Methods:
-        __init__(self): Initialize the service with configuration and active instances.
+        __init__(self, cfg): Initialize the service with configuration and active instances.
+        bypass_router(self, context): Route user input to playlist or music category.
         execute(self, context, callback_internal_request_api): Process user input and execute music commands via LLM.
         execute_native(self, context): Execute native VLC commands through user manager.
         _get_free_index(self): Get or create a free instance index for active instances.

@@ -10,12 +10,16 @@ class ShoppingService:
     Role: Manages shopping list operations including updates, deletion, reporting, and email notifications.
     
     Methods:
-        __new__(cls) : Singleton pattern implementation.
+        __new__(cls, cfg) : Singleton pattern implementation.
         __init__(self, cfg) : Initialize the service with store and mailer.
+        _parse_items(self, items) : Parse comma-separated items into list.
+        _get_existing_items(self) : Get current items from store.
+        _get_unique_items(self, new_items, existing_items) : Filter unique items to add.
         update_shopping_list(self, result) : Add new items to the shopping list.
         delete_shopping_list(self) : Delete/clear the shopping list.
         report_shopping_list(self) : Get current shopping list items.
-        mail_shopping_list(self) : Send shopping list via email.
+        mail_shopping_list_legacy(self) : Send shopping list via email (legacy method).
+        mail_shopping_list(self) : Send shopping list via email (new method).
     """
     _instance = None
 

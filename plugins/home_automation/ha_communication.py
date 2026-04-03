@@ -23,11 +23,10 @@ class CommunicationHA:
         if cls._instance is None:
             try:
                 cls._instance = super(CommunicationHA, cls).__new__(cls)
-                # Utilise un nom d'attribut unique et interne
                 cls._instance._ready_flag = False 
             except Exception as e:
                 print(f"[CRITICAL] Failed to create CommunicationHA instance: {e}")
-                return None # Ici c'est dangereux, mais au moins on trace
+                return None
         return cls._instance
 
     def __init__(self, cfg):

@@ -11,7 +11,7 @@ class HomeAutomationService:
     Role: Orchestrates Home Assistant interactions, weather status checks, and LLM-based command execution.
     
     Methods:
-        __init__(self) : Initialize the service with configuration, HA communication, and weather API.
+        __init__(self, cfg) : Initialize the service with configuration, HA communication, and weather API.
         execute_native(self, context) : Execute native requests with parameter parsing from sub_category.
         execute(self, context, callback_internal_request_api) : Main execution method that processes LLM commands and handles weather/HA requests.
         get_status(self) : Return the plugin status information.

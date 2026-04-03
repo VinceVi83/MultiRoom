@@ -6,12 +6,17 @@ from datetime import datetime
 
 @dataclass
 class WeatherHour:
-    """Weather Hour Plugin
+    """Weather Hour Forecast Dataclass
     
-    Role: Represents an hourly weather forecast with timestamp, condition, temperature, humidity, wind speed and precipitation.
+    Role: Represents a single hour of weather forecast data.
     
-    Methods:
-        __init__(self, timestamp, condition, temperature, humidity, wind_speed, precipitation) : Initialize the hourly weather data.
+    Attributes:
+        timestamp: The timestamp for this hour.
+        condition: Weather condition for this hour.
+        temperature: Temperature for this hour.
+        humidity: Humidity percentage for this hour.
+        wind_speed: Wind speed for this hour.
+        precipitation: Precipitation amount for this hour.
     """
     timestamp: datetime
     condition: str
@@ -23,12 +28,16 @@ class WeatherHour:
 
 @dataclass
 class WeatherDay:
-    """Weather Day Plugin
+    """Weather Day Forecast Dataclass
     
-    Role: Represents a daily weather forecast with timestamp, condition, max temperature, min temperature and precipitation probability.
+    Role: Represents a single day of weather forecast data.
     
-    Methods:
-        __init__(self, timestamp, condition, temp_max, temp_min, precipitation_probability) : Initialize the daily weather data.
+    Attributes:
+        timestamp: The timestamp for this day.
+        condition: Weather condition for this day.
+        temp_max: Maximum temperature for this day.
+        temp_min: Minimum temperature for this day.
+        precipitation_probability: Probability of precipitation for this day.
     """
     timestamp: datetime
     condition: str

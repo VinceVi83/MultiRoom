@@ -20,13 +20,14 @@ class RouterLLM:
         _initialize_service_registry(self) : Initialize service registry from loaded plugins.
         execute_native(self, context) : Execute native format commands.
         get_location(self, context) : Get/clean location using LLM agent.
+        bypass_location(self, context) : Check if user input bypasses location.
         bypass_router(self, context) : Check if user input bypasses router.
         select_plugin(self, context) : Select plugin based on user input.
         select_and_execute(self, context, callback_internal_request_api) : Select plugin and execute it.
+        callback_internal_request_api(self, context) : Handle internal API requests.
         inference_loop(self) : Main inference loop for processing commands.
         start(self) : Start the inference thread.
         stop(self) : Stop the inference thread.
-        callback_internal_request_api(self, context) : Handle internal API requests.
     """
     def __init__(self):
         self.command_queue = queue.Queue()
@@ -95,7 +96,6 @@ class RouterLLM:
         local_res = llm.execute(context.user_input, cfg.ALL_PURPOSE.LOCATION_CLEANER_AGENT, verbose=False, debug=False)
         if local_res.get('cleaned_command') != 'none':
             context.location = local_res.get('location')
-            # context.user_input = local_res.get('cleaned_command')
         context.add_step('LOCATION_CLEANER_AGENT', local_res)
         return
 
@@ -137,7 +137,7 @@ class RouterLLM:
         start_total = time.time()
         try:
             if not self.select_plugin(context):
-                context.return_code = cfg.RETwURN_CODE.ERR
+                context.return_code = cfg.RETURN_CODE.ERR
                 return context._archive_and_rename()
             plugin_obj = getattr(cfg, context.category.lower(), None)
             if plugin_obj.config.USE_LOCATION:
