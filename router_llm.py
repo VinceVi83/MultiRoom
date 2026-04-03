@@ -164,22 +164,22 @@ class RouterLLM:
     def callback_internal_request_api(self, context):
         if not context.data_request:
             return cfg.RETURN_CODE.ERR
-        
         data = context.data_request.get("internal_api")
         if not data:
             return cfg.RETURN_CODE.ERR
 
         plugin_name = data["plugin"]
-        
-        service_instance = self.service_registry.get(data.get(plugin_name, "None").upper())
+        service_instance = self.service_registry.get(plugin_name, "None")
         if service_instance and hasattr(service_instance, 'execute_api'):
             try:
                 context.return_code = service_instance.execute_api(data)
             except Exception as e:
-                print(f"[!] Service {plugin_name} execute_native failed: {e}")
+                print(f"[!] Service {plugin_name} callback_internal_request_api failed: {e}")
                 context.return_code = cfg.RETURN_CODE.ERR
+                return cfg.RETURN_CODE.ERR
         else:
-            context.return_code = cfg.RETURN_CODE.ERR
+            return cfg.RETURN_CODE.ERR
+        return cfg.RETURN_CODE.SUCCESS
 
     def inference_loop(self):
         llm.execute("Be ready", cfg.ALL_PURPOSE.ROUTER_AGENT)

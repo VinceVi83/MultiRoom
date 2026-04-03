@@ -116,7 +116,7 @@ class LightEntity(BaseEntity):
     def turn_off(self):
         if self.get_state() == 'on':
             return self.service.call_action("light", "toggle", self.id)
-        return None
+        return cfg.RETURN_CODE.SUCCESS_NOTHING_TO_DO
     
     def toggle(self):
         return self.service.call_action("light", "toggle", self.id)

@@ -64,17 +64,24 @@ class DailyService:
             return self.cfg.RETURN_CODE.ERR
 
     def shopping_service(self, context, callback_internal_request_api):
-        
-        result = "NONSENSE"
+        result = "Failed"
         if context.sub_category == "SHOP_DEL":
             result = self.shopping.delete_shopping_list()
         elif context.sub_category == "SHOP_INFO":
             result = self.shopping.report_shopping_list()
         elif context.sub_category == "SHOP_MAIL":
-            result = self.shopping.mail_shopping_list_legacy()
+            context.data_request = self.shopping.mail_shopping_list()
+            result = 'Failed or Shopping list is empty'
+            if context.data_request:
+                result = callback_internal_request_api(context) 
+                if result == self.cfg.RETURN_CODE.SUCCESS:
+                    result = "Mail sent"
 
-            # context.data_request = shopping.mail_shopping_list()
-            # return callback_internal_request_api(context)
+        if result != self.cfg.RETURN_CODE.SUCCESS:
+            context.return_code = self.cfg.RETURN_CODE.ERR
+        else:
+            context.result = result
+            context.return_code = self.cfg.RETURN_CODE.SUCCESS
         return result
 
     def get_status(self):

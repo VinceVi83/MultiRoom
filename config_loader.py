@@ -20,6 +20,7 @@ class ReturnCode(Enum):
     SUCCESS_NONSENSE = 10
     NULL = 11
     DUPLICATE = 12
+    ERR_FILE_NOT_FOUND = 13
 
 class PluginConfig(SimpleNamespace):
     def __repr__(self):

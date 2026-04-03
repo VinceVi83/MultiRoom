@@ -59,7 +59,7 @@ class HomeAutomationService:
             if result == self.cfg.RETURN_CODE.SUCCESS:
                 context.result = "Executed"
             else:
-                context.result = "Failed"
+                context.result = "Already Executed"
             return result
         except Exception as e:
             print(f"[PLUGIN HomeAutomationService ERROR] {e}")

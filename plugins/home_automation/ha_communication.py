@@ -95,6 +95,7 @@ class CommunicationHA:
             return self.call_action("light", "toggle", lights_on)
         elif lights_off and action == "ON":
             return self.call_action("light", "toggle", lights_off)
+        return self.cfg.RETURN_CODE.SUCCESS_NOTHING_TO_DO
 
     def set_brightness_percent_all(self, level_percent):
         brightness_255 = int((level_percent / 100) * 255)

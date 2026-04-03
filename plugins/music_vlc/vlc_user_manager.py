@@ -45,16 +45,16 @@ class VLCUserManager:
         self.vlc_instance = None
         self.current_album_name = ""
         self.album_cache = []
-        self.recently_played = self.store.get("recently_played")
-        self.current_playlist_files = {}
         self.playlists = {}
+        self.current_playlist_files = {}
+        self.recently_played = self.store.get("recently_played")
+        self.build_playlist_map()
+        self._init_album_cache()
         self.total_duration_sec = 0
 
         self.stop_event = threading.Event()
         self.auto_switch_thread = None
         self.cache_timer = None
-        self.build_playlist_map()
-        self._init_album_cache()
 
     def interpret_vlc_command(self, context):
         if context.sub_category == "DISCOVER":

@@ -80,19 +80,6 @@ class ShoppingService:
     def report_shopping_list(self):
         return self.store.get('items')
 
-    def mail_shopping_list_legacy(self):
-        items = self.report_shopping_list()
-        if not items:
-            return self.cfg.RETURN_CODE.SUCCESS_NOTHING_TO_DO
-
-        body = "Here is your shopping list:\n- " + "\n- ".join(items)
-        success = self.mailer_proton.send_mail(
-            subject="Shopping List",
-            body=body,
-            to_email=f"system@{cfg.agenda.mail_server.DOMAIN}" # TODO internal request callback
-        )
-        return self.cfg.RETURN_CODE.SUCCESS if success else self.cfg.RETURN_CODE.ERR
-
     def mail_shopping_list(self):
         items = self.report_shopping_list()
         if not items:
