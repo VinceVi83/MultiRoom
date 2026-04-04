@@ -37,6 +37,9 @@ class RouterLLM:
         self.test = False
         self._initialize_service_registry()
         self.start()
+        self.duration_load = 0
+        self.duration_inference = 0
+        self.call_counter = 0
 
     def add_to_queue(self, context):
         if isinstance(context, TaskContext):
@@ -94,6 +97,7 @@ class RouterLLM:
             return
 
         local_res = llm.execute(context.user_input, cfg.ALL_PURPOSE.LOCATION_CLEANER_AGENT, verbose=False, debug=False)
+        context.add_durations(local_res)
         if local_res.get('cleaned_command') != 'none':
             context.location = local_res.get('location')
         context.add_step('LOCATION_CLEANER_AGENT', local_res)
@@ -130,6 +134,7 @@ class RouterLLM:
             category_res = self.bypass_router(context)
         if not category_res:
             category_res = llm.execute(context.user_input, cfg.ALL_PURPOSE.ROUTER_AGENT)
+            context.add_durations(category_res)
 
         context.add_step('ROUTER_AGENT', category_res)
         context.category = category_res.get('PLUGIN', 'UNKNOWN')
@@ -159,7 +164,6 @@ class RouterLLM:
             print(f"[!] Service {context.category} execute failed: {e}")
             return context._archive_and_rename()
 
-        context.duration_llm = time.time() - start_total
         context.duration = time.time() - context.start
         return context._archive_and_rename()
 
@@ -200,12 +204,21 @@ class RouterLLM:
                     response_context = self.execute_native(context)
                 elif self.test:
                     result = llm.execute(context.user_input, cfg.ALL_PURPOSE.pre_process_agent)
+                    context.add_durations(result)
                     if result.get('valid', 0):
                         response_context = self.select_and_execute(context)
                     else:
                         continue
                 else:
                     response_context = self.select_and_execute(context)
+
+                if cfg.debug:
+                    self.duration_load += context.duration_load
+                    self.duration_inference += context.duration_inference
+                    self.call_counter += context.call_counter
+                    print(f"{'Total call_counter':<15} : {self.call_counter}")
+                    print(f"{'Total loadtime':<15} : {self.duration_load}")
+                    print(f"{'Total inference time':<15} : {self.duration_inference}")
 
                 json_output = json.dumps(response_context.to_dict())
                 socks = getattr(context.session, 'socks', [])

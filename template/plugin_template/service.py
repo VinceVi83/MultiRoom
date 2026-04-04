@@ -25,14 +25,15 @@ class YourPluginService:
         logic = PluginLogic()
         
         intent_result = llm.execute(context.user_input, self.config.INTENT_AGENT)
+        context.add_durations(intent_result)
         intent_id = int(intent_result.get('ID', '0'))
         
         context.sub_category = self.config.AGENT_FEATURES[intent_id]
-        
         result = "NONSENSE"
         
         if context.sub_category == "ACTION_ONE":
             extracted = llm.execute(context.user_input, self.config.PLUGIN_NAME.EXTRACT_DATA)
+            context.add_durations(extracted)
             result = logic.perform_action(extracted)
         elif context.sub_category == "ACTION_TWO":
             result = logic.perform_action()

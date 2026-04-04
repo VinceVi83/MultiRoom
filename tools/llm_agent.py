@@ -99,15 +99,23 @@ class OllamaClient:
                 result = json.loads(content) if agent_cfg_final.use_json else content
 
                 self._print_verbose("RESULT        : " + str(result))
+                
+                o_load   = response.get('load_duration', 0) / 1e9
+                o_p_eval = response.get('prompt_eval_duration', 0) / 1e9
+                o_eval   = response.get('eval_duration', 0) / 1e9
+                inference_time = o_p_eval + o_eval
+                metrics = {
+                    "o_load": o_load, 
+                    "inference_time": inference_time
+                }
+
+                if agent_cfg_final.use_json and isinstance(result, dict):
+                    result = result | metrics
+                else:
+                    result = {"content": result} | metrics
 
                 if self.debug:
-                    o_load   = response.get('load_duration', 0) / 1e9
-                    o_p_eval = response.get('prompt_eval_duration', 0) / 1e9
-                    o_eval   = response.get('eval_duration', 0) / 1e9
                     o_total  = response.get('total_duration', 0) / 1e9
-
-                    inference_time = o_p_eval + o_eval
-
                     self._print_debug("MODEL & AGENT      : " + f"{agent_cfg.name} {agent_cfg.model} \n")
                     self._print_debug("Load Time (VRAM)   : " + str(o_load) + ".3fs")
                     self._print_debug("Inference (GPU)    : " + str(inference_time) + ".3fs")
@@ -161,7 +169,6 @@ def create_agent_config(prompt, model=None, use_json=True, **custom_options):
 llm = OllamaClient()
 
 if __name__ == "__main__":
-
     config_from_yaml = cfg.ALL_PURPOSE.ROUTER_AGENT
     result = llm.execute("Turn on the living room light", agent_cfg=cfg.ALL_PURPOSE.LOCATION_CLEANER_AGENT, verbose=True)
     result = llm.execute("I want to listen to my Touhou playlist", agent_cfg=config_from_yaml, verbose=True)

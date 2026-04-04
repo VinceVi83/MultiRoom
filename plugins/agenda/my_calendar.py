@@ -10,21 +10,20 @@ from config_loader import cfg
 from plugins.agenda.mailer_proton import MailerProton
 
 class CalendarService:
-    """Calendar Service
+    """Calendar Service Plugin
     
     Role: Manages calendar event retrieval, filtering, and concert ticket notifications.
     
     Methods:
         __new__(cls) : Singleton pattern implementation.
-        __init__(self) : Initialize the service with health checks.
-        _run_health_check(self) : Check if JSON file and ICal URL are accessible.
-        is_healthy(self) : Return health status of the service.
-        _get_calendar_events(self) : Fetch all events from calendar source.
-        fetch_calendar_events(self, keyword='', month='', limit=None) : Filter events by keyword, month, limit.
-        get_next_concert_data(self) : Get next concert from index file.
-        mail_me_next_concert(self) : Send email about next concert.
-        get_week_events(self, offset=0) : Get events for a specific week.
+        __init__(self) : Initialize service instance.
+        _get_calendar_events(self, config) : Fetch raw calendar events from URL.
+        fetch_calendar_events(self, config, keyword='', month='', limit=None) : Filter and return calendar events.
+        get_next_concert_data(self, config) : Get next concert data from index file.
+        mail_me_next_concert(self, config) : Email next concert details.
+        get_week_events(self, config, offset=0) : Get events for a specific week.
     """
+
     _instance = None
 
     def __new__(cls):

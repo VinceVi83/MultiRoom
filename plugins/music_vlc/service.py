@@ -58,13 +58,16 @@ class MusicVlcService:
                 context.sub_category = category_res
             else:
                 category_res = llm.execute(context.user_input, self.cfg.MUSIC_AGENT)
+                context.add_durations(category_res)
                 context.sub_category = category_res.get('CATEGORY', 'NONE')
                 context.add_step('sub_category', category_res)
  
             if context.sub_category == 'PLAYLIST':
                 res = llm.execute(context.user_input, self.cfg.PLAYLIST_AGENT)
+                context.add_durations(res)
             elif context.sub_category == 'MUSIC':
                 res = llm.execute(context.user_input, self.cfg.VLC_AGENT)
+                context.add_durations(res)
             elif context.sub_category == 'DISCOVER':
                 context.result = 'Done'
                 return self.cfg.RETURN_CODE.SUCCESS

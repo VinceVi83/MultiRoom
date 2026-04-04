@@ -32,6 +32,7 @@ class AgendaService:
                 return self.cfg.RETURN_CODE.ERR
             
             res = llm.execute(context.user_input, self.cfg.CALENDAR_AGENT, False, False)
+            context.add_durations(res)
             action = res.get('ACTION', 'NONE')
             context.sub_category = action
             context.add_step('sub_category', res)

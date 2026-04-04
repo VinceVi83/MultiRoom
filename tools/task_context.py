@@ -13,7 +13,7 @@ class TaskContext:
     Role: Manages task execution context, session data, and result reporting.
     
     Methods:
-        __init__(self, user_input, session=None, audio_path=None, category='NONSENSE', label='NONSENSE', result='NONSENSE', duration_llm=0, duration=0, location='NONSENSE', start=None, data=None, return_code=None) : Initialize task context with input, session, and metadata.
+        __init__(self, user_input, session=None, audio_path=None, category='NONSENSE', label='NONSENSE', result='NONSENSE', duration_load=0, duration=0, duration_inference=0, location='NONSENSE', start=None, data=None, return_code=None) : Initialize task context with input, session, and metadata.
         add_step(self, step_name, data) : Add a step with data to the context.
         clone_safe(self) : Create a safe clone of the context with formatted return code.
         from_json(self, json_str) : Create TaskContext instance from JSON string.
@@ -28,13 +28,15 @@ class TaskContext:
     category: str = "NONSENSE"
     sub_category: str = "NONSENSE"
     result: str = "NONSENSE"
-    duration_llm: int = 0
+    duration_load: float = 0
+    duration_inference: float = 0
     duration: int = 0
     location: str = "NONSENSE"
     start: float = field(default_factory=time.time)
     data: dict = field(default_factory=dict)
     data_request: dict = field(default_factory=dict)
     return_code: ReturnCode = cfg.RETURN_CODE.ERR
+    call_counter: int = 0
 
     def add_step(self, step_name, data):
         self.data[step_name] = data
@@ -69,8 +71,17 @@ class TaskContext:
         print(f"{'Result:':<15} {Utils.format_result(self.result)}")
         print(f"{'ReturnCode:':<15} {Utils.format_result(self.return_code)}")
         print(f"{'Duration:':<15} {self.duration}s")
-        print(f"{'DurationLLM:':<15} {self.duration_llm}s")
+        print(f"{'LoadTimeLLM:':<15} {self.duration_load}s")
+        print(f"{'InferenceTime:':<15} {self.duration_inference}s")
         print("="*50 + "\n")
+
+    def add_durations(self, json_data: dict):
+        try:
+            self.duration_load += json_data.get('o_load', 0)
+            self.duration_inference += json_data.get('inference_time', 0)
+            self.call_counter += 1
+        except Exception:
+            pass
 
     def update_record(self, name):
         record_path = Path(cfg.DATA_DIR) / "Archive/record.json"
