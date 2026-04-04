@@ -136,7 +136,7 @@ def extract_ticket_info(text):
 def sync_tickets_to_calendar(verbose=False):
     calendar = CalendarService()
     index = json.load(open(INDEX_FILE, "r", encoding="utf-8")) if INDEX_FILE.exists() else {}
-    events = calendar.fetch_calendar_events(keyword="concert", limit=0)
+    events = calendar.fetch_calendar_events(cfg.system.calendar, keyword="concert", limit=0)
     result = {
         "added_tickets": [],
         "created_ics": []

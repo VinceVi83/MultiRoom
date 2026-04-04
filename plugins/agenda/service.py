@@ -10,7 +10,7 @@ class AgendaService:
     
     Methods:
         __init__(self, cfg) : Initialize plugin with configuration.
-        execute_api(self, data) : Process API requests for mail sending.
+        execute_api(self, context, data) : Process API requests for mail sending.
         execute(self, context, callback_internal_request_api) : Process user input and execute calendar actions.
         get_status(self) : Return plugin status information.
     """
@@ -22,9 +22,9 @@ class AgendaService:
         if not self.cfg:
             print(f"[!] Error: Configuration for {self.plugin_name} not found.")
 
-    def execute_api(self, data):
+    def execute_api(self, context, data):
         if data.get("api_name", None) == "send_mail":
-            return self.mail.send_mail(data["subject"], data["body"], data["attachment"], debug=False)
+            return self.mail.send_mail(context.session.cfg.mail, data["subject"], data["body"], attachment_path=data["attachment"], debug=False)
 
     def execute(self, context, callback_internal_request_api):
         try:
@@ -38,15 +38,20 @@ class AgendaService:
             
             result = "NONSENSE"
             if action == "NEXT_RDV":
-                result = self.calendar.fetch_calendar_events(limit=1)
+                result = self.calendar.fetch_calendar_events(context.session.cfg.calendar, limit=1)
             elif action == "MAIL_NEXT_CONCERT" or "mail" in context.user_input:
-                result = self.calendar.mail_me_next_concert()
+                data = self.calendar.mail_me_next_concert(context.session.cfg.calendar)
+                result = self.mail.send_mail(context.session.cfg.mail, data["subject"], data["body"], attachment_path=data["attachment"], debug=False)
+                if self.cfg.RETURN_CODE.SUCCESS:
+                    result = "Sent"
+                else:
+                    result = "Error not sent"
             elif action == "NEXT_CONCERT":
-                result = self.calendar.get_next_concert_data()
+                result = self.calendar.get_next_concert_data(context.session.cfg.calendar)
             elif action == "CURRENT_WEEK":
-                result = self.calendar.get_week_events(0)
+                result = self.calendar.get_week_events(context.session.cfg.calendar, 0)
             elif action == "NEXT_WEEK":
-                result = self.calendar.get_week_events(1)
+                result = self.calendar.get_week_events(context.session.cfg.calendar, 1)
 
             context.result = Utils.format_result(result)
             if result in ["NONSENSE"]:

@@ -15,14 +15,13 @@ class MailerProton:
     Role: Handles email sending via Proton Bridge on Windows Host from WSL.
     
     Methods:
-        send_mail(self, subject, body, to_email=None, attachment_path=None, debug=False) : Sends an email message with optional attachment via Proton Bridge SMTP server.
+        send_mail(self, config, subject, body, to_email=None, attachment_path=None, debug=False) : Sends an email message with optional attachment via Proton Bridge SMTP server.
     """
 
-    def send_mail(self, subject, body, to_email=None, attachment_path=None, debug=False):
+    def send_mail(self, config, subject, body, to_email=None, attachment_path=None, debug=False):
         start_time = time.time()
-
-        target_ip = cfg.agenda.mail_server.IP_MAIL
-        smtp_port = int(cfg.agenda.mail_server.PORT_SMTP_MAIL)
+        target_ip = config.IP_MAIL
+        smtp_port = int(config.PORT_SMTP_MAIL)
 
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.settimeout(3)
@@ -32,12 +31,11 @@ class MailerProton:
                 return cfg.RETURN_CODE.ERR
 
         msg = MIMEMultipart()
-        msg['From'] = f"{cfg.agenda.mail_server.USERNAME} <{cfg.agenda.mail_server.USER_MAIL}>"
-        msg['To'] = to_email or cfg.agenda.mail_server.USER_MAIL
+        msg['From'] = f"{config.USERNAME} <{config.USER_MAIL}>"
+        msg['To'] = to_email or getattr(config, 'ALTERNATE_MAIL', None) or config.USER_MAIL
         msg['Subject'] = subject
         msg['Date'] = utils.formatdate(localtime=True)
         msg['Message-ID'] = utils.make_msgid()
-
         msg.attach(MIMEText(body, 'plain'))
 
         if attachment_path and Path(attachment_path).exists():
@@ -56,7 +54,7 @@ class MailerProton:
             context.verify_mode = ssl.CERT_NONE
             with smtplib.SMTP(target_ip, smtp_port, timeout=10) as server:
                 server.starttls(context=context)
-                server.login(cfg.agenda.mail_server.USER_MAIL, cfg.agenda.mail_server.PWD_MAIL)
+                server.login(config.USER_MAIL, config.PWD_MAIL)
                 server.send_message(msg)
 
             if debug:

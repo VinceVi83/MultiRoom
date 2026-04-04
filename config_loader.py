@@ -54,7 +54,7 @@ class PluginConfig(SimpleNamespace):
         items = vars(obj).items()
         
         if not items:
-            return "{}"
+            return f"{{}}"
         
         lines = ["{"]
         
@@ -63,7 +63,7 @@ class PluginConfig(SimpleNamespace):
             lines.append(f'{inner_spacing}"{k}": {formatted_v},')
         
         lines[-1] = lines[-1].rstrip(',')
-        lines.append(f"{spacing}")
+        lines.append(spacing + "}")
         return "\n".join(lines)
 
     def _format_string_value(self, obj, inner_spacing):
@@ -112,8 +112,8 @@ class AlisuConfig:
         _setup_system_info(self) : Setup system information including IP address.
         _generate_plugin_description_list(self) : Generate plugin description list.
         _sync_and_freeze_plugins(self) : Create folders and copy .env templates.
-        _load_env_only(self) : Load environment variables into config objects.
-        _load_all_yaml(self) : Load all YAML configurations.
+        _load_config_only(self) : Load environment variables into config objects.
+        _load_agents(self) : Load all YAML configurations.
         _process_yaml_config(self, yaml_path, parent_obj) : Process a YAML configuration file.
         _apply_logic_to_agents(self, obj, replacements) : Apply replacement logic to agent prompts.
         _dict_to_namespace(self, data) : Recursively convert dict to SimpleNamespace.
@@ -123,6 +123,7 @@ class AlisuConfig:
         self.ROOT = Path(__file__).resolve().parent
         self.DATA_DIR = Path.home() / "Documents" / "ALISU_DATA"
         self.plugins_ROOT = self.DATA_DIR / "plugins"
+        self.USERS_DIR = self.DATA_DIR / "Users"
         self.replacements = {}
         self.descriptions = []
         self.cfg = PluginConfig()
@@ -133,9 +134,10 @@ class AlisuConfig:
         self.cfg.RETURN_CODE = ReturnCode
 
         self._sync_and_freeze_plugins()
-        self._load_env_only()
+        self._load_config_only()
+        self._load_users_config()
         self._generate_plugin_description_list()
-        self._load_all_yaml()
+        self._load_agents()
         self._setup_system_info()
 
     def _setup_system_info(self):
@@ -267,7 +269,7 @@ class AlisuConfig:
             if template_file.exists() and not target_file.exists():
                 shutil.copy(template_file, target_file)
 
-    def _load_env_only(self):
+    def _load_config_only(self):
         global_config = self.DATA_DIR / "config.yaml"
         
         if not global_config.exists():
@@ -283,7 +285,23 @@ class AlisuConfig:
             else:
                 print(f'SYSTEM : Please copy update configfile in {config_path}')
 
-    def _load_all_yaml(self):
+    def _load_users_config(self):
+        if not self.USERS_DIR.exists():
+            self.USERS_DIR.mkdir(parents=True, exist_ok=True)
+            return
+
+        user_files = self.USERS_DIR.glob("*.yaml")
+        for user_file in user_files:
+            with open(user_file, 'r', encoding='utf-8') as f:
+                try:
+                    data = yaml.safe_load(f) or {}
+                    for username, user_data in data.items():
+                        ns_user_data = self._dict_to_namespace(user_data)
+                        setattr(self.cfg, username, ns_user_data)
+                except Exception as e:
+                    print(f"SYSTEM ERROR: Failed to load user profile {user_file.name}: {e}")
+
+    def _load_agents(self):
         self._process_yaml_config(self.ROOT / "agents_config.yaml", self.cfg)
         
         for name in self.cfg.LOADED_PLUGINS:

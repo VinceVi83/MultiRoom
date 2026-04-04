@@ -174,7 +174,7 @@ class RouterLLM:
         service_instance = self.service_registry.get(plugin_name, "None")
         if service_instance and hasattr(service_instance, 'execute_api'):
             try:
-                context.return_code = service_instance.execute_api(data)
+                context.return_code = service_instance.execute_api(context, data)
             except Exception as e:
                 print(f"[!] Service {plugin_name} callback_internal_request_api failed: {e}")
                 context.return_code = cfg.RETURN_CODE.ERR

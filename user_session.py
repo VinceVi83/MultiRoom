@@ -22,6 +22,7 @@ class UserSession:
         self.stop_threads = Event()
         self.linked_RPI_speakers = []
         self.username = username
+        self.cfg = getattr(cfg, username, None)
         self.index = index
         self.socks = []
         self.last_seen = 0

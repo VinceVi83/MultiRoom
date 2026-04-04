@@ -38,31 +38,11 @@ class CalendarService:
             return
 
         self.index_path = Path(cfg.agenda.DATA_DIR) / "concert_tickets/concerts.json"
-        self.status = self._run_health_check()
         self._initialized = True
-        self.mailer_proton = MailerProton()
 
-    def _run_health_check(self):
-        checks = {"json_file": False, "ical_url": False}
-
-        if self.index_path.exists():
-            checks["json_file"] = True
-        else:
-            print(f"[WARN] File not found: {self.index_path}")
+    def _get_calendar_events(self, config):
         try:
-            r = requests.head(cfg.agenda.calendar.LINK_CALENDAR, timeout=5)
-            if r.status_code == 200:
-                checks["ical_url"] = True
-        except requests.RequestException as e:
-            print(f"[!] Calendar check failed (Network): {e}")
-        return checks
-
-    def is_healthy(self):
-        return all(self.status.values()), "All systems GO" if all(self.status.values()) else f"Issues detected: {', '.join([k for k, v in self.status.items() if not v])}"
-
-    def _get_calendar_events(self):
-        try:
-            response = requests.get(cfg.agenda.calendar.LINK_CALENDAR, timeout=10)
+            response = requests.get(config.LINK_CALENDAR, timeout=10)
             response.raise_for_status()
             calendar = vobject.readOne(response.text)
         except (requests.RequestException, Exception) as e:
@@ -89,8 +69,8 @@ class CalendarService:
                 })
         return sorted(events, key=lambda x: x["dt"])
 
-    def fetch_calendar_events(self, keyword="", month="", limit=None):
-        all_events = self._get_calendar_events()
+    def fetch_calendar_events(self, config, keyword="", month="", limit=None):
+        all_events = self._get_calendar_events(config)
         filtered = []
         now = datetime.now()
 
@@ -104,7 +84,7 @@ class CalendarService:
             filtered.append(event)
         return filtered[:limit] if limit else filtered
 
-    def get_next_concert_data(self):
+    def get_next_concert_data(self, config):
         if not self.index_path.exists():
             return None
 
@@ -134,9 +114,9 @@ class CalendarService:
         concerts_list.sort(key=lambda x: x["dt"])
         return concerts_list[0]
 
-    def mail_me_next_concert(self):
+    def mail_me_next_concert(self, config):
         try:
-            next_event = self.get_next_concert_data()
+            next_event = self.get_next_concert_data(config)
             if not next_event:
                 return "Error: No concert found in index."
 
@@ -156,19 +136,19 @@ class CalendarService:
             )
 
             attachment = Path(cfg.agenda.DATA_DIR) / "concert_tickets" / pdf_file
-            success = self.mailer_proton.send_mail(
-                subject=subject,
-                body=body,
-                to_email=f"system@{cfg.agenda.mail_server.DOMAIN}",
-                attachment_path=str(attachment) if attachment.exists() else None
-            )
-            return f"Success ({summary})" if success == cfg.RETURN_CODE.SUCCESS else "Failed to send email"
+            data = {
+                "api_name": "send_mail",
+                "subject": subject,
+                "body": body,
+                "attachment": str(attachment) if attachment.exists() else None 
+            }
+            return data
 
         except Exception as e:
             return f"Critical Error in Mail Service: {e}"
 
-    def get_week_events(self, offset=0):
-        all_events = self._get_calendar_events()
+    def get_week_events(self, config, offset=0):
+        all_events = self._get_calendar_events(config)
         now = datetime.now()
 
         start_of_current_week = now - timedelta(days=now.weekday())
@@ -186,13 +166,13 @@ class CalendarService:
 
 if __name__ == "__main__":
     calendar = CalendarService()
-    result = calendar.fetch_calendar_events(limit=1)
+    result = calendar.fetch_calendar_events(cfg.system.calendar, limit=1)
     print(result)
-    result = calendar.fetch_calendar_events(limit=2)
+    result = calendar.fetch_calendar_events(cfg.system.calendar, limit=2)
     print(result)
-    result = calendar.get_next_concert_data()
+    result = calendar.get_next_concert_data(cfg.system.calendar)
     print(result)
-    result = calendar.mail_me_next_concert()
+    result = calendar.mail_me_next_concert(cfg.system.calendar)
     print(result)
-    result = calendar.get_week_events(1)
+    result = calendar.get_week_events(cfg.system.calendar, 1)
     print(result)

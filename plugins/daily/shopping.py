@@ -1,6 +1,5 @@
 import os
 from pathlib import Path
-from plugins.agenda.mailer_proton import MailerProton
 from config_loader import cfg
 from tools.utils import SimpleStore
 
@@ -36,7 +35,6 @@ class ShoppingService:
         self.cfg = cfg
         file_path = Path(self.cfg.DATA_DIR) / "shopping_list.json"
         self.store = SimpleStore(file_path, default_structure={'items': []})
-        self.mailer_proton = MailerProton()
         self._initialized = True
 
     def _parse_items(self, items):
