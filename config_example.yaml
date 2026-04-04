@@ -1,32 +1,38 @@
 sys:
   config:
-    WHISPER: "CPU"
-    OLLAMA_SERVER: "http://[OLLAMA_IP]:11434"
-    HUB_IP: "[SERVER_IP_ADDRESS]"
-    MODEL_NAME_MAIN: "qwen2.5:3b"
-    LANGUAGE: "en"
-    DIR_DOCS: "/home/[USER]/Documents"
-    SCRIPT_TTS: "/home/[USER]/[PROJECT_PATH]/tts_test.py"
-    SEARXNG_URL: "http://[SEARXNG_IP]:8080"
-    SEARCH_LANG: "en-US"
+    WHISPER: CPU
+    OLLAMA_SERVER: http://[OLLAMA_IP]:11434
+    HUB_IP: [SERVER_IP_ADDRESS]
+    MODEL_NAME_MAIN: qwen2.5:3b
+    LANGUAGE: en
+    DIR_DOCS: /home/[USER]/Documents
+    SCRIPT_TTS: /home/[USER]/[PROJECT_PATH]/tts_test.py
+
+    SEARXNG_URL: http://[SEARXNG_IP]:8080
+    SEARCH_LANG: en-US
+
+    REPLACE_RULE_LOCATIONS: Everywhere, all, everything --> ALL
     REPLACE_LOCATIONS:
-      - "Bedroom_1"
-      - "Bedroom_2"
-      - "Living Room"
-      - "Kitchen"
-      - "Bathroom"
-      - "Toilet"
-      - "ALL" 
-    REPLACE_RULE_LOCATIONS: "Everywhere, all, everything --> ALL"
+    - Bedroom_1
+    - Bedroom_2
+    - Living Room
+    - Kitchen
+    - Bathroom
+    - Toilet
+    - ALL
+    BYPASS_ALL:
+    - all
+    - house
+    - everywhere
 
-  security:
-    LIST_ALLOWED_SIGS:
-      - "[HASH_1]"
-      - "[HASH_2]"
-    DICO_USERS:
-      "[USER_1]": "[PASSWORD_1]"
-      "[USER_2]": "[PASSWORD_2]"
-
-  port_management:
     HUB_PORT: 28888
     RPI_PORT: 28889
+
+  security:
+    ALLOWED_SIGS:
+    - '[HASH_1]'
+    - '[HASH_2]'
+    USERS:
+      '[USER_1]': '[PASSWORD_1]'
+      '[USER_2]': '[PASSWORD_2]'
+      test: test

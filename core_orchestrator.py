@@ -38,7 +38,7 @@ class SessionManager:
     def __init__(self, disable_whisper=False):
         self.host = "0.0.0.0"
         self.port = int(cfg.sys.config.HUB_PORT)
-        self.allowed_sigs = cfg.sys.security.LIST_ALLOWED_SIGS
+        self.allowed_sigs = cfg.sys.security.ALLOWED_SIGS
         self.user_count = 0
         self.active_sessions = {}
         self.disable_whisper = disable_whisper
@@ -116,7 +116,7 @@ class SessionManager:
                 os.unlink(temp_file)
 
     def _handle_auth(self, sock, username, password):
-        stored_password = getattr(cfg.sys.security.DICO_USERS, username, None)
+        stored_password = getattr(cfg.sys.security.USERS, username, None)
         if stored_password and stored_password == password:
             if username in self.active_sessions.keys():
                 self.active_sessions[username].socks.append(sock)

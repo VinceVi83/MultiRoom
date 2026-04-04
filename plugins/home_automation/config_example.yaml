@@ -1,21 +1,18 @@
 home_automation:
   config:
-    DESCRIPTION: "Weather, lights, plugs, temperature control. EXCLUDING music/audio devices"
+    DESCRIPTION: Weather, lights, plugs, temperature control. EXCLUDING music/audio devices
     USE_LOCATION: 1
+    USERS:
+      system: password
+
     BYPASS_ROUTER:
-      - "allume"
-      - "éteint"
-      - "lumière"
-      - "coupe"
-      - "purifier
-      - "méteo"
-    AGENT_FEATURES:
-      - "NONSENSE"
-      - "LIGHTS"
-      - "ACTION"
-      - "WEATHER"
+    - allume
+    - éteint
+    - lumière
+    - purifier
+    - méteo
 
   ha_config:
-    HA_TOKEN: "YOUR_HOME_ASSISTANT_TOKEN"
-    HA_HOSTNAME: "ha_hostname"
-    HA_WEATHER_LOCATION: "weather.city"
+    HA_TOKEN: YOUR_HOME_ASSISTANT_TOKEN
+    HA_HOSTNAME: ha_hostname
+    HA_WEATHER_LOCATION: weather.city

@@ -1,63 +1,74 @@
 agenda:
+  internal_api:
+    send_mail:
+      subject: "subject"
+      body: "body"
+      attachment: "attachment"
+
   config:
-    DESCRIPTION: "Calendar, dates, appointments, concerts, schedules"
+    DESCRIPTION: Calendar, dates, appointments, concerts, schedules
     USE_LOCATION: 0
+
     BYPASS_ROUTER:
-      - "rendez-vous"
+    - rendez-vous
+    - agenda
+    - concert
+    - spectacle
+    - planning
+    - truc à faire
 
   calendar:
-    LINK_CALENDAR: "https://calendar.service.com/api/v1/user/token/calendar.ics"
-    PATH_ICS_TEMPLATE: "plugins/agenda/template_concert.ics"
-
+    LINK_CALENDAR: https://calendar.service.com/api/v1/user/token/calendar.ics
+    PATH_ICS_TEMPLATE: plugins/agenda/template_concert.ics
   mail_server:
-    USERNAME: "Your_Full_Name"
-    DOMAIN: "yourdomain.com"
-    USER_MAIL: "system@yourdomain.com"
-    PWD_MAIL: "your_app_password"
-    IP_MAIL: "127.0.0.1"
+    USERNAME: Your_Full_Name
+    DOMAIN: yourdomain.com
+    USER_MAIL: system@yourdomain.com
+    PWD_MAIL: your_app_password
+    IP_MAIL: 127.0.0.1
     PORT_SMTP_MAIL: 1025
 
-  ha_config:
-    BLACKLIST_NAMES:
-      - "SURNAME"
-      - "GIVEN_NAME"
-      - "ORG_NAME"
-      - "CLIENT"
-      - "BUYER"
-      - "ORDER"
-      - "LOCATION"
-      - "CITY"
-      - "ID_NUMBER"
-      - "STATUS"
-    ADDR_KEYWORDS:
-      - "STREET"
-      - "BOULEVARD"
-      - "BLVD"
-      - "AVENUE"
-      - "AVE"
-      - "SQUARE"
-      - "QUAY"
-      - "ARENA"
-      - "STADIUM"
-      - "HALL"
-      - "THEATER"
-      - "CLUB"
-      - "ROAD"
-      - "WAY"
+  filter:
+    VENUES:
+      VENUE_NAME: AEG PRESENTS:Accor Arena - 8 Bd de Bercy 75012 Paris
 
-  dico:
-    DICO_MONTHS:
-      JAN: "01"
-      FEB: "02"
-      MAR: "03"
-      APR: "04"
-      MAY: "05"
-      JUN: "06"
-      JUL: "07"
-      AUG: "08"
-      SEP: "09"
-      OCT: "10"
-      NOV: "11"
-      DEC: "12"
-    DICO_VENUES:
-      VENUE_NAME: "123 Example Street 75000 City"
+    BLACKLIST_NAMES:
+    - SURNAME
+    - GIVEN_NAME
+    - ORG_NAME
+    - CLIENT
+    - BUYER
+    - ORDER
+    - LOCATION
+    - CITY
+    - 'ID_NUMBER'
+    - STATUS
+
+    ADDR_KEYWORDS:
+    - STREET
+    - BOULEVARD
+    - BLVD
+    - AVENUE
+    - AVE
+    - SQUARE
+    - QUAY
+    - ARENA
+    - STADIUM
+    - HALL
+    - THEATER
+    - CLUB
+    - ROAD
+    - WAY
+    MONTHS:
+      JAN: '01'
+      FEB: '02'
+      MAR: '03'
+      APR: '04'
+      MAY: '05'
+      JUN: '06'
+      JUL: '07'
+      AUG: '08'
+      SEP: '09'
+      OCT: '10'
+      NOV: '11'
+      DEC: '12'

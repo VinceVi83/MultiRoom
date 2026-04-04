@@ -1,39 +1,52 @@
 music_vlc:
   config:
-    DESCRIPTION: "Music, playlists, VLC"
+    DESCRIPTION: Music, playlists, VLC
     USE_LOCATION: 1
+
     BYPASS_ROUTER:
       OTHERS:
-        - "musique"
-        - "music"
+      - musique
+      - music
       PLAYLIST:
-        - "playlist"
+      - playlist
       MUSIC:
-        - "vlc"
-        - "augmente"
-        - "monte"
-        - "baisse"
-        - "diminue"
-        - "moins"
-        - "plus"
-        - "précédent"
-        - "suivant"
-        - "après"
-        - "remets"
-        - "passe"
-        
+      - vlc
+      - le son
+      - moins
+      - plus
+      - précédent
+      - suivant
+      - après
+      - remets
+      - passe
+      - relance
+      - volume
     REPLACE_PLAYLISTS:
-      - "Default"
-      - "Rock"
-      - "Touhou"
-    SMB_MOUNT_POINT: "PATH_TO_MUSIC_LIBRARY"
-        
-  vlc_configuration:
+    - Default
+    - Rock
+    - Touhou
     VLC_PORT_START: 48888
     LEN_ALBUMS_CACHE: 50
 
-  access_control:
-    DICO_VLC_USERS:
-      TEST: "test"
-    DICO_MA_USERS:
-      TEST: "test"
+    SMB_MOUNT_POINT:
+      - "/mnt/g/Music"
+
+  security:
+    VLC_USERS:
+      test: test
+    MA_USERS:
+      TEST: test
+
+  extra:
+    BYPASS_MUSIC:
+    - diminu
+    - augment
+    - coupe
+    - baisse
+    - stop
+    - monte
+    BYPASS_PLAYLIST:
+    - ajoute
+    - crée
+    - supprime
+    - enlève

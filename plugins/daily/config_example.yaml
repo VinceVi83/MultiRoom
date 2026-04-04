@@ -1,9 +1,12 @@
 daily:
   config:
-    NAME: "DailyManagement"
+    DESCRIPTION: Grocery, fridge, buy, courses
+    NAME: DailyManagement
     USE_LOCATION: 0
+
     BYPASS_ROUTER:
-      - "frigo"
-      - "course"
-      - "besoin"
-    DESCRIPTION: "Grocery, fridge, buy, courses"
+      FRIDGE:
+      - frigo
+      GROCERIES:
+      - besoin
+      - course

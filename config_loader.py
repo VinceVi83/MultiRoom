@@ -338,4 +338,16 @@ def print_config_paths(obj, current_path="cfg"):
     else:
         print(f"{current_path}")
 
+import sys
 cfg = AlisuConfig().cfg
+
+cfg.debug = 1 if "-d" in sys.argv or "--debug" in sys.argv else 0
+cfg.verbose = 1 if "-v" in sys.argv or "--verbose" in sys.argv else 0
+cfg.no_bypass = 0 if "--no-bypass" in sys.argv else 1
+
+if not cfg.no_bypass:
+    print("--- BYPASS DISABLED ---")
+if cfg.debug:
+    print("--- DEBUG MODE ENABLED ---")
+if cfg.verbose:
+    print("--- VERBOSE MODE ENABLED ---")

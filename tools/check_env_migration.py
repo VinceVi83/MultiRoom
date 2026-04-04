@@ -1,77 +1,86 @@
 import os
-import sys
 import shutil
+import yaml
 import argparse
 from pathlib import Path
-from dotenv import dotenv_values
 
-def get_env_vars(filepath):
-    if not filepath or not os.path.exists(filepath):
-        return {}
-    return dotenv_values(filepath)
+def deep_merge_with_placeholder(source, destination):
+    for key, value in source.items():
+        if isinstance(value, dict):
+            node = destination.setdefault(key, {})
+            if not isinstance(node, dict):
+                destination[key] = value 
+            else:
+                deep_merge_with_placeholder(value, node)
+        else:
+            if key not in destination:
+                if is_reverse:
+                    destination[key] = value
+                else:
+                    example_val = value if value is not None else ""
+                    destination[key] = f"**TO BE COMPLETED** (e.g., {example_val})"
+    return destination
 
-def append_missing_vars(target_file, missing_vars_dict, mode_label):
-    if not missing_vars_dict:
-        return
-
-    with open(target_file, 'a', encoding='utf-8') as f:
-        f.write(f"\n\n# MIGRATION: {mode_label} ---\n")
-        for key, value in missing_vars_dict.items():
-            val_str = value if value is not None else ""
-            f.write(f"{key}={val_str}\n")
-
-def migrate_pair(source_path, target_path, mode_label):
+def migrate_yaml_pair(source_path, target_path, label):
     if not source_path.exists():
         return
-
+    print(f"[{label}] Currently sync: {source_path.name} -> {target_path.name}")
     if not target_path.exists():
+        print(f"[{label}] Creating new file: {target_path.name}")
         shutil.copy(source_path, target_path)
         return
 
-    source_vars = get_env_vars(source_path)
-    target_vars = get_env_vars(target_path)
+    with open(source_path, 'r', encoding='utf-8') as f:
+        source_data = yaml.safe_load(f) or {}
+    
+    with open(target_path, 'r', encoding='utf-8') as f:
+        target_data = yaml.safe_load(f) or {}
 
-    to_transfer = {k: v for k, v in source_vars.items() if k not in target_vars}
+    updated_data = deep_merge_with_placeholder(source_data, target_data)
 
-    if to_transfer:
-        append_missing_vars(target_path, to_transfer, mode_label)
-    else:
-        pass
+    with open(target_path, 'w', encoding='utf-8') as f:
+        yaml.dump(updated_data, f, default_flow_style=False, allow_unicode=True, sort_keys=False, width=1000)
+    
+    print(f"[{label}] Sync completed: {source_path.name} -> {target_path.name}")
 
 def run_migration(reverse=False):
     ROOT = Path(__file__).resolve().parent.parent 
     DATA_DIR = Path.home() / "Documents" / "ALISU_DATA"
     
     mode_label = "REVERSE (Data -> Template)" if reverse else "NORMAL (Template -> Data)"
+    print(f"--- RUNNING MIGRATION: {mode_label} ---")
 
-    if reverse:
-        migrate_pair(DATA_DIR / ".env", ROOT / ".env_template", mode_label)
-    else:
-        src = ROOT / ".env_template" if (ROOT / ".env_template").exists() else ROOT / ".env"
-        migrate_pair(src, DATA_DIR / ".env", mode_label)
-
-    src_plugins_dir = (DATA_DIR / "plugins") if reverse else (ROOT / "plugins")
+    src_global = ROOT / "config_example.yaml"
+    dst_global = DATA_DIR / "config.yaml"
     
-    if src_plugins_dir.exists():
-        for folder in src_plugins_dir.iterdir():
+    if reverse:
+        migrate_yaml_pair(dst_global, src_global, "GLOBAL")
+    else:
+        migrate_yaml_pair(src_global, dst_global, "GLOBAL")
+
+    plugins_base = DATA_DIR / "plugins" if reverse else ROOT / "plugins"
+    
+    if plugins_base.exists():
+        for folder in plugins_base.iterdir():
             if not folder.is_dir() or folder.name.startswith("__"):
                 continue
             
             plugin_name = folder.name
             
             if reverse:
-                src_env = folder / ".env"
-                dst_env = ROOT / "plugins" / plugin_name / ".env_template"
+                user_cfg = DATA_DIR / "plugins" / plugin_name / "config.yaml"
+                tmpl_cfg = ROOT / "plugins" / plugin_name / "config_example.yaml"
+                migrate_yaml_pair(user_cfg, tmpl_cfg, f"PLUGIN: {plugin_name}")
             else:
-                src_env = folder / ".env_template" if (folder / ".env_template").exists() else folder / ".env"
-                dst_dir = DATA_DIR / "plugins" / plugin_name
-                dst_dir.mkdir(parents=True, exist_ok=True)
-                dst_env = dst_dir / ".env"
-
-            migrate_pair(src_env, dst_env, mode_label)
+                tmpl_cfg = ROOT / "plugins" / plugin_name / "config_example.yaml"
+                user_dir = DATA_DIR / "plugins" / plugin_name
+                user_dir.mkdir(parents=True, exist_ok=True)
+                user_cfg = user_dir / "config.yaml"
+                migrate_yaml_pair(tmpl_cfg, user_cfg, f"PLUGIN: {plugin_name}")
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--reverse", action="store_true")
+    parser = argparse.ArgumentParser(description="ALISU Configuration Migrator")
+    parser.add_argument("-r", "--reverse", action="store_true", help="Sync from User Data back to Templates")
     args = parser.parse_args()
+    
     run_migration(reverse=args.reverse)

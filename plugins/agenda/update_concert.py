@@ -87,8 +87,8 @@ def extract_ticket_info(text):
     for m in re.finditer(r"\b(\d{1,2})\s+([a-zéû\.]+?)\s+(\d{2,4})\b", text, re.IGNORECASE):
         d, m_name, y = m.group(1).zfill(2), m.group(2).lower().replace('.', '')[:3], m.group(3)
         if len(y) == 2: y = "20" + y
-        if m_name in cfg.agenda.filter.MONTH_DICT:
-            valid_matches.append((d, cfg.agenda.filter.MONTH_DICT[m_name], y, m.start()))
+        if m_name in cfg.agenda.filter.MONTH:
+            valid_matches.append((d, cfg.agenda.filter.MONTH[m_name], y, m.start()))
 
     future_dates = []
     for d, m_val, y, pos in valid_matches:
@@ -113,7 +113,7 @@ def extract_ticket_info(text):
 
     for line in text.split('\n'):
         u_line = line.strip().upper()
-        for trigger, forced_addr in cfg.agenda.filter.VENUE_DICT.items():
+        for trigger, forced_addr in cfg.agenda.filter.VENUES.items():
             if trigger in u_line:
                 addr = forced_addr
                 break

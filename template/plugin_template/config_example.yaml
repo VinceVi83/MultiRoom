@@ -3,38 +3,31 @@
 # ==========================================================
 your_plugin:
   router_configuration:
-    # Level 2: DESCRIPTION
     DESCRIPTION: "Briefly describe the plugin's purpose (e.g., Handles weather forecasts)."
 
   agent_core_features:
-    # Level 2: AGENT_FEATURES
     AGENT_FEATURES:
       - "current_weather"
       - "forecast_7d"
       - "rain_radar"
 
   external_links_and_apis:
-    # Level 2: LINK_API_BASE, LINK_DOCUMENTATION
     LINK_API_BASE: "https://api.weatherservice.com/v1"
     LINK_DOCUMENTATION: "https://github.com/youruser/yourproject/wiki"
 
   data_structures:
-    # Level 2: LIST_ALLOWED_CITIES
-    LIST_ALLOWED_CITIES:
+    ALLOWED_CITIES:
       - "Paris"
       - "London"
       - "Tokyo"
     
-    # Level 2: DICO_HEADERS | Level 3: AUTHORIZATION...
-    DICO_HEADERS:
+    HEADERS:
       AUTHORIZATION: "Bearer_Token"
       CONTENT-TYPE: "application/json"
 
   plugin_settings:
-    # Level 2: MAX_RETRY, TIMEOUT
     MAX_RETRY: 3
     TIMEOUT: 30
 
   llm_prompt_replacements:
-    # Level 2: REPLACE_WEATHER_UNIT
     REPLACE_WEATHER_UNIT: "Celsius"

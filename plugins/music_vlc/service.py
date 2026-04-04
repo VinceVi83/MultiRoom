@@ -48,7 +48,10 @@ class MusicVlcService:
         return None
 
     def execute(self, context, callback_internal_request_api):
-        category_res = self.bypass_router(context)
+        category_res = None
+        if Utils.enable_bypass():
+            category_res = self.bypass_router(context)
+
         try:
             if category_res:
                 context.add_step('sub_category', {'label': category_res, 'bypass': 1})

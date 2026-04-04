@@ -55,7 +55,10 @@ class Utils:
         if val is None or str(val).strip() == "":
             return "ERROR"
         return str(val)
-
+        
+    @staticmethod
+    def enable_bypass():
+        return cfg.no_bypass
 
 class SimpleStore:
     """Simple Key-Value Store with JSON Persistence

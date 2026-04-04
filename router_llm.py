@@ -90,7 +90,7 @@ class RouterLLM:
         return context._archive_and_rename()
 
     def get_location(self, context):
-        if self.bypass_location(context):
+        if Utils.enable_bypass() and self.bypass_location(context):
             return
 
         local_res = llm.execute(context.user_input, cfg.ALL_PURPOSE.LOCATION_CLEANER_AGENT, verbose=False, debug=False)
@@ -125,7 +125,9 @@ class RouterLLM:
         return None
 
     def select_plugin(self, context):
-        category_res = self.bypass_router(context)
+        category_res = None
+        if Utils.enable_bypass():
+            category_res = self.bypass_router(context)
         if not category_res:
             category_res = llm.execute(context.user_input, cfg.ALL_PURPOSE.ROUTER_AGENT)
 

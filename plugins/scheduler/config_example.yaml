@@ -1,4 +1,10 @@
 scheduler:
   config:
-    DESCRIPTION_: "Handles task scheduling, alarms, and reminders using Crontab."
+    DESCRIPTION_: Handles task scheduling, alarms, and reminders using Crontab.
     USE_LOCATION: 0
+
+    BYPASS_ROUTER:
+    - planifi
+    - rappel
+    - préviens
+    - alarm

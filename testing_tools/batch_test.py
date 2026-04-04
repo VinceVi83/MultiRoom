@@ -31,7 +31,10 @@ class HubTester:
     def _check_success(self, ctx, label):
         cat_ok = ctx.category in label
         sub_ok = (ctx.sub_category in label) if ctx.sub_category != 'NONE' else True
-        return_code_ok = "ReturnCode.SUCCESS" in ctx.return_code
+        try:
+            return_code_ok = "ReturnCode.SUCCESS" in ctx.return_code
+        except:
+            return False
         return cat_ok and sub_ok and return_code_ok
 
     def _execute_group(self, group):
