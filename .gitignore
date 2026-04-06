@@ -11,3 +11,4 @@ settings.json
 test.py
 *wav
 .vscode
+.continue

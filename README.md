@@ -56,8 +56,8 @@ Back then (around 2017), consumer home automation was still in its infancy. It m
 
 The project centralizes multiple tools through a **Hub-and-Spoke** architecture:
 
-1. **The Hub (Central Server)**: Managed by `core_orchestrator.py`, it receives secure commands (SSL) and dispatches them to specialized agents.
-2. **A.L.I.S.U. (Interface Layer)**: Uses a local LLM to interpret natural language requests and routes execution to dedicated Python scripts.
+1. **The Hub (Central Server)**: Managed by `hub_server.py`, it receives secure commands (SSL) and routes them to specialized agents via a central dispatcher.
+2. **A.L.I.S.U. (Interface Layer)**: Utilizes a local LLM to interpret natural language requests and route execution to dedicated Python scripts. It incorporates keyword-based filtering to bypass the LLM when possible, improving response speed and command accuracy.
 3. **Integrated Services**:
     * **Home Automation**: Control of Home Assistant entities (Lights, plug, etc.).
     * **Music**: Full control of VLC via the **Lua HTTP interface***.
@@ -69,7 +69,7 @@ The project centralizes multiple tools through a **Hub-and-Spoke** architecture:
 
 ```text
 .
-├── core_orchestrator.py   # Main service hub
+├── hub_server.py   # Main service hub
 ├── config_loader.py       # Configuration loading & validation
 ├── agents_config.yaml     # Global routing
 ├── plugins/               # Modular Extensions (VLC, HA, Agenda, Mail etc.)
@@ -79,7 +79,7 @@ The project centralizes multiple tools through a **Hub-and-Spoke** architecture:
 
 ### 3. Execution
 ```bash
-python core_orchestrator.py
+python hub_server.py
 ```
 
 ## Operational Flow: Order, Execution & Feedback
@@ -87,7 +87,7 @@ Everything is centralized. The `Core Orchestrator` integrates the transcription 
 
 
 ```text
- [ DEVICES/Users ]     [ CORE ORCHESTRATOR ]        [ ROUTER LLM ]             [ PLUGIN ]
+ [ DEVICES/Users ]     [ HUB SERVER ]               [ ROUTER LLM ]              [ PLUGIN ]
  (Text/PTT/Stream)    (Hardware Gateway)          (Order Dispatcher)       (Intelligence & Logic)
       |                       |                            |                         |
       |-- (1) Triple Input -->|                            |                         |
@@ -130,7 +130,8 @@ Create a new folder within the **`plugins/`** directory. Use lowercase and under
 ```text
 plugins/
 └── my_new_plugin/
-    ├── .env_template         # Environment variables & metadata
+    ├── config.yaml           # Plugin configuration
+    ├── user.yaml             # User configuration for plugin
     ├── agents_config.yaml    # LLM system prompts and model settings
     ├── logic_module.py       # Core backend logic and processing
     └── service.py            # Gateway class/API bridge
@@ -159,7 +160,7 @@ To ensure stability and optimal performance, please verify your environment meet
     * **Minimum**: RTX 3060 (12GB VRAM). 
     * **Recommended**: RTX 3080 or higher.
 * **Apple Silicon (Untested)**: 
-    * **Potential**: Mac Mini (M1/M2/M3). Should technically work for local LLMs at least to provide local LLM.
+    * **Potential**: Mac Mini (M1/M2/M3/M4). Should technically work for local LLMs at least to provide local LLM.
 	
 ### Driver Requirements
 * **NVIDIA Drivers:** Ensure you have the latest stable drivers installed.

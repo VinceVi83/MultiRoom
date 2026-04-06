@@ -32,7 +32,7 @@ class TaskContext:
     duration_inference: float = 0
     duration: int = 0
     location: str = "NONSENSE"
-    start: float = field(default_factory=time.time)
+    start: float = 0
     data: dict = field(default_factory=dict)
     data_request: dict = field(default_factory=dict)
     return_code: ReturnCode = cfg.RETURN_CODE.ERR
