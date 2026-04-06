@@ -132,13 +132,73 @@ class AlisuConfig:
         self.cfg.root = self.ROOT
         self.cfg.LOADED_PLUGINS = []
         self.cfg.RETURN_CODE = ReturnCode
-
         self._sync_and_freeze_plugins()
+        self._migrate_all_user_schemas()
         self._load_config_only()
         self._load_users_config()
         self._generate_plugin_description_list()
         self._load_agents()
         self._setup_system_info()
+
+    def _deep_update_missing(self, source, target):
+        for key, value in source.items():
+            if key not in target:
+                target[key] = value
+            elif isinstance(value, dict) and isinstance(target.get(key), dict):
+                self._deep_update_missing(value, target[key])
+        return target
+
+    def _migrate_all_user_schemas(self):
+        root_dir = Path(__file__).resolve().parent
+        data_users_dir = Path.home() / "Documents" / "ALISU_DATA" / "Users" #
+        master_schema = {}
+        
+        root_cfg = root_dir / "user_config.yaml"
+        if root_cfg.exists():
+            with open(root_cfg, 'r', encoding='utf-8') as f:
+                master_schema = self._deep_update_missing(yaml.safe_load(f) or {}, master_schema)
+
+        plugins_path = root_dir / "plugins" #
+        if plugins_path.exists():
+            for plugin_dir in plugins_path.iterdir():
+                if plugin_dir.is_dir():
+                    p_user_cfg = plugin_dir / "user_config.yaml"
+                    if p_user_cfg.exists():
+                        with open(p_user_cfg, 'r', encoding='utf-8') as f:
+                            plugin_data = yaml.safe_load(f) or {}
+                            master_schema = self._deep_update_missing(plugin_data, master_schema)
+
+        if not master_schema:
+            return
+
+        if not data_users_dir.exists():
+            data_users_dir.mkdir(parents=True, exist_ok=True)
+        
+        system_user_file = data_users_dir / "system.yaml"
+        
+        if not system_user_file.exists():
+            default_system_content = {"system": master_schema}
+            with open(system_user_file, 'w', encoding='utf-8') as f:
+                yaml.dump(default_system_content, f, default_flow_style=False, allow_unicode=True)
+            print(f"User config system created : {system_user_file.name}")
+
+
+        for user_file in data_users_dir.glob("*.yaml"):
+            with open(user_file, 'r', encoding='utf-8') as f:
+                try:
+                    user_content = yaml.safe_load(f) or {}
+                except Exception as e:
+                    continue
+
+            modified = False
+            for username in user_content:
+                if isinstance(user_content[username], dict):
+                    user_content[username] = self._deep_update_missing(master_schema, user_content[username])
+                    modified = True
+
+            if modified:
+                with open(user_file, 'w', encoding='utf-8') as f:
+                    yaml.dump(user_content, f, default_flow_style=False, allow_unicode=True)
 
     def _setup_system_info(self):
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)

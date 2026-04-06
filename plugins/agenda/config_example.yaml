@@ -17,17 +17,6 @@ agenda:
     - planning
     - truc à faire
 
-  calendar:
-    LINK_CALENDAR: https://calendar.service.com/api/v1/user/token/calendar.ics
-    PATH_ICS_TEMPLATE: plugins/agenda/template_concert.ics
-  mail_server:
-    USERNAME: Your_Full_Name
-    DOMAIN: yourdomain.com
-    USER_MAIL: system@yourdomain.com
-    PWD_MAIL: your_app_password
-    IP_MAIL: 127.0.0.1
-    PORT_SMTP_MAIL: 1025
-
   filter:
     VENUES:
       VENUE_NAME: AEG PRESENTS:Accor Arena - 8 Bd de Bercy 75012 Paris
