@@ -4,7 +4,6 @@ faster-whisper
 
 # Network and APIs
 requests
-python-dotenv
 
 # Data Processing & Scraping
 trafilatura
@@ -18,3 +17,5 @@ pyaudio
 sounddevice
 numpy
 
+# HA
+websocket

@@ -15,6 +15,7 @@ class Utils:
         format_result(result) : Format dict or other result as string.
         to_int(data, key) : Convert value to integer or return -1 on error.
         to_str(data, key) : Convert value to string or return 'ERROR' on empty/None.
+        enable_bypass() : Return bypass configuration flag.
     """
     @staticmethod
     def get_unique_path(dir_path, base_name, extension=".wav"):

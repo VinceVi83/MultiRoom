@@ -61,9 +61,39 @@ AGENDA:
       num_ctx: 2048
       temperature: 0.0
     prompt: |
-      Extract the main artist name. 
-      Respond with JSON format: {"artist": "NAME"}
+      Role: Music Data Specialist.
+      Task: Extract the main Artist or Band name from the ticket text.
+
+      STRICT CONSTRAINTS:
+      1. LITERAL EXTRACT ONLY: You are STRICTLY FORBIDDEN from inventing names. Every name in "artists" MUST exist character-for-character in the source text.
+      2. NO HALLUCINATION: If you cannot find a clear artist name that isn't on the BLACKLIST, return an empty list: {"artists": []}.
+      3. BLACKLIST: Compare candidates against the blacklist. Ignore: Buyer names, Ticket providers (Shotgun, Live Nation, Ticketnet), and Venues (Petit Bain, Bataclan).
+      4. ZERO PROSE: Do not explain your choice.
+
+      Format: {"artists": ["Artist Name"]}
   
+  NAME_CLASSIFIER_AGENT:
+    name: "NAME_CLASSIFIER_AGENT"
+    model: "qwen2.5:3b"
+    use_json: true
+    options:
+      num_ctx: 2048
+      temperature: 0.0
+    prompt: |
+      Extract all names (people, companies, bands, events) and classify them.
+
+      Categories:
+      - "ARTIST": The main performer, band, or event title (e.g., NieR:Orchestra).
+      - "BUYER": The person who bought the ticket (look for names near "Commande", "Billet No", or in parentheses).
+      - "VENDOR": The ticket seller or organizer (e.g., VIPARIS, Overlook Events, Ticketmaster).
+
+      Rules:
+      1.If a name has a customer ID next to it like (188310), it is definitely a BUYER.
+      2.The ARTIST is usually the largest text or contains words like "Concert", "Tour", or "Live".
+      3.The VENDOR is often at the very top or bottom near "Conditions d'utilisation".
+
+      Format: {"entities": [{"name": "string", "type": "ARTIST|BUYER|VENDOR"}]}
+
   EXTRACT_VENUE_AGENT:
     name: "EXTRACT_VENUE_AGENT"
     model: "qwen2.5:3b"
@@ -72,8 +102,59 @@ AGENDA:
       num_ctx: 2048
       temperature: 0.0
     prompt: |
-      Extract the venue and city.
-      Respond with JSON format: {"location": "VENUE, CITY"}
+      As a ticket data extractor, your goal is to identify the EVENT LOCATION only.
+
+      RULES:
+      1. TARGET: Extract only the concert venue and its physical address.
+      2. EXCLUSION (CRITICAL): Strictly ignore the "Buyer", "Client", or "Billing" sections. 
+        - Never extract the customer's personal home address.
+      3. NO SEATING: Ignore "RANG", "FOSSE", "PLACE", "FAUTEUIL", "SERIE", "CATEGORIE".
+      4. NO LEGAL: Ignore "LIC. ARTISTIQUES" or "Siret".
+      5. FORMAT: Each location must be a single string.
+
+      Output Format: {"locations": ["Venue Name, Street, Zip, City"]}
+
+  SELECT_MAIN_VENUE_AGENT:
+    model: "qwen2.5:3b"
+    use_json: true
+    options:
+      num_ctx: 2048
+      temperature: 0.0
+    prompt: |
+      Role: Location Picker.
+      Goal: Select the most complete physical address from the list.
+
+      STRICT RULES:
+      1. DO NOT EDIT, SHORTEN, OR REWRITE. 
+      2. Copy/Paste the EXACT string from the 'LOCATIONS FOUND' list.
+      3. Priority: A string containing a City, a Zip Code, or a Street.
+      4. BLACKLIST: ignore location if contain some word in BLACKLIST
+      
+      Format: {"selected_location": "EXACT_STRING_FROM_INPUT"}
+
+  VERIFIER_LOCATION_AGENT:
+    name: "VERIFIER_LOCATION_AGENT"
+    model: "qwen2.5:3b"
+    use_json: true
+    options:
+      num_ctx: 1024
+      temperature: 0.0
+    prompt: |
+      Role: Physical Location Validator.
+      Goal: Confirm if the text contains a street, a venue name, or a city.
+
+      VALIDATION RULES:
+      1. MUST contain a Street Keyword: BOULEVARD, RUE, PLACE, AVE, PORT, QUAI, ROUTE, VOLTAIRE.
+      2. OR MUST contain a Venue/City: PALAIS, ZENITH, ARENA, THEATRE, SALLE.
+      
+      STRICT EXCLUSIONS (is_location = false):
+      1. IGNORE keywords like "FOSSE", "RANG", "PLACE", "PORTE", "NIVEAU" if they are just prefixes for seating.
+      2. IGNORE strings that are ONLY organizer names ("PRESENTE", "EVENTS").
+      3. IGNORE strings that are ONLY person names with IDs.
+
+      INPUT: "{{selected_location}}"
+
+      Format: {"is_location": boolean, "final_string": "The validated address"}
 
   EXTRACT_DATE_AGENT:
     name: "EXTRACT_DATE_AGENT"
@@ -83,6 +164,14 @@ AGENDA:
       num_ctx: 2048
       temperature: 0.0
     prompt: |
-      Extract date of the event, be careful it may have date of creation of ticket, brought dates.
-      date must be in this format : 20260317T185300
-      Respond with JSON format: {"date": "20260317T185300"}
+      Extract all dates and times mentioned in the user message.
+      For each date, convert it to the format: YYYYMMDDTHHMMSS.
+      
+      Rules:
+      1. Look for the event date (usually near the venue name or "Date de l'événement").
+      2. Also extract order dates or printing dates to avoid confusion later.
+      3. If the year is missing (e.g., "17 Mars"), assume 2026.
+      4. If the time is missing, use 200000 (e.g., 20:00:00).
+
+      Respond with JSON: 
+      {"dates": [{"label": "event", "value": "20260317T203000"}, {"label": "order", "value": "20260110T142000"}]}

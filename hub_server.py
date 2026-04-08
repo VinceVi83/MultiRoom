@@ -32,6 +32,8 @@ class SessionManager:
         _handle_direct_command(self, session, text) : Handle direct text commands from clients.
         _handle_stt_request(self, session, url) : Handle speech-to-text requests via Whisper.
         _handle_auth(self, sock, username, password) : Validate user authentication credentials.
+        _handle_client_action(self, sock, action, payload) : Handle client actions like Auth, PTT, and session commands.
+        _cleanup_session_for_socket(self, sock) : Remove socket from session tracking when connection closes.
         handle_client(self, sock) : Handle incoming client socket connections.
         run_server(self) : Start the SSL server and accept client connections.
     """

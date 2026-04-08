@@ -216,7 +216,7 @@ def _handle_music(context):
         context.add_step('sub_category', {'label': matched, 'bypass': 1})
     else:
         res = llm.execute(context.user_input, cfg.MUSIC_VLC.MUSIC_AGENT, False, False)
-        context.add_durations(mode_data)
+        context.add_durations(res)
         context.sub_category = res.get('CATEGORY', 'NONE')
         context.add_step('sub_category', res)
 

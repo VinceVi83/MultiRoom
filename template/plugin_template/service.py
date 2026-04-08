@@ -1,4 +1,3 @@
-# service.py
 from config_loader import cfg
 from tools.llm_agent import llm
 from tools.utils import Utils

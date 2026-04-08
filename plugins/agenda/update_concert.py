@@ -1,6 +1,8 @@
 import sys, json, os, PyPDF2, re, datetime
 from pathlib import Path
 from thefuzz import fuzz
+from doctr.io import DocumentFile
+from doctr.models import ocr_predictor
 import logging
 logging.getLogger("PyPDF2").setLevel(logging.ERROR)
 
@@ -10,8 +12,133 @@ from plugins.agenda.my_calendar import CalendarService
 
 TICKETS_DIR = Path(cfg.agenda.DATA_DIR) / "concert_tickets"
 INDEX_FILE = TICKETS_DIR / "concerts.json"
-BLACKLIST = [w.strip().upper() for w in cfg.agenda.filter.BLACKLIST_NAMES.split(",")]
-KEYWORDS = [w.strip().upper() for w in cfg.agenda.filter.ADDR_KEYWORDS.split(",")]
+
+def clean_text_from_blacklist(text, blacklist):
+    if not blacklist:
+        return text
+    
+    sorted_blacklist = sorted(blacklist, key=len, reverse=True)
+    pattern = re.compile('|'.join(re.escape(str(word)) for word in sorted_blacklist), re.IGNORECASE)
+    
+    return pattern.sub("", text)
+
+def clean_text_generic(text):
+    clean_lines = []
+    segments = re.split(r'\. |\n', text) 
+    
+    for line in segments:
+        line = line.strip()
+        if len(line) > 80 or len(line) < 2: 
+            continue
+            
+        if line.endswith(('.', '!', '?')) and len(line.split()) > 3:
+            continue
+
+        clean_lines.append(line)
+            
+    return "\n".join(clean_lines)
+
+def clean_text(text, blacklist):
+    cleaned = clean_text_generic(text)
+    cleaned = clean_text_from_blacklist(cleaned, blacklist)
+    return cleaned
+
+def check_venue(text, current_venue):
+    if current_venue: 
+        return current_venue, True
+    
+    venues_dict = vars(cfg.agenda.filter.VENUES)
+    for key, value in venues_dict.items():
+        if key.lower() in text.lower():
+            return value, True
+            
+    res_v = llm.execute(text, cfg.AGENDA.EXTRACT_VENUE_AGENT)
+    blacklist = cfg.agenda.filter.BLACKLIST_NAMES
+    prompt_select = f"### BLACKLIST: {blacklist}\n### LOCATIONS FOUND:\n{res_v['locations']}\n Identify main venue."
+    selected_venue = llm.execute(prompt_select, cfg.AGENDA.SELECT_MAIN_VENUE_AGENT)
+    verification = llm.execute(str(selected_venue), cfg.AGENDA.VERIFIER_LOCATION_AGENT)
+    
+    selected_location = selected_venue["selected_location"].lower()
+    for key in blacklist:
+        if key.lower() in selected_location:
+            return None, False
+    
+    if "True" in str(verification) and selected_venue.get("selected_location"):
+        return selected_venue["selected_location"], True
+    
+    return None, False
+
+def check_date(text, current_date):
+    if current_date: 
+        return current_date, True
+    
+    res_d = llm.execute(text, cfg.AGENDA.EXTRACT_DATE_AGENT)
+    event_date = next((d["value"] for d in res_d.get("dates", []) if d["label"] == "event"), None)
+    return event_date, (event_date is not None)
+
+def check_artist(text, current_artist):
+    if current_artist: 
+        return current_artist, True
+    
+    blacklist = cfg.agenda.filter.BLACKLIST_NAMES
+    prompt_art = f"### BLACKLIST: {blacklist}\n### TEXT:\n{text}\nExtract main ARTIST."
+    res_a = llm.execute(prompt_art, cfg.AGENDA.NAME_CLASSIFIER_AGENT)
+    res_b = llm.execute(str(res_a), cfg.AGENDA.EXTRACT_ARTIST_AGENT)
+    
+    for key in blacklist:
+        if key.lower() in str(res_b):
+            return None, False
+
+    artist = res_b["artists"][0] if res_b.get("artists") else None
+    if artist and not any(b.lower() in artist.lower() for b in blacklist):
+        return artist, True
+        
+    return None, False
+
+def get_pdf_raw_text(pdf_path):
+    try:
+        with open(pdf_path, 'rb') as f:
+            reader = PyPDF2.PdfReader(f)
+            return "\n".join([p.extract_text() for p in reader.pages[:2] if p.extract_text()])
+    except Exception as e:
+        print(f"❌ Erreur lors de la lecture du texte brut de {pdf_path.name}: {e}")
+        return ""
+
+def get_pdf_ocr_text(pdf_path):
+    try:
+        model = ocr_predictor(pretrained=True)
+        doc = DocumentFile.from_pdf(pdf_path)
+        ocr_res = model(doc)
+        
+        blocks = []
+        for page in ocr_res.pages:
+            for block in page.blocks:
+                line_texts = [" ".join([w.value for w in l.words]) for l in block.lines]
+                blocks.append("\n".join(line_texts))
+        return "\n\n".join(blocks)
+        
+    except Exception as e:
+        print(f"❌ Erreur lors de l'OCR de {pdf_path.name}: {e}")
+        return ""
+
+def extract_ticket_data(pdf_path):
+    data = {"artist": None, "venue": None, "date": None}
+    flags = {"artist": False, "venue": False, "date": False}
+
+    text_native = get_pdf_raw_text(pdf_path)
+    text_clean = clean_text(text_native, cfg.agenda.filter.BLACKLIST_NAMES)
+    data["venue"], flags["venue"] = check_venue(text_clean, data["venue"])
+    data["date"], flags["date"] = check_date(text_clean, data["date"])
+    data["artist"], flags["artist"] = check_artist(text_clean, data["artist"])
+
+    if not all(flags.values()):
+        text_ocr = get_pdf_ocr_text(pdf_path)
+        text_clean = clean_text(text_ocr, cfg.agenda.filter.BLACKLIST_NAMES)
+        data["venue"], flags["venue"] = check_venue(text_clean, data["venue"])
+        data["date"], flags["date"] = check_date(text_clean, data["date"])
+        data["artist"], flags["artist"] = check_artist(text_clean, data["artist"])
+
+    return data, flags
 
 def create_tmp_ics(pdf_name, info):
     artist = info.get("artist", "Unknown")
@@ -48,152 +175,56 @@ def create_tmp_ics(pdf_name, info):
         print(f"Error reading ICS template: {e}")
         return False
 
-def clean_pdf_text(raw_text):
-    if not raw_text:
-        return ""
-    
-    price_pattern = re.compile(r"\b\d+([,.]\d{2})?\s*(?:EUR|EURO|€)\b", re.IGNORECASE)
-    text_no_price = price_pattern.sub("", raw_text)
-    
-    filtered = []
-    for line in text_no_price.split('\n'):
-        strip_line = line.strip()
-        if strip_line and "." not in strip_line:
-            if not any(name in strip_line.upper() for name in BLACKLIST):
-                filtered.append(re.sub(r'\s+', ' ', strip_line).strip())
-    return " ".join(filtered)
-
-def extract_ticket_info(text):
-    if not text:
-        current_time = datetime.now().strftime("%Y%m%dT%H%M%S")
-        return {"date": current_time, "location": None}
-    
-    price_pattern = re.compile(r"\b\d+([,.]\d{2})?\s*(?:EUR|EURO|€)\b", re.IGNORECASE)
-    text = price_pattern.sub("", text)
-    day, month, year = "01", "01", "2026"
-    hour, minute = "19", "00"
-    now = datetime.datetime.now()
-    valid_matches = []
-    
-    pattern = r"(\d{1,5}.*?(?:" + "|".join(KEYWORDS) + r").*?\d{5})"
-    def is_blacklisted(s):
-        return sum(1 for word in BLACKLIST if word in s.upper()) >= 2
-
-    for m in re.finditer(r"\b(\d{2})([/-])(\d{2})\2(\d{2,4})\b", text):
-        d, m_val, y = m.group(1), m.group(3), m.group(4)
-        if len(y) == 2: y = "20" + y
-        valid_matches.append((d, m_val, y, m.start()))
-
-    for m in re.finditer(r"\b(\d{1,2})\s+([a-zéû\.]+?)\s+(\d{2,4})\b", text, re.IGNORECASE):
-        d, m_name, y = m.group(1).zfill(2), m.group(2).lower().replace('.', '')[:3], m.group(3)
-        if len(y) == 2: y = "20" + y
-        if m_name in cfg.agenda.filter.MONTH:
-            valid_matches.append((d, cfg.agenda.filter.MONTH[m_name], y, m.start()))
-
-    future_dates = []
-    for d, m_val, y, pos in valid_matches:
-        try:
-            dt_obj = datetime.datetime(int(y), int(m_val), int(d))
-            if dt_obj.date() >= now.date():
-                future_dates.append((d, m_val, y, pos))
-        except ValueError:
-            continue
-
-    if future_dates:
-        day, month, year, pos = future_dates[0]
-        context = text[max(0, pos-50) : min(len(text), pos+100)]
-        m_time = re.search(r"\b(\d{1,2})[H:](\d{0,2})\b", context, re.IGNORECASE)
-        if m_time:
-            hour = m_time.group(1).zfill(2)
-            minute = m_time.group(2).zfill(2) if m_time.group(2) else "00"
-    else:
-        return {"date": "20260101T190000", "location": None}
-
-    addr = None
-
-    for line in text.split('\n'):
-        u_line = line.strip().upper()
-        for trigger, forced_addr in cfg.agenda.filter.VENUES.items():
-            if trigger in u_line:
-                addr = forced_addr
-                break
-        if addr: break
-        if is_blacklisted(u_line): continue
-        match = re.search(pattern, u_line)
-        if match:
-            addr = match.group(1).strip()
-
-    if addr is None:
-        clean_full_text = " ".join(text.split())
-        matches = re.finditer(pattern, clean_full_text, re.IGNORECASE)
-        for m in matches:
-            potential_addr = m.group(1).strip()
-            if not is_blacklisted(potential_addr):
-                addr = potential_addr.upper()
-                break
-    return {"date": f"{year}{month}{day}T{hour}{minute}00", "location": addr}
-
 def sync_tickets_to_calendar(verbose=False):
     calendar = CalendarService()
     index = json.load(open(INDEX_FILE, "r", encoding="utf-8")) if INDEX_FILE.exists() else {}
     events = calendar.fetch_calendar_events(cfg.system.calendar, keyword="concert", limit=0)
-    result = {
-        "added_tickets": [],
-        "created_ics": []
-    }
+    result = {"added_tickets": [], "created_ics": []}
 
     for pdf_path in TICKETS_DIR.glob("*.pdf"):
-        if any(pdf_path.name == val for val in index.values()): continue
-        
-        try:
-            with open(pdf_path, 'rb') as f:
-                reader = PyPDF2.PdfReader(f)
-                raw_text = "".join([p.extract_text() for p in reader.pages[:2]])
-                clean_text = clean_pdf_text(raw_text)
-        except Exception:
+        pdf_name = pdf_path.name
+        if pdf_name in index and index[pdf_name].get("status") == "linked":
             continue
 
-        res_artist = llm.execute(clean_text, cfg.EXTRACT_ARTIST_AGENT)
-        res_venue = llm.execute(clean_text, cfg.EXTRACT_VENUE_AGENT)
-        res_date = llm.execute(clean_text, cfg.EXTRACT_DATE_AGENT)
+        if pdf_name in index and index[pdf_name].get("status") == "ics_pending":
+            data = index[pdf_name]["data"]
+        else:
+            data, flags = extract_ticket_data(pdf_path)
+            if not all(flags.values()):
+                continue
+            
+            clean_artist = re.sub(r'[^a-zA-Z0-9]', '', data['artist'].replace(' ', '_'))
+            new_name = f"ticket_{clean_artist}_{data['date']}.pdf"
+            new_path = pdf_path.parent / new_name
+            
+            if pdf_name != new_name:
+                os.rename(pdf_path, new_path)
+                pdf_path = new_path
+                pdf_name = new_name
 
-        ticket_artist = str(res_artist.get('artist', 'UNKNOWN') if isinstance(res_artist, dict) else res_artist).strip().upper()
-        ai_addr = str(res_venue.get('location', 'UNKNOWN') if isinstance(res_venue, dict) else res_venue).strip()
-        ai_date = str(res_date.get('date', 'UNKNOWN') if isinstance(res_date, dict) else res_date).strip()
-
-        infos = extract_ticket_info(raw_text)
-        if infos["location"] is None or len(infos["location"]) > 50:
-            infos["location"] = ai_addr
-
-        infos["date"] = ai_date
-        if verbose:
-            print(f"\n--- Processing: {pdf_path.name} ---")
-            print(f"  Artist  : {ticket_artist}")
-            print(f"  Date     : {infos['date']}")
-            print(f"  Location : {infos['location']}")
+            index[pdf_name] = {"status": "ics_pending", "data": data}
 
         best_match, highest_score = None, 0
         for event in events:
             title = event["summary"]
-            score = fuzz.token_set_ratio(ticket_artist, title.upper())
+            score = fuzz.token_set_ratio(data['artist'], title.upper())
             if score > highest_score:
                 highest_score, best_match = score, title
 
         if highest_score >= 80:
             matched_event = next((e for e in events if e["summary"] == best_match), None)
-            if matched_event:
-                event_key = f"[{matched_event['dt'].strftime('%Y/%m/%d')}] {best_match}"
-                index[event_key] = pdf_path.name
-                
-                result["added_tickets"].append({event_key: pdf_path.name})
+            event_key = f"[{matched_event['dt'].strftime('%Y/%m/%d')}] {best_match}"
+            index[pdf_name].update({
+                "status": "linked",
+                "event": event_key
+            })
+            result["added_tickets"].append({event_key: pdf_name})
         else:
-            create_tmp_ics(pdf_path.name, {"artist": ticket_artist, "date": infos["date"], "location": infos["location"]})
-            
-            result["created_ics"].append(pdf_path.name)
+            if create_tmp_ics(pdf_name, {"artist": data['artist'], "date": data["date"], "location": data["venue"]}):
+                result["created_ics"].append(pdf_name)
 
     with open(INDEX_FILE, "w", encoding="utf-8") as f:
         json.dump(index, f, indent=4, ensure_ascii=False)
-    
     return result
 
 if __name__ == "__main__":

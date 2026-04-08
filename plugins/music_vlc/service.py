@@ -70,9 +70,10 @@ class MusicVlcService:
                 context.add_durations(res)
             elif context.sub_category == 'DISCOVER':
                 context.result = 'Done'
-                return self.cfg.RETURN_CODE.SUCCESS
+                res = {'ACTION': 'DISCOVER'}
             else:
                 res = {'ACTION': 'ERR'}
+                return self.cfg.RETURN_CODE.ERR
 
         except Exception as e:
                 print(f"[PLUGIN MusicVlcService MUSIC_AGENT ERROR] {e}")

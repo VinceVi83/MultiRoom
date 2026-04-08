@@ -241,14 +241,13 @@ class VLCUserManager:
             pass
 
     def _init_album_cache(self):
-        cache = []
         for directory in self.smb_base:
             if os.path.exists(directory):
                 with os.scandir(directory) as it:
                     for entry in it:
                         if entry.is_dir():
-                            cache.append(entry.path)
-        return cache
+                            self.album_cache.append(entry.path)
+        return
 
     def print_playlist_summary(self):
         duration_str = time.strftime('%H:%M:%S', time.gmtime(self.total_duration_sec))

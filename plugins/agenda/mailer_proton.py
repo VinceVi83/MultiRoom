@@ -23,13 +23,31 @@ class MailerProton:
         target_ip = config.IP_MAIL
         smtp_port = int(config.PORT_SMTP_MAIL)
 
+        if not self._check_network(target_ip, smtp_port):
+            return cfg.RETURN_CODE.ERR
+
+        msg = self._build_message(config, subject, body, to_email, attachment_path, debug)
+        if msg is None:
+            return cfg.RETURN_CODE.ERR
+
+        success = self._send_email(msg, target_ip, smtp_port, config)
+
+        if debug:
+            duration = time.time() - start_time
+            print(f"Mail delivered via {target_ip} in {duration:.2f}s")
+
+        return success
+
+    def _check_network(self, target_ip, smtp_port):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.settimeout(3)
             if s.connect_ex((target_ip, smtp_port)) != 0:
                 print(f"[!] Network Error: Windows Host {target_ip}:{smtp_port} is unreachable.")
                 print("[!] Fix: Enable 'Allow LAN' in Proton Bridge and open Windows Firewall port 1025.")
-                return cfg.RETURN_CODE.ERR
+                return False
+        return True
 
+    def _build_message(self, config, subject, body, to_email, attachment_path, debug):
         msg = MIMEMultipart()
         msg['From'] = f"{config.USERNAME} <{config.USER_MAIL}>"
         msg['To'] = to_email or getattr(config, 'ALTERNATE_MAIL', None) or config.USER_MAIL
@@ -45,9 +63,12 @@ class MailerProton:
                 part['Content-Disposition'] = f'attachment; filename="{Path(attachment_path).name}"'
                 msg.attach(part)
             except Exception as e:
-                if debug: print(f"Attachment Error: {e}")
-                return cfg.RETURN_CODE.ERR
+                if debug:
+                    print(f"Attachment Error: {e}")
+                return None
+        return msg
 
+    def _send_email(self, msg, target_ip, smtp_port, config):
         try:
             context = ssl.create_default_context()
             context.check_hostname = False
@@ -56,20 +77,12 @@ class MailerProton:
                 server.starttls(context=context)
                 server.login(config.USER_MAIL, config.PWD_MAIL)
                 server.send_message(msg)
-
-            if debug:
-                duration = time.time() - start_time
-                print(f"Mail delivered via {target_ip} in {duration:.2f}s")
             return cfg.RETURN_CODE.SUCCESS
-
-        except smtplib.SMTPAuthenticationError as e:
-            print(f"SMTP Authentication Error: {e}")
-        except smtplib.SMTPConnectError as e:
-            print(f"SMTP Connection Error: {e}")
-        except smtplib.SMTPException as e:
-            print(f"SMTP Exception: {e}")
-        except Exception as e:
-            print(f"SMTP Error: {e}")
+        except (smtplib.SMTPAuthenticationError, 
+                smtplib.SMTPConnectError, 
+                smtplib.SMTPException, 
+                Exception) as e:
+            print(f"SMTP Error ({type(e).__name__}): {e}")
             return cfg.RETURN_CODE.ERR
 
 
