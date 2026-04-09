@@ -1,12 +1,11 @@
 import requests
 import sys
-import json
 from datetime import datetime
-from pathlib import Path
 from trafilatura import fetch_url, extract
 from config_loader import cfg
 from tools.llm_agent import llm
-
+import logging
+logger = logging.getLogger(__name__)
 
 class ScraperService:
     """Web Scraping Service Plugin
@@ -38,7 +37,7 @@ class ScraperService:
 
         if self.debug:
             test = self.get_search_candidates("ping", count=1)
-            print("ScraperService OK" if test else "ScraperService KO")
+            logger.info("ScraperService OK" if test else "ScraperService KO")
 
         self._initialized = True
 
@@ -54,7 +53,7 @@ class ScraperService:
             response.raise_for_status()
             results = response.json().get('results', [])
         except Exception as e:
-            print(f"SEARCH_ERROR: {e}")
+            logger.error(f"SEARCH_ERROR: {e}")
             return []
 
         now = datetime.now()
@@ -131,22 +130,22 @@ class ScraperService:
 
     def print_weather_report(self, data):
         if not isinstance(data, dict):
-            print(data)
+            logger.info(data)
             return
         g = data.get('global', {})
         p = data.get('periods', {})
 
-        print(f"\n{'='*45}")
-        print(f" 🌦️  WEATHER REPORT : {g.get('summary', 'Unknown')}")
-        print(f"{'='*45}")
-        print(f" Temperature : {g.get('temp_avg')}°C | Rain : {g.get('rain_risk')}")
-        print(f"{'-'*45}")
+        logger.info(f"\n{'='*45}")
+        logger.info(f" 🌦️  WEATHER REPORT : {g.get('summary', 'Unknown')}")
+        logger.info(f"{'='*45}")
+        logger.info(f" Temperature : {g.get('temp_avg')}°C | Rain : {g.get('rain_risk')}")
+        logger.info(f"{'-'*45}")
 
         for period, details in p.items():
             icon = "🌧️" if details.get('rain') else "🌤️"
             name = {"morning": "Morning", "afternoon": "Afternoon", "evening": "Evening"}.get(period, period.upper())
-            print(f" {icon} {name:<12} | {details.get('temp')}°C | {details.get('desc')}")
-        print(f"{'='*45}\n")
+            logger.info(f" {icon} {name:<12} | {details.get('temp')}°C | {details.get('desc')}")
+        logger.info(f"{'='*45}\n")
 
 
 if __name__ == "__main__":

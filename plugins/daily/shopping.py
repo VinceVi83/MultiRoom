@@ -1,7 +1,7 @@
-import os
 from pathlib import Path
-from config_loader import cfg
 from tools.utils import SimpleStore
+import logging
+logger = logging.getLogger(__name__)
 
 class ShoppingService:
     """Shopping Service Plugin
@@ -97,4 +97,4 @@ class ShoppingService:
 
 if __name__ == "__main__":
     shopping = ShoppingService()
-    print(shopping.report_shopping_list())
+    logger.info(shopping.report_shopping_list())

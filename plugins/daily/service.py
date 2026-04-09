@@ -1,6 +1,8 @@
 from plugins.daily.shopping import ShoppingService
 from tools.llm_agent import llm
 from tools.utils import Utils
+import logging
+logger = logging.getLogger(__name__)
 
 class DailyService:
     """Daily Service Plugin
@@ -19,7 +21,7 @@ class DailyService:
         self.cfg = cfg
         self.shopping = ShoppingService(self.cfg)
         if not self.cfg:
-            print(f"[!] Error: Configuration for {self.plugin_name} not found.")
+            logger.info(f"[!] Error: Configuration for {self.plugin_name} not found.")
 
     def switch_fridge(self, context):
         user_input_lower = context.user_input.lower()
@@ -63,7 +65,7 @@ class DailyService:
             return self.cfg.RETURN_CODE.SUCCESS
         
         except (ValueError, Exception) as e:
-            print(f"[PLUGIN DailyService ERROR] {e}")
+            logger.error(f"[PLUGIN DailyService ERROR] {e}")
             return self.cfg.RETURN_CODE.ERR
 
     def shopping_service(self, context, callback_internal_request_api):

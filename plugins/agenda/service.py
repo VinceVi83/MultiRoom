@@ -2,6 +2,8 @@ from plugins.agenda.my_calendar import CalendarService
 from plugins.agenda.mailer_proton import MailerProton
 from tools.llm_agent import llm
 from tools.utils import Utils
+import logging
+logger = logging.getLogger(__name__)
 
 class AgendaService:
     """Agenda Service Plugin
@@ -20,7 +22,7 @@ class AgendaService:
         self.calendar = CalendarService()
         self.mail = MailerProton()
         if not self.cfg:
-            print(f"[!] Error: Configuration for {self.plugin_name} not found.")
+            logger.info(f"[!] Error: Configuration for {self.plugin_name} not found.")
 
     def execute_api(self, context, data):
         if data.get("api_name", None) == "send_mail":
@@ -59,7 +61,7 @@ class AgendaService:
                 return self.cfg.RETURN_CODE.ERR
             return self.cfg.RETURN_CODE.SUCCESS
         except Exception as e:
-            print(f"[PLUGIN AGENDA ERROR] {e}")
+            logger.error(f"[PLUGIN AGENDA ERROR] {e}")
             return self.cfg.RETURN_CODE.ERR
 
     def get_status(self):

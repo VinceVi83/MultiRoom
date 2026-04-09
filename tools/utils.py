@@ -1,9 +1,55 @@
-import time
 import os
-import shutil
 import json
 from pathlib import Path
 from config_loader import cfg
+import sys
+import logging
+logger = logging.getLogger(__name__)
+
+class LocalFilesFilter(logging.Filter):
+    def __init__(self):
+        super().__init__()
+        self.local_files = {
+            f for f in os.listdir(os.path.dirname(os.path.abspath(__file__))) 
+            if f.endswith(".py")
+        }
+
+    def filter(self, record):
+        return record.filename in self.local_files
+
+def setup_logging():
+    log_dir_path = cfg.DATA_DIR / "logs"
+    if not os.path.exists(log_dir_path):
+        os.makedirs(log_dir_path, exist_ok=True)
+
+    date_format = "%y%m%d:%H:%M:%S"
+    if cfg.verbose:
+        log_format = "[%(asctime)s][%(filename)s][%(funcName)s](%(levelname)s): %(message)s"
+    else:
+        log_format = "[%(funcName)s](%(levelname)s): %(message)s"
+    
+    formatter = logging.Formatter(fmt=log_format, datefmt=date_format)
+
+    local_filter = LocalFilesFilter()
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setFormatter(formatter)
+    console_handler.addFilter(local_filter)
+
+    log_file = log_dir_path / "debug.log"
+    file_handler = logging.FileHandler(log_file, mode="a", encoding="utf-8")
+    file_handler.setFormatter(formatter)
+    file_handler.addFilter(local_filter)
+    
+    root_logger = logging.getLogger()
+    if cfg.debug:
+        root_logger.setLevel(logging.DEBUG)
+    else:
+        root_logger.setLevel(logging.INFO)
+    
+    root_logger.handlers = []
+    
+    root_logger.addHandler(console_handler)
+    root_logger.addHandler(file_handler)
 
 class Utils:
     """Utility Functions for File Operations and Data Formatting

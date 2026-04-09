@@ -3,8 +3,9 @@ import websockets
 import json
 import os
 import threading
-from config_loader import cfg
 from tools.hub_messenger import HubMessenger
+import logging
+logger = logging.getLogger(__name__).setLevel(logging.INFO)
 
 class HAListener:
     """Home Assistant WebSocket Event Listener
@@ -47,7 +48,7 @@ class HAListener:
                 with open(mapping_file, "r", encoding="utf-8") as f:
                     self.mapping = json.load(f)
         except Exception as e:
-            print(f"Error loading mapping: {e}")
+            logger.error(f"loading mapping: {e}")
 
     def run_ha_listener(self):
         def _target():
@@ -56,7 +57,7 @@ class HAListener:
             try:
                 loop.run_until_complete(self.start())
             except Exception as e:
-                print(f"[HAListener Thread Error] {e}")
+                logger.error(f"[HAListener Thread Error] {e}")
 
         thread = threading.Thread(target=_target, daemon=True)
         thread.start()
@@ -73,7 +74,7 @@ class HAListener:
                             if msg.get("type") == "event":
                                 self._process(msg["event"])
             except Exception as e:
-                print(f"Reconnecting in 5s... ({e})")
+                logger.error(f"Reconnecting in 5s... ({e})")
                 await asyncio.sleep(5)
 
     async def _auth(self, ws):
@@ -83,7 +84,7 @@ class HAListener:
             res = json.loads(await asyncio.wait_for(ws.recv(), timeout=10))
             return res.get("type") == "auth_ok"
         except (asyncio.TimeoutError, websockets.exceptions.ConnectionClosed, Exception) as e:
-            print(f"Auth error: {e}")
+            logger.error(f"Auth error: {e}")
             return False
 
     async def _sub(self, ws):
@@ -122,21 +123,21 @@ class HAListener:
         except asyncio.CancelledError:
             pass
         except Exception as e:
-            print(f"Error in delayed trigger for {eid}: {e}")
+            logger.error(f"in delayed trigger for {eid}: {e}")
             self.pending_clicks.pop(eid, None)
 
     def trigger(self, eid, name, action, command):
-        print(f"EXECUTION: [{name}] -> Action: {action} -> Command: {command}")
+        logger.info(f"EXECUTION: [{name}] -> Action: {action} -> Command: {command}")
 
         if "TO BE CONFIGURED" in command or "NEW" in command:
-            print(f"Action ignored: Please edit JSON for {eid}")
+            logger.info(f"Action ignored: Please edit JSON for {eid}")
             return
 
         if command.startswith("service:"):
             service_call = command.replace("service:", "")
-            print(f"Service call HA: {service_call}")
+            logger.info(f"Service call HA: {service_call}")
         else:
-            print(f"Sending to AI Hub: '{command}'")
+            logger.info(f"Sending to AI Hub: '{command}'")
             asyncio.create_task(
                 asyncio.to_thread(self.messenger.send_stt, command, False)
             )
@@ -145,6 +146,6 @@ if __name__ == "__main__":
     try:
         asyncio.run(HAListener().start())
     except KeyboardInterrupt:
-        print("\nStopping the listener.")
+        logger.error("\nStopping the listener.")
     except Exception as e:
-        print(f"Fatal error: {e}")
+        logger.error(f"Fatal error: {e}")

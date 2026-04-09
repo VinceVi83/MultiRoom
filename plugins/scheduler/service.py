@@ -1,7 +1,9 @@
-import json, os, shlex, calendar, sched
+import json, os, shlex, calendar
 from pathlib import Path
 from datetime import datetime, timedelta
 from tools.llm_agent import llm
+import logging
+logger = logging.getLogger(__name__)
 
 class SchedulerService:
     def __init__(self, cfg):
@@ -22,10 +24,10 @@ class SchedulerService:
             raw_cmd = action.get("action", context.user_input)
             tid = f"task_{int(datetime.now().timestamp())}"
             sched, run_time = self._build_schedule(time_data)
-            full_shell_cmd = self._prepare_command(tid, raw_cmd, time_data.get("mode", "FIX"))
+            full_shell_cmd = self._prepare_command(context, tid, raw_cmd, time_data.get("mode", "FIX"))
             return self._register_task(tid, raw_cmd, sched, full_shell_cmd, time_data.get("mode", "FIX"), run_time)
         except Exception as e:
-            print(f"[PLUGIN SchedulerService ERROR] {e}")
+            logger.error(f"[PLUGIN SchedulerService ERROR] {e}")
             return self.cfg.RETURN_CODE.ERR
 
     def _build_schedule(self, d):
@@ -69,7 +71,7 @@ class SchedulerService:
         
         return f"{target.minute} {target.hour} {target.day} {target.month} *", target
 
-    def _prepare_command(self, tid, cmd, p_type):
+    def _prepare_command(self, context, tid, cmd, p_type):
         mode = llm.execute(cmd, self.cfg.SYSTEM_AGENT)
         context.add_durations(mode)
         clean = f" && crontab -l | grep -v '#ID:{tid}' | crontab -" if p_type != "RECURRING" else ""

@@ -1,10 +1,7 @@
-import os
 import subprocess
-import re
-import time
-from pathlib import Path
 import xml.etree.ElementTree as ET
-import shlex
+import logging
+logger = logging.getLogger(__name__)
 
 class VLCControl:
     """VLC Media Player Control Service
@@ -67,7 +64,7 @@ class VLCControl:
             else:
                 return None
         except Exception as e:
-            print(f"Request Exception: {e}")
+            logger.error(f"Request Exception: {e}")
         return None
 
     def handle_simple_command(self, action):

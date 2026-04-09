@@ -8,6 +8,8 @@ from tools.llm_agent import llm
 from tools.task_context import TaskContext
 from tools.utils import Utils
 import copy
+import logging
+logger = logging.getLogger(__name__)
 
 class RouterLLM:
     """RouterLLM
@@ -64,16 +66,16 @@ class RouterLLM:
                     instance = service_class(cfg_final)
                     self.service_registry[plugin_name.upper()] = instance
                 else:
-                    print(f"  [!] Class {class_name} not found in {module_path}")
+                    logger.info(f"  [!] Class {class_name} not found in {module_path}")
 
             except Exception as e:
-                print(f"  [!] Failed to load {plugin_name}: {e}")
+                logger.error(f"  [!] Failed to load {plugin_name}: {e}")
 
     def execute_native(self, context):
         parts = context.user_input.lstrip('@').split(';-;', 3)
         
         if len(parts) < 4:
-            print(f"[!] Native Format Error: {context.user_input}")
+            logger.info(f"[!] Native Format Error: {context.user_input}")
             return "FORMAT_ERROR"
 
         plugin_name = parts[0]
@@ -85,7 +87,7 @@ class RouterLLM:
             try:
                 context.return_code = service_instance.execute_native(context)
             except Exception as e:
-                print(f"[!] Service {plugin_name} execute_native failed: {e}")
+                logger.error(f"[!] Service {plugin_name} execute_native failed: {e}")
                 context.return_code = cfg.RETURN_CODE.ERR
         else:
             context.return_code = cfg.RETURN_CODE.ERR
@@ -93,7 +95,9 @@ class RouterLLM:
         return context._archive_and_rename()
 
     def get_location(self, context):
+        print("get_location", Utils.enable_bypass(), "Test")
         if Utils.enable_bypass() and self.bypass_location(context):
+            print("enable_bypass")
             return
 
         local_res = llm.execute(context.user_input, cfg.ALL_PURPOSE.LOCATION_CLEANER_AGENT, verbose=False, debug=False)
@@ -104,15 +108,18 @@ class RouterLLM:
         return
 
     def bypass_location(self, context):
+        print("bypass_location")
         user_input_lower = context.user_input.lower()
         for keyword in cfg.sys.config.BYPASS_ALL:
             if keyword.lower() in user_input_lower:
+                print("bypass_location 2", keyword, user_input_lower)
                 context.location = "ALL"
                 context.add_step('bypass_location', {'Location': "ALL", 'bypass': 1})
                 return True
 
         for keyword in cfg.sys.config.REPLACE_LOCATIONS:
             if keyword.lower() in user_input_lower:
+                print("bypass_location 2", keyword, user_input_lower)
                 context.location = keyword
                 context.add_step('bypass_location', {'Location': keyword, 'bypass': 1})
                 return True
@@ -150,7 +157,7 @@ class RouterLLM:
             if plugin_obj.config.USE_LOCATION:
                 self.get_location(context)
         except Exception as e:
-            print(f"[!] LLM execution failed: {e}")
+            logger.error(f"[!] LLM execution failed: {e}")
             context.return_code = cfg.RETURN_CODE.ERR
             return context._archive_and_rename()
 
@@ -161,7 +168,7 @@ class RouterLLM:
                 context.return_code = Utils.format_result(return_code)
   
         except Exception as e:
-            print(f"[!] Service {context.category} execute failed: {e}")
+            logger.error(f"[!] Service {context.category} execute failed: {e}")
             return context._archive_and_rename()
 
         context.duration = time.time() - context.start
@@ -180,7 +187,7 @@ class RouterLLM:
             try:
                 context.return_code = service_instance.execute_api(context, data)
             except Exception as e:
-                print(f"[!] Service {plugin_name} callback_internal_request_api failed: {e}")
+                logger.error(f"[!] Service {plugin_name} callback_internal_request_api failed: {e}")
                 context.return_code = cfg.RETURN_CODE.ERR
                 return cfg.RETURN_CODE.ERR
         else:
@@ -216,9 +223,9 @@ class RouterLLM:
                     self.duration_load += context.duration_load
                     self.duration_inference += context.duration_inference
                     self.call_counter += context.call_counter
-                    print(f"{'Total call_counter':<15} : {self.call_counter}")
-                    print(f"{'Total loadtime':<15} : {self.duration_load}")
-                    print(f"{'Total inference time':<15} : {self.duration_inference}")
+                    logger.info(f"{'Total call_counter':<15} : {self.call_counter}")
+                    logger.info(f"{'Total loadtime':<15} : {self.duration_load}")
+                    logger.info(f"{'Total inference time':<15} : {self.duration_inference}")
 
                 json_output = json.dumps(response_context.to_dict())
                 socks = getattr(context.session, 'socks', [])
@@ -239,7 +246,7 @@ class RouterLLM:
                     last_activity = time.time()
                 continue
             except Exception as e:
-                print(f"SERVER_ERROR in Inference Loop: {e}")
+                logger.error(f"SERVER_ERROR in Inference Loop: {e}")
                 time.sleep(1)
 
     def start(self):

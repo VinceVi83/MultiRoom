@@ -1,11 +1,14 @@
 from faster_whisper import WhisperModel
 import os
+import logging
+logger = logging.getLogger(__name__)
+
 try:
     from config_loader import cfg
     WHISPER_MODE = cfg.sys.WHISPER
     LANGUAGE = cfg.sys.LANGUAGE
 except Exception as e:
-    WHISPER_MODE = "GPU"
+    WHISPER_MODE = "CPU"
     LANGUAGE = "fr"
 
 def initialize_cuda():

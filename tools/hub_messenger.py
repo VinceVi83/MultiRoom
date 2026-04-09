@@ -6,11 +6,12 @@ import platform
 import subprocess
 import os
 import threading
-import time
 from http.server import SimpleHTTPRequestHandler, HTTPServer
 import glob
 import sys
 from pathlib import Path
+import logging
+logger = logging.getLogger(__name__)
 
 class HubMessenger:
     """Hub Messenger Service Plugin
@@ -120,7 +121,7 @@ class HubMessenger:
                 ctx.load_verify_locations(cafile=self.cert_file)
                 ctx.verify_mode = ssl.CERT_REQUIRED
             except Exception as e:
-                print(f"Certificate load error: {e}")
+                logger.error(f"Certificate load error: {e}")
                 ctx.verify_mode = ssl.CERT_NONE
         else:
             ctx.verify_mode = ssl.CERT_NONE
@@ -142,7 +143,7 @@ class HubMessenger:
                 ssock.close()
                 return None
         except Exception as e:
-            print(f"[!] Connection error: {e}")
+            logger.error(f"[!] Connection error: {e}")
             return None
 
     def _authenticate(self, ssock):
@@ -173,7 +174,7 @@ class HubMessenger:
             return True
 
         except (socket.error, ssl.SSLError) as e:
-            print(f"[!] Disconnection detected ({e}). Attempting reconnection...")
+            logger.error(f"[!] Disconnection detected ({e}). Attempting reconnection...")
             self._ssock = None
             return self._send_raw(tag, content, wait_response)
 
@@ -220,7 +221,7 @@ class HubMessenger:
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("Usage: python3 hub_messenger.py \"your message here\"")
+        logger.info("Usage: python3 hub_messenger.py \"your message here\"")
         sys.exit(1)
 
     text_to_send = " ".join(sys.argv[1:])
@@ -228,6 +229,6 @@ if __name__ == "__main__":
     success = messenger.send_stt(text_to_send, wait_response=True)
 
     if success:
-        print(f"[+] Message sent successfully. Response: {success}")
+        logger.info(f"[+] Message sent successfully. Response: {success}")
     else:
-        print("[!] Send failed.")
+        logger.info("[!] Send failed.")

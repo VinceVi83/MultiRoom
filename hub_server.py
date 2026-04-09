@@ -5,19 +5,18 @@ import threading
 import os
 import requests
 import time
-import json
 import sys
-from requests.adapters import HTTPAdapter
-from urllib3.util.ssl_ import create_urllib3_context
 from router_llm import RouterLLM
-from tools.scraper import ScraperService
 from tools.whisper_engine import WhisperEngine
 from config_loader import cfg
 from user_session import UserSession
 from tools.task_context import TaskContext
-from dataclasses import dataclass, field
-from datetime import datetime
 from pathlib import Path
+
+import logging
+from tools.utils import setup_logging
+setup_logging()
+logger = logging.getLogger(__name__)
 
 class SessionManager:
     """Session Manager
@@ -63,7 +62,7 @@ class SessionManager:
             try:
                 self._do_session_cleanup()
             except Exception as e:
-                print(f"[!] Cleanup loop encountered a critical error: {e}")
+                logger.error(f"[!] Cleanup loop encountered a critical error: {e}")
             time.sleep(300)
 
     def _do_session_cleanup(self):
@@ -77,7 +76,7 @@ class SessionManager:
                     session.stop_all_services()
                     self.active_sessions.pop(username, None)
                 except Exception as e:
-                    print(f"[!] Error cleaning session for {username}: {e}")
+                    logger.error(f"[!] Error cleaning session for {username}: {e}")
 
     def _worker_loop(self):
         while True:
@@ -88,7 +87,7 @@ class SessionManager:
                 else:
                     self._handle_direct_command(session, payload)
             except Exception as e:
-                print(f"[!] Worker Error: {e}")
+                logger.error(f"[!] Worker Error: {e}")
             finally:
                 self.task_queue.task_done()
 
@@ -112,7 +111,7 @@ class SessionManager:
                     context = TaskContext(user_input=text, session=session, audio_path=temp_file)
                     self.router.add_to_queue(context)
         except Exception as e:
-            print(f"[!] STT Error: {e}")
+            logger.error(f"[!] STT Error: {e}")
         finally:
             if os.path.exists(temp_file):
                 os.unlink(temp_file)
@@ -131,6 +130,7 @@ class SessionManager:
         return False
 
     def _handle_client_action(self, sock, action, payload):
+        print("_handle_client_action")
         if action == "Auth":
             user, pwd = payload.split(":", 1)
             if self._handle_auth(sock, user, pwd):
@@ -180,7 +180,7 @@ class SessionManager:
                     break
                 self._handle_client_action(sock, action, payload)
         except Exception as e:
-            print(f"[!] Connection error: {e}")
+            logger.error(f"[!] Connection error: {e}")
         finally:
             self._cleanup_session_for_socket(sock)
             try:
@@ -206,9 +206,9 @@ class SessionManager:
                     conn = context.wrap_socket(newsock, server_side=True)
                     threading.Thread(target=self.handle_client, args=(conn,), daemon=True).start()
                 except (ssl.SSLError, socket.error) as e:
-                    print(f"[!] Connection failed (SSL/Socket): {e}")
+                    logger.error(f"[!] Connection failed (SSL/Socket): {e}")
                 except Exception as e:
-                    print(f"[!] Unexpected error in accept loop: {e}")
+                    logger.error(f"[!] Unexpected error in accept loop: {e}")
         except KeyboardInterrupt:
             pass
         finally:
@@ -216,7 +216,7 @@ class SessionManager:
                 self.router.stop()
                 server_sock.close()
             except Exception as e:
-                print(f"[!] Close Error: {e}")
+                logger.error(f"[!] Close Error: {e}")
 
 if __name__ == "__main__":
     no_whisper_flag = "--no-whisper" in sys.argv

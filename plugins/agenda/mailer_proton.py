@@ -8,6 +8,8 @@ from email.mime.application import MIMEApplication
 from email import utils
 from pathlib import Path
 from config_loader import cfg
+import logging
+logger = logging.getLogger(__name__)
 
 class MailerProton:
     """Mailer Proton Service Plugin
@@ -34,7 +36,7 @@ class MailerProton:
 
         if debug:
             duration = time.time() - start_time
-            print(f"Mail delivered via {target_ip} in {duration:.2f}s")
+            logger.info(f"Mail delivered via {target_ip} in {duration:.2f}s")
 
         return success
 
@@ -42,8 +44,8 @@ class MailerProton:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.settimeout(3)
             if s.connect_ex((target_ip, smtp_port)) != 0:
-                print(f"[!] Network Error: Windows Host {target_ip}:{smtp_port} is unreachable.")
-                print("[!] Fix: Enable 'Allow LAN' in Proton Bridge and open Windows Firewall port 1025.")
+                logger.info(f"[!] Network Error: Windows Host {target_ip}:{smtp_port} is unreachable.")
+                logger.info("[!] Fix: Enable 'Allow LAN' in Proton Bridge and open Windows Firewall port 1025.")
                 return False
         return True
 
@@ -64,7 +66,7 @@ class MailerProton:
                 msg.attach(part)
             except Exception as e:
                 if debug:
-                    print(f"Attachment Error: {e}")
+                    logger.warning(f"Attachment Error: {e}")
                 return None
         return msg
 
@@ -82,7 +84,7 @@ class MailerProton:
                 smtplib.SMTPConnectError, 
                 smtplib.SMTPException, 
                 Exception) as e:
-            print(f"SMTP Error ({type(e).__name__}): {e}")
+            logger.error(f"SMTP Error ({type(e).__name__}): {e}")
             return cfg.RETURN_CODE.ERR
 
 
@@ -93,4 +95,4 @@ if __name__ == "__main__":
         body="If you see this, the networking and firewall rules are correct.",
         debug=True
     )
-    print(f"Status: {'SUCCESS' if success else 'FAILED'}")
+    logger.info(f"Status: {'SUCCESS' if success else 'FAILED'}")

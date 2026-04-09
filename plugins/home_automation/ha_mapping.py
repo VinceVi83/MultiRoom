@@ -1,7 +1,8 @@
 from abc import ABC, abstractmethod
 from rapidfuzz import fuzz
 from config_loader import cfg
-
+import logging
+logger = logging.getLogger(__name__)
 
 class BaseEntity(ABC):
     """Base Entity for Home Automation devices
@@ -49,12 +50,12 @@ class DeviceCollection(ABC):
             self.initialized = True
 
     def list_inventory(self):
-        print(f"\n{'CATEGORY':<12} | {'NAME':<30} | {'ID'}")
-        print("-" * 80)
+        logger.info(f"\n{'CATEGORY':<12} | {'NAME':<30} | {'ID'}")
+        logger.info("-" * 80)
         for l in self.lights:
-            print(f"{'Light':<12} | {l.name:<30} | {l.id}")
+            logger.info(f"{'Light':<12} | {l.name:<30} | {l.id}")
         for s in self.switches:
-            print(f"{'Switch':<12} | {s.name:<30} | {s.id}")
+            logger.info(f"{'Switch':<12} | {s.name:<30} | {s.id}")
 
     def similarity(self, a, b):
         return fuzz.token_set_ratio(a.lower(), b.lower())
@@ -80,7 +81,7 @@ class DeviceCollection(ABC):
                 best_match = device
 
         if best_match:
-            print(f"   [Match] '{query_name}' -> '{best_match.name}' ({highest_score}%)")
+            logger.info(f"   [Match] '{query_name}' -> '{best_match.name}' ({highest_score}%)")
         return best_match
 
 

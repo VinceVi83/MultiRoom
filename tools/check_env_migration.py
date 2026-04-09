@@ -1,8 +1,9 @@
-import os
 import shutil
 import yaml
 import argparse
 from pathlib import Path
+import logging
+logger = logging.getLogger(__name__)
 
 def deep_merge_with_placeholder(source, destination):
     for key, value in source.items():
@@ -24,9 +25,9 @@ def deep_merge_with_placeholder(source, destination):
 def migrate_yaml_pair(source_path, target_path, label):
     if not source_path.exists():
         return
-    print(f"[{label}] Currently sync: {source_path.name} -> {target_path.name}")
+    logger.info(f"[{label}] Currently sync: {source_path.name} -> {target_path.name}")
     if not target_path.exists():
-        print(f"[{label}] Creating new file: {target_path.name}")
+        logger.info(f"[{label}] Creating new file: {target_path.name}")
         shutil.copy(source_path, target_path)
         return
 
@@ -41,14 +42,14 @@ def migrate_yaml_pair(source_path, target_path, label):
     with open(target_path, 'w', encoding='utf-8') as f:
         yaml.dump(updated_data, f, default_flow_style=False, allow_unicode=True, sort_keys=False, width=1000)
     
-    print(f"[{label}] Sync completed: {source_path.name} -> {target_path.name}")
+    logger.info(f"[{label}] Sync completed: {source_path.name} -> {target_path.name}")
 
 def run_migration(reverse=False):
     ROOT = Path(__file__).resolve().parent.parent 
     DATA_DIR = Path.home() / "Documents" / "ALISU_DATA"
     
     mode_label = "REVERSE (Data -> Template)" if reverse else "NORMAL (Template -> Data)"
-    print(f"--- RUNNING MIGRATION: {mode_label} ---")
+    logger.info(f"--- RUNNING MIGRATION: {mode_label} ---")
 
     src_global = ROOT / "config_example.yaml"
     dst_global = DATA_DIR / "config.yaml"

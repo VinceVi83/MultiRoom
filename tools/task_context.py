@@ -5,6 +5,8 @@ from pathlib import Path
 from dataclasses import dataclass, fields, asdict, field
 from config_loader import cfg, ReturnCode
 from tools.utils import Utils
+import logging
+logger = logging.getLogger(__name__)
 
 @dataclass
 class TaskContext:
@@ -59,21 +61,21 @@ class TaskContext:
         return data
 
     def display_report(self, new_audio_name="None"):
-        print("\n" + "="*50)
-        print(f"{'DISPATCH REPORT':^50}")
-        print("="*50)
-        print(f"{'Input:':<15} {self.user_input}")
-        print(f"{'File:':<15} {new_audio_name}")
-        print("-" * 50)
-        print(f"{'Location:':<15} {self.location}")
-        print(f"{'Category:':<15} {self.category}")
-        print(f"{'Label:':<15} {self.sub_category}")
-        print(f"{'Result:':<15} {Utils.format_result(self.result)}")
-        print(f"{'ReturnCode:':<15} {Utils.format_result(self.return_code)}")
-        print(f"{'Duration:':<15} {self.duration}s")
-        print(f"{'LoadTimeLLM:':<15} {self.duration_load}s")
-        print(f"{'InferenceTime:':<15} {self.duration_inference}s")
-        print("="*50 + "\n")
+        logger.info("="*50)
+        logger.info(f"{'DISPATCH REPORT':^50}")
+        logger.info("="*50)
+        logger.info(f"{'Input:':<15} {self.user_input}")
+        logger.info(f"{'File:':<15} {new_audio_name}")
+        logger.info("-" * 50)
+        logger.info(f"{'Location:':<15} {self.location}")
+        logger.info(f"{'Category:':<15} {self.category}")
+        logger.info(f"{'Label:':<15} {self.sub_category}")
+        logger.info(f"{'Result:':<15} {Utils.format_result(self.result)}")
+        logger.info(f"{'ReturnCode:':<15} {Utils.format_result(self.return_code)}")
+        logger.info(f"{'Duration:':<15} {self.duration}s")
+        logger.info(f"{'LoadTimeLLM:':<15} {self.duration_load}s")
+        logger.info(f"{'InferenceTime:':<15} {self.duration_inference}s")
+        logger.info("="*50 + "\n")
 
     def add_durations(self, json_data: dict):
         try:
@@ -131,5 +133,5 @@ class TaskContext:
             return self.clone_safe()
 
         except Exception as e:
-            print(f"[!] Error archiving in TaskContext : {e}")
+            logger.error(f"[!] Error archiving in TaskContext : {e}")
             return self.clone_safe()

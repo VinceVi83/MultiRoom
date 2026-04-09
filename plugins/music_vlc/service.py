@@ -1,6 +1,8 @@
 from tools.llm_agent import llm
 from plugins.music_vlc.vlc_user_manager import VLCUserManager
 from tools.utils import Utils
+import logging
+logger = logging.getLogger(__name__)
 
 class MusicVlcService:
     """Music VLC Service Plugin
@@ -76,7 +78,7 @@ class MusicVlcService:
                 return self.cfg.RETURN_CODE.ERR
 
         except Exception as e:
-                print(f"[PLUGIN MusicVlcService MUSIC_AGENT ERROR] {e}")
+                logger.error(f"[PLUGIN MusicVlcService MUSIC_AGENT ERROR] {e}")
                 return self.cfg.RETURN_CODE.ERR
 
         action = res.get('ACTION', 'ERR')

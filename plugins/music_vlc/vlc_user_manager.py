@@ -3,11 +3,12 @@ import random
 import threading
 import time
 from pathlib import Path
-from tools.utils import SimpleStore, Utils
+from tools.utils import SimpleStore
 from plugins.music_vlc.vlc_control import VLCControl
 from plugins.music_vlc.music_monitor import MusicMonitor
 from plugins.music_vlc.playlist_manager import PlaylistManager
-import urllib.parse
+import logging
+logger = logging.getLogger(__name__)
 
 class VLCUserManager:
     """VLC Music Player Manager
@@ -217,7 +218,7 @@ class VLCUserManager:
                 self.print_playlist_summary()
                 
             except Exception as e:
-                print(f"Error parsing playlist XML: {e}")
+                logger.error(f"parsing playlist XML: {e}")
 
     def is_alive(self):
         return self.vlc_instance and self.vlc_instance.process.poll() is None
@@ -252,22 +253,22 @@ class VLCUserManager:
     def print_playlist_summary(self):
         duration_str = time.strftime('%H:%M:%S', time.gmtime(self.total_duration_sec))
         
-        print("\n" + "="*60)
-        print(f"       PLAYLIST CACHE SUMMARY (VLC -> Manager)")
-        print("="*60)
+        logger.info("="*50)
+        logger.info(f"       PLAYLIST CACHE SUMMARY (VLC -> Manager)")
+        logger.info("="*50)
         if not self.current_playlist_files:
-            print(" /!\\ Cache is EMPTY.")
+            logger.info(" /!\\ Cache is EMPTY.")
         else:
-            print(f" Items found    : {len(self.current_playlist_files)}")
-            print(f" Total Duration : {duration_str}")
-            print("-" * 60)
+            logger.info(f" Items found    : {len(self.current_playlist_files)}")
+            logger.info(f" Total Duration : {duration_str}")
+            logger.info("-"*50)
             for i, (name, path) in enumerate(self.current_playlist_files.items()):
                 if i < 5:
-                    print(f" [{i+1:02d}] {name}")
+                    logger.info(f" [{i+1:02d}] {name}")
                 else:
-                    print(f" ... and {len(self.current_playlist_files) - 5} more.")
+                    logger.info(f" ... and {len(self.current_playlist_files) - 5} more.")
                     break
-        print("="*60 + "\n")
+        logger.info("="*50 + "\n")
 
     def stop(self):
         self.stop_event.set()

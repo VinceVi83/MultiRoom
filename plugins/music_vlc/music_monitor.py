@@ -1,13 +1,11 @@
 import os
 import logging
 import xml.etree.cElementTree as ET
-import requests
 import mutagen
 import threading
 from dataclasses import dataclass
-import subprocess
-from pathlib import Path
-from plugins.music_vlc.vlc_control import VLCControl
+import logging
+logger = logging.getLogger(__name__)
 
 @dataclass
 class MusicInfo:
@@ -89,20 +87,20 @@ class MusicMetadata:
 
     def _print_metadata_field(self, field_name, value, default_value):
         actual_value = value if value else default_value
-        print(f"{field_name}          : {actual_value}")
+        logger.info(f"{field_name}          : {actual_value}")
 
     def print_status(self):
         m = self.metadata_handler.data
         
-        print("\n" + "="*50)
-        print("          VLC PLAYBACK STATUS")
-        print("="*50)
-        print(f"FILE           : {self.current_music}")
-        print(f"PATH           : {self.full_path}")
-        print(f"TIME REMAINING : {self.time_remaining}s")
-        print("-" * 50)
-        print("                METADATA")
-        print("-" * 50)
+        logger.info("="*50)
+        logger.info("          VLC PLAYBACK STATUS")
+        logger.info("="*50)
+        logger.info(f"FILE           : {self.current_music}")
+        logger.info(f"PATH           : {self.full_path}")
+        logger.info(f"TIME REMAINING : {self.time_remaining}s")
+        logger.info("-" * 50)
+        logger.info("                METADATA")
+        logger.info("-" * 50)
         self._print_metadata_field("TITLE", m.title, "Unknown")
         self._print_metadata_field("ARTIST", m.artist, "Unknown")
         self._print_metadata_field("ALBUM", m.album, "Unknown")
@@ -110,7 +108,7 @@ class MusicMetadata:
         self._print_metadata_field("CIRCLE/ORG", m.circle, "N/A")
         self._print_metadata_field("LANGUAGE", m.language, "N/A")
         self._print_metadata_field("COMMENT", m.comment, "")
-        print("="*50 + "\n")
+        logger.info("="*50 + "\n")
 
 class MusicMonitor:
     """VLC music playback monitor
@@ -174,7 +172,7 @@ class MusicMonitor:
 
         except Exception as e:
             self.time_remaining = 0
-            print(f"Exception: {type(e).__name__} - {e}")
+            logger.error(f"Exception: {type(e).__name__} - {e}")
     
         finally:
             self._is_updating = False
@@ -195,13 +193,13 @@ class MusicMonitor:
             self.timer_update = None
 
     def print_status(self):
-        print("-" * 30)
-        print(f"PORT VLC       : {self.port_ctrl}")
-        print(f"FILE           : {self.current_music}")
-        print(f"FULL PATH      : {self.full_path}")
-        print(f"TIME REMAINING : {self.time_remaining}s")
+        logger.info("-" * 30)
+        logger.info(f"PORT VLC       : {self.port_ctrl}")
+        logger.info(f"FILE           : {self.current_music}")
+        logger.info(f"FULL PATH      : {self.full_path}")
+        logger.info(f"TIME REMAINING : {self.time_remaining}s")
         
         m = self.metadata_handler.data
-        print(f"METADATA       : {m.title} - {m.artist} ({m.album})")
-        print(f"GENRE/CIRCLE   : {m.genre} / {m.circle}")
-        print("-" * 30)
+        logger.info(f"METADATA       : {m.title} - {m.artist} ({m.album})")
+        logger.info(f"GENRE/CIRCLE   : {m.genre} / {m.circle}")
+        logger.info("-" * 30)

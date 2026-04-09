@@ -2,6 +2,8 @@ import requests
 import json
 import os
 from plugins.home_automation.ha_mapping import DeviceCollection
+import logging
+logger = logging.getLogger(__name__)
 
 class CommunicationHA:
     """Home Assistant Service Plugin
@@ -25,7 +27,7 @@ class CommunicationHA:
                 cls._instance = super(CommunicationHA, cls).__new__(cls)
                 cls._instance._ready_flag = False 
             except Exception as e:
-                print(f"[CRITICAL] Failed to create CommunicationHA instance: {e}")
+                logger.error(f"[CRITICAL] Failed to create CommunicationHA instance: {e}")
                 return None
         return cls._instance
 
@@ -48,9 +50,9 @@ class CommunicationHA:
                 self.devices = DeviceCollection(data, self)
                 self._ready_flag = True
             else:
-                print(f"[!] Registry file missing: {registry_file}")
+                logger.info(f"[!] Registry file missing: {registry_file}")
         except Exception as e:
-            print(f"[!] Error initializing devices: {e}")
+            logger.error(f"[!] Error initializing devices: {e}")
 
     def call_action(self, domain, service, entity_id, data=None):
         endpoint = f"{self.url}/services/{domain}/{service}"
@@ -136,7 +138,7 @@ class CommunicationHA:
             return self.cfg.RETURN_CODE.ERR_INVALID_ARGUMENT
 
         except Exception as e:
-            print(f"[!] CommunicationHA handle_request error: {e}")
+            logger.error(f"[!] CommunicationHA handle_request error: {e}")
             return self.cfg.RETURN_CODE.ERR
 
     def get_state(self, entity_id):

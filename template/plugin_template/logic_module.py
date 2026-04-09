@@ -1,6 +1,7 @@
-import json
 from pathlib import Path
 from config_loader import cfg
+import logging
+logger = logging.getLogger(__name__)
 
 class PluginLogic:
     """Plugin Logic Module

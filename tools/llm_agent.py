@@ -6,7 +6,8 @@ import time
 from config_loader import cfg
 from types import SimpleNamespace
 import threading
-
+import logging
+logger = logging.getLogger(__name__)
 
 class OllamaClient:
     """Ollama API Client for LLM interactions
@@ -67,14 +68,14 @@ class OllamaClient:
             return
         if not self.debug:
             return
-        print(message)
+        logger.info(message)
         
     def _print_verbose(self, message):
         if not self.is_ready:
             return
         if not self.verbose:
             return
-        print(message)
+        logger.info(message)
 
     def execute(self, user_input, agent_cfg=None, debug=False, verbose=False):
         self.verbose = verbose

@@ -19,9 +19,7 @@ sys:
     - Kitchen
     - Bathroom
     - Toilet
-    - ALL
     BYPASS_ALL:
-    - all
     - house
     - everywhere
 

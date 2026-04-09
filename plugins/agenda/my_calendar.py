@@ -1,5 +1,3 @@
-import os
-import sys
 import requests
 import vobject
 import json
@@ -8,7 +6,8 @@ from datetime import datetime
 from pathlib import Path
 from datetime import timedelta
 from config_loader import cfg
-from plugins.agenda.mailer_proton import MailerProton
+import logging
+logger = logging.getLogger(__name__)
 
 class CalendarService:
     """Calendar Service Plugin
@@ -77,7 +76,7 @@ class CalendarService:
             response.raise_for_status()
             calendar = vobject.readOne(response.text)
         except (requests.RequestException, Exception) as e:
-             print(f"[!] Network error: Unable to fetch calendar: {e}")
+             logger.error(f"[!] Network error: Unable to fetch calendar: {e}")
              return []
 
         events = []
@@ -196,7 +195,8 @@ class CalendarService:
             return data
 
         except Exception as e:
-            return f"Critical Error in Mail Service: {e}"
+            logger.error(f"Critical Error in Mail Service: {e}")
+            return {}
 
     def _get_week_boundaries(self, offset=0):
         now = datetime.now()

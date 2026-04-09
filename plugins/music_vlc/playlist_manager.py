@@ -1,5 +1,5 @@
-import os
-from pathlib import Path
+import logging
+logger = logging.getLogger(__name__)
 
 class PlaylistManager:
     """Music Playlist Manager

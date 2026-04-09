@@ -1,6 +1,8 @@
 import requests
 import json
 import os
+import logging
+logger = logging.getLogger(__name__)
 
 class HomeAutomationRegistry:
     """Home Automation Entity Registry
@@ -65,7 +67,7 @@ class HomeAutomationRegistry:
             services = requests.get(f"{self.url}/services", headers=self.headers, timeout=10).json()
             return states, services
         except Exception as e:
-            print(f"Network error HA: {e}")
+            logger.error(f"Network error HA: {e}")
             return None, None
 
     def _safe_load_json(self, filename):
@@ -75,7 +77,7 @@ class HomeAutomationRegistry:
                 with open(path, "r", encoding="utf-8") as f:
                     return json.load(f)
             except:
-                print(f"Error reading {filename}, reset.")
+                logger.error(f"reading {filename}, reset.")
         return {}
 
     def _safe_save_json(self, data, filename):
@@ -201,6 +203,6 @@ class HomeAutomationRegistry:
 
 if __name__ == "__main__":
     reg = HomeAutomationRegistry()
-    print(f"Actuators: {reg.sync_actuators()}")
-    print(f"Buttons: {reg.sync_button_mapping()}")
-    print(f"Batteries: {reg.sync_batteries()}")
+    logger.info(f"Actuators: {reg.sync_actuators()}")
+    logger.info(f"Buttons: {reg.sync_button_mapping()}")
+    logger.info(f"Batteries: {reg.sync_batteries()}")

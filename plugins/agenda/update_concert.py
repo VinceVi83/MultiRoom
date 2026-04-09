@@ -1,9 +1,10 @@
-import sys, json, os, PyPDF2, re, datetime
+import json, os, PyPDF2, re, datetime
 from pathlib import Path
 from thefuzz import fuzz
 from doctr.io import DocumentFile
 from doctr.models import ocr_predictor
 import logging
+logger = logging.getLogger(__name__)
 logging.getLogger("PyPDF2").setLevel(logging.ERROR)
 
 from config_loader import cfg 
@@ -101,7 +102,7 @@ def get_pdf_raw_text(pdf_path):
             reader = PyPDF2.PdfReader(f)
             return "\n".join([p.extract_text() for p in reader.pages[:2] if p.extract_text()])
     except Exception as e:
-        print(f"❌ Erreur lors de la lecture du texte brut de {pdf_path.name}: {e}")
+        logger.error(f"❌ Erreur lors de la lecture du texte brut de {pdf_path.name}: {e}")
         return ""
 
 def get_pdf_ocr_text(pdf_path):
@@ -118,7 +119,7 @@ def get_pdf_ocr_text(pdf_path):
         return "\n\n".join(blocks)
         
     except Exception as e:
-        print(f"❌ Erreur lors de l'OCR de {pdf_path.name}: {e}")
+        logger.error(f"❌ Erreur lors de l'OCR de {pdf_path.name}: {e}")
         return ""
 
 def extract_ticket_data(pdf_path):
@@ -161,7 +162,7 @@ def create_tmp_ics(pdf_name, info):
 
     try:
         if not template_path.exists():
-            print(f"Warning: ICS template not found at {template_path}")
+            logger.info(f"Warning: ICS template not found at {template_path}")
             return False
         
         with open(template_path, "r", encoding="utf-8") as t:
@@ -172,7 +173,7 @@ def create_tmp_ics(pdf_name, info):
             f.write(template_content.format(**params))
         return True
     except Exception as e:
-        print(f"Error reading ICS template: {e}")
+        logger.error(f"reading ICS template: {e}")
         return False
 
 def sync_tickets_to_calendar(verbose=False):
@@ -230,12 +231,12 @@ def sync_tickets_to_calendar(verbose=False):
 if __name__ == "__main__":
     results = sync_tickets_to_calendar(verbose=True)
     
-    print("\n--- UPDATE REPORT ---")
-    print(f"Added tickets ({len(results['added_tickets'])}):")
+    logger.info("\n--- UPDATE REPORT ---")
+    logger.info(f"Added tickets ({len(results['added_tickets'])}):")
     for item in results['added_tickets']:
-        print(f"  {item}")
+        logger.info(f"  {item}")
             
-    print(f"Created ICS ({len(results['created_ics'])}):")
+    logger.info(f"Created ICS ({len(results['created_ics'])}):")
     for filename in results['created_ics']:
-        print(f"  {filename}")
-    print("----------------------")
+        logger.info(f"  {filename}")
+    logger.info("----------------------")

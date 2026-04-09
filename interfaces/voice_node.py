@@ -1,4 +1,4 @@
-import os, sys, subprocess, platform, argparse, time
+import sys, argparse, time
 import numpy as np
 import wave
 import pyaudio
@@ -28,7 +28,7 @@ class UnifiedSpeechSystem:
         
         try:
             self.messenger = HubMessenger(
-                host="172.21.8.200",
+                host="172.30.162.11",
                 cert_path=cert_path, 
                 user=user, 
                 password=password
@@ -129,13 +129,23 @@ if __name__ == "__main__":
     parser.add_argument("--password", default="test", help="Login password")
     args = parser.parse_args()
     
-    signal.signal(signal.SIGINT, lambda sig, frame: node.stop())
+    def signal_handler(sig, frame):
+        print("\n[INFO] Arrêt forcé...")
+        if node:
+            node.running = False
+        import os
+        os._exit(0)
+
+    signal.signal(signal.SIGINT, signal_handler)
+
     try:
         node = UnifiedSpeechSystem(mode=args.mode, cert_path=args.cert, user=args.user, password=args.password)
         node.start()
     except KeyboardInterrupt:
-        if node: node.stop()
-        sys.exit(0)
+        pass
     except Exception as e:
         print(f"[FATAL] Node crashed: {e}")
         sys.exit(1)
+    finally:
+        print("[INFO] Nettoyage des ressources terminé.")
+        sys.exit(0)

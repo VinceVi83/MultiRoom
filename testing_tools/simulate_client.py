@@ -1,13 +1,10 @@
-import os
 import json
 import time
 import argparse
 import sys
 from pathlib import Path
-from config_loader import cfg
 from tools.hub_messenger import HubMessenger
 from tools.task_context import TaskContext
-
 
 class STTClientSimulator:
     """STTClientSimulator

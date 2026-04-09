@@ -1,8 +1,7 @@
-import time
-import logging
-from threading import Thread, Event, Lock
+from threading import Event
 from config_loader import cfg
-
+import logging
+logger = logging.getLogger(__name__)
 
 class UserSession:
     """User Session Manager

@@ -1,11 +1,12 @@
 import shutil
 import yaml
-import os
 import socket
 import json
 from enum import Enum
 from pathlib import Path
 from types import SimpleNamespace
+import logging
+logger = logging.getLogger(__name__)
 
 class ReturnCode(Enum):
     SUCCESS = 1
@@ -180,7 +181,7 @@ class AlisuConfig:
             default_system_content = {"system": master_schema}
             with open(system_user_file, 'w', encoding='utf-8') as f:
                 yaml.dump(default_system_content, f, default_flow_style=False, allow_unicode=True)
-            print(f"User config system created : {system_user_file.name}")
+            logger.info(f"User config system created : {system_user_file.name}")
 
 
         for user_file in data_users_dir.glob("*.yaml"):
@@ -343,7 +344,7 @@ class AlisuConfig:
             if config_path.exists():
                 self._parse_to_obj(config_path)
             else:
-                print(f'SYSTEM : Please copy update configfile in {config_path}')
+                logger.info(f'SYSTEM : Please copy update configfile in {config_path}')
 
     def _load_users_config(self):
         if not self.USERS_DIR.exists():
@@ -359,7 +360,7 @@ class AlisuConfig:
                         ns_user_data = self._dict_to_namespace(user_data)
                         setattr(self.cfg, username, ns_user_data)
                 except Exception as e:
-                    print(f"SYSTEM ERROR: Failed to load user profile {user_file.name}: {e}")
+                    logger.error(f"Failed to load user profile {user_file.name}: {e}")
 
     def _load_agents(self):
         self._process_yaml_config(self.ROOT / "agents_config.yaml", self.cfg)
@@ -414,7 +415,7 @@ def print_config_paths(obj, current_path="cfg"):
             print_config_paths(item, f"{current_path}[{i}]")
     
     else:
-        print(f"{current_path}")
+        logger.info(f"{current_path}")
 
 import sys
 cfg = AlisuConfig().cfg
@@ -424,8 +425,8 @@ cfg.verbose = 1 if "-v" in sys.argv or "--verbose" in sys.argv else 0
 cfg.no_bypass = 0 if "--no-bypass" in sys.argv else 1
 
 if not cfg.no_bypass:
-    print("--- BYPASS DISABLED ---")
+    logger.info("--- BYPASS DISABLED ---")
 if cfg.debug:
-    print("--- DEBUG MODE ENABLED ---")
+    logger.info("--- DEBUG MODE ENABLED ---")
 if cfg.verbose:
-    print("--- VERBOSE MODE ENABLED ---")
+    logger.info("--- VERBOSE MODE ENABLED ---")

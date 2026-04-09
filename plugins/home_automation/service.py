@@ -3,7 +3,8 @@ from plugins.home_automation.ha_listener import HAListener
 from plugins.home_automation.ha_registry import HomeAutomationRegistry
 from plugins.home_automation.ha_weather import WeatherHaApi, WeatherStatus
 from tools.llm_agent import llm
-from tools.utils import Utils
+import logging
+logger = logging.getLogger(__name__)
 
 class HomeAutomationService:
     """Home Automation Service Plugin
@@ -27,7 +28,7 @@ class HomeAutomationService:
         self.ha_weather = WeatherHaApi(cfg)
 
         if not self.cfg:
-            print(f"[!] Error: Configuration for {self.plugin_name} not found.")
+            logger.info(f"[!] Error: Configuration for {self.plugin_name} not found.")
 
     def execute_native(self, context):
         try:
@@ -38,7 +39,7 @@ class HomeAutomationService:
                 return self.ha_service.handle_request(context)
             
         except Exception as e:
-            print(f"Error parsing params in service: {e}")
+            logger.error(f"parsing params in service: {e}")
             return self.cfg.RETURN_CODE.ERR
 
     def execute(self, context, callback_internal_request_api):
@@ -63,7 +64,7 @@ class HomeAutomationService:
                 context.result = "Already Executed"
             return result
         except Exception as e:
-            print(f"[PLUGIN HomeAutomationService ERROR] {e}")
+            logger.error(f"[PLUGIN HomeAutomationService ERROR] {e}")
             return self.cfg.RETURN_CODE.ERR
     
     def get_status(self):

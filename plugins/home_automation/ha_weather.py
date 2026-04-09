@@ -2,7 +2,8 @@ import requests
 from dataclasses import dataclass
 from typing import List, Optional
 from datetime import datetime
-
+import logging
+logger = logging.getLogger(__name__)
 
 @dataclass
 class WeatherHour:

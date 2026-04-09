@@ -2,6 +2,8 @@ from config_loader import cfg
 from tools.llm_agent import llm
 from tools.utils import Utils
 from plugins.your_plugin.logic_module import PluginLogic
+import logging
+logger = logging.getLogger(__name__)
 
 class YourPluginService:
     """YourPlugin Service Plugin
@@ -18,7 +20,7 @@ class YourPluginService:
         self.config = getattr(cfg, self.plugin_name.lower(), None)
         
         if not self.config:
-            print(f"[!] Error: Configuration for {self.plugin_name} not found.")
+            logger.info(f"[!] Error: Configuration for {self.plugin_name} not found.")
 
     def execute(self, context, callback_internal_request_api):
         logic = PluginLogic()
