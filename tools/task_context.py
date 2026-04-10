@@ -18,14 +18,16 @@ class TaskContext:
     Role: Manages task execution context, session data, and result reporting.
     
     Methods:
-        __init__(self, user_input, session=None, audio_path=None, category='NONSENSE', label='NONSENSE', result='NONSENSE', duration_load=0, duration=0, duration_inference=0, location='NONSENSE', start=None, data=None, return_code=None) : Initialize task context with input, session, and metadata.
+        __init__(self, user_input, session=None, audio_path=None, category='NONSENSE', sub_category='NONSENSE', result='NONSENSE', duration_load=0, duration_inference=0, duration=0, location='NONSENSE', start=None, data=None, data_request=None, return_code=None, call_counter=0) : Initialize task context with input, session, and metadata.
         add_step(self, step_name, data) : Add a step with data to the context.
         clone_safe(self) : Create a safe clone of the context with formatted return code.
         from_json(self, json_str) : Create TaskContext instance from JSON string.
         to_dict(self) : Convert context to dictionary, excluding session.
         display_report(self, new_audio_name='None') : Display formatted dispatch report.
+        add_durations(self, json_data) : Add duration metrics from JSON data.
         update_record(self, name) : Update archive record with current task data.
         _archive_and_rename(self) : Archive task files and rename with timestamp.
+        report_action_status(self) : Generate and return action status report.
     """
     user_input: str
     session: any = None
@@ -155,7 +157,7 @@ class TaskContext:
             report = report_text.get('content', 'FF')
             logger.info(f"ALISU: {report}")
             return report
-        
+
         except Exception as e:
             print("Exception", e)
             if "success" in self.return_code:

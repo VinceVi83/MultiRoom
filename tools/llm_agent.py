@@ -21,6 +21,7 @@ class OllamaClient:
         _reconnect_loop(self) : Loop to reconnect when offline.
         _print_verbose(self, message) : Print message if verbose mode is enabled.
         _print_debug(self, message) : Print message if debug mode is enabled.
+        normalize_keys(self, d) : Normalize dictionary keys to lowercase.
         execute(self, user_input, agent_cfg=None, debug=False, verbose=False) : Execute LLM query.
         manage_vram(self, target_model) : Manage VRAM by switching models.
         _prepare(self, c, user_input) : Prepare request parameters.
@@ -30,6 +31,8 @@ class OllamaClient:
         self.client = ollama.Client(host=self.base_url)
         self.main_model = cfg.sys.config.MODEL_NAME_MAIN
         self.current_model = None
+        self.debug = False
+        self.verbose = False
         self._lock = threading.Lock()
         
         self.is_ready = True

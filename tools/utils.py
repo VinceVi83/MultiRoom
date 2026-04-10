@@ -7,12 +7,21 @@ import logging
 logger = logging.getLogger(__name__)
 
 class LocalFilesFilter(logging.Filter):
+    """Local Files Logging Filter
+    
+    Role: Filters log records to only include local Python files.
+    
+    Methods:
+        __init__(self) : Initialize filter with local files list.
+        filter(self, record) : Filter log record based on filename.
+    """
     def __init__(self):
         super().__init__()
-        self.local_files = {
-            f for f in os.listdir(os.path.dirname(os.path.abspath(__file__))) 
-            if f.endswith(".py")
-        }
+        self.local_files = set()
+        files_dir = os.path.dirname(os.path.abspath(__file__))
+        for f in os.listdir(files_dir):
+            if f.endswith(".py"):
+                self.local_files.add(f)
 
     def filter(self, record):
         return record.filename in self.local_files
@@ -83,7 +92,10 @@ class Utils:
     def format_result(result):
         if isinstance(result, dict):
             try:
-                return ",".join([f"{k}:{v}" for k, v in result.items()])
+                formatted_items = []
+                for k, v in result.items():
+                    formatted_items.append(f"{k}:{v}")
+                return ",".join(formatted_items)
             except Exception:
                 return str(result)
         return str(result)
@@ -92,16 +104,21 @@ class Utils:
     def to_int(data, key):
         try:
             val = data.get(key)
-            return int(val) if val is not None else -1
+            if val is not None:
+                return int(val)
+            return -1
         except (ValueError, TypeError):
             return -1
     
     @staticmethod
     def to_str(data, key):
         val = data.get(key)
-        if val is None or str(val).strip() == "":
+        if val is None:
             return "ERROR"
-        return str(val)
+        val_str = str(val)
+        if val_str.strip() == "":
+            return "ERROR"
+        return val_str
         
     @staticmethod
     def enable_bypass():
@@ -144,7 +161,7 @@ class SimpleStore:
             json.dump(self.data, f, indent=4, ensure_ascii=False)
 
     def get(self, key):
-        self.load() 
+        self.load()
         if isinstance(self.data, dict):
             return self.data.get(key, [])
         return self.data
