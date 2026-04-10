@@ -2,7 +2,7 @@ AGENDA:
   CALENDAR_AGENT:
     name: "CALENDAR_AGENT"
     model: "qwen2.5:3b"
-    use_json: true
+    use_json: false
     options:
       temperature: 0.0
       num_predict: 20
@@ -56,7 +56,7 @@ AGENDA:
   EXTRACT_ARTIST_AGENT:
     name: "EXTRACT_ARTIST_AGENT"
     model: "qwen2.5:3b"
-    use_json: true
+    use_json: false
     options:
       num_ctx: 2048
       temperature: 0.0
@@ -75,7 +75,7 @@ AGENDA:
   NAME_CLASSIFIER_AGENT:
     name: "NAME_CLASSIFIER_AGENT"
     model: "qwen2.5:3b"
-    use_json: true
+    use_json: false
     options:
       num_ctx: 2048
       temperature: 0.0
@@ -97,7 +97,7 @@ AGENDA:
   EXTRACT_VENUE_AGENT:
     name: "EXTRACT_VENUE_AGENT"
     model: "qwen2.5:3b"
-    use_json: true
+    use_json: false
     options:
       num_ctx: 2048
       temperature: 0.0
@@ -116,7 +116,7 @@ AGENDA:
 
   SELECT_MAIN_VENUE_AGENT:
     model: "qwen2.5:3b"
-    use_json: true
+    use_json: false
     options:
       num_ctx: 2048
       temperature: 0.0
@@ -135,7 +135,7 @@ AGENDA:
   VERIFIER_LOCATION_AGENT:
     name: "VERIFIER_LOCATION_AGENT"
     model: "qwen2.5:3b"
-    use_json: true
+    use_json: false
     options:
       num_ctx: 1024
       temperature: 0.0
@@ -159,7 +159,7 @@ AGENDA:
   EXTRACT_DATE_AGENT:
     name: "EXTRACT_DATE_AGENT"
     model: "qwen2.5:3b"
-    use_json: true
+    use_json: false
     options:
       num_ctx: 2048
       temperature: 0.0

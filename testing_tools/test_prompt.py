@@ -169,7 +169,7 @@ def test_full_chain(context):
     
     route_res = llm.execute(context.user_input, cfg.ALL_PURPOSE.ROUTER_AGENT, verbose=False, debug=False)
     context.add_durations(route_res)
-    plugin_name = route_res.get('PLUGIN', 'NONE')
+    plugin_name = route_res.get('plugin', 'NONE')
     
     if plugin_name == 'NONE':
         print('Result: NONSENSE / No route found')
@@ -217,13 +217,13 @@ def _handle_music(context):
     else:
         res = llm.execute(context.user_input, cfg.MUSIC_VLC.MUSIC_AGENT, False, False)
         context.add_durations(res)
-        context.sub_category = res.get('CATEGORY', 'NONE')
+        context.sub_category = res.get('category', 'NONE')
         context.add_step('sub_category', res)
 
     if context.sub_category == 'PLAYLIST_AGENT':
         pl_res = llm.execute(context.user_input, cfg.MUSIC_VLC.PLAYLIST_AGENT, False, False)
         context.add_durations(pl_res)
-        action = pl_res.get('ACTION', 'ERR')
+        action = pl_res.get('action', 'ERR')
         if action in ['UNKNOWN', 'PLAY', 'CREATE', 'ADD', 'DEL', 'INFO']:
             context.result, context.return_code = action, cfg.RETURN_CODE.SUCCESS
         context.add_step('Result', pl_res)
@@ -231,7 +231,7 @@ def _handle_music(context):
     elif context.sub_category == 'MUSIC':
         vlc_res = llm.execute(context.user_input, cfg.MUSIC_VLC.VLC_AGENT, False, False)
         context.add_durations(vlc_res)
-        action = vlc_res.get('ACTION', '0')
+        action = vlc_res.get('action', '0')
         if action in ['UNKNOWN', 'TOGGLE', 'PREVIOUS', 'NEXT', 'VOL_DOWN', 'VOL_UP', 'SHUFFLE', 'INFO']:
             context.result, context.return_code = action, cfg.RETURN_CODE.SUCCESS
         context.add_step('Result', vlc_res)
@@ -242,7 +242,7 @@ def _handle_music(context):
 def _handle_agenda(context):
     res = llm.execute(context.user_input, cfg.AGENDA.CALENDAR_AGENT, False, False)
     context.add_durations(res)
-    action = res.get('ACTION', 'NONE')
+    action = res.get('action', 'NONE')
     context.sub_category = action
     context.add_step('sub_category', res)
     
@@ -255,7 +255,7 @@ def _handle_daily(context):
     
     res = llm.execute(context.user_input, agent, False, False)
     context.add_durations(res)
-    action = res.get('ACTION', 'NONE')
+    action = res.get('action', 'NONE')
     context.sub_category = action
     context.add_step('sub_category', res)
 
@@ -271,7 +271,7 @@ def _handle_home_auto(context):
     get_location(context)
     res = llm.execute(context.user_input, cfg.HOME_AUTOMATION.DOMOTIC_AGENT, False, False)
     context.add_durations(res)
-    action, dtype = res.get('ACTION', 'NONE'), res.get('TYPE', 'NONE')
+    action, dtype = res.get('action', 'NONE'), res.get('type', 'NONE')
     context.sub_category = f"{dtype}:{action}"
     context.add_step('sub_category', res)
 

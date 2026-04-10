@@ -36,20 +36,18 @@ class DailyService:
         try:
             if self.switch_fridge(context):
                 category_res = llm.execute(context.user_input, self.cfg.FRIDGE_AGENT)
-                context.add_durations(category_res)
                 context.add_step('sub_category', category_res)
-                action = category_res.get('ACTION', 'ERR')
+                action = category_res.get('action', 'ERR')
                 context.sub_category = action
                 return self.cfg.RETURN_CODE.ERR_NOT_IMPLEMENTED
             else:
                 category_res = llm.execute(context.user_input, self.cfg.DAILY_AGENT)
-                context.add_durations(category_res)
-                action = category_res.get('ACTION', 'ERR')
+                action = category_res.get('action', 'ERR')
                 context.sub_category = action
                 context.add_step('sub_category', category_res)
             if "_ADD" in action:
                 new_items = llm.execute(context.user_input, self.cfg.EXTRACT_FOOD_AGENT)
-                context.add_durations(new_items)
+                context.add_step('result', new_items)
                 if action == "SHOP_ADD":
                     result = self.shopping.update_shopping_list(new_items)
                 else:

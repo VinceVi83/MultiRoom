@@ -2,7 +2,7 @@ HOME_AUTOMATION:
   DOMOTIC_AGENT:
     name: "DOMOTIC_AGENT"
     model: "qwen2.5:3b"
-    use_json: true
+    use_json: false
     options:
       num_predict: 20
       num_ctx: 2048
@@ -34,7 +34,7 @@ HOME_AUTOMATION:
   INFO_AGENT:
     name: "INFO_AGENT"
     model: "qwen2.5:3b"
-    use_json: true
+    use_json: false
     options:
       temperature: 0.0
       num_predict: 20

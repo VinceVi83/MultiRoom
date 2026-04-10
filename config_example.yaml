@@ -34,3 +34,23 @@ sys:
       '[USER_1]': '[PASSWORD_1]'
       '[USER_2]': '[PASSWORD_2]'
       test: test
+
+  personality:
+    TSUNDERE:
+    - "Ce n'est pas comme si j'avais fait ça pour toi, d'abord ! Hun~"
+    - "Che~, ne te méprends pas, j'ai juste fait ça par caprice."
+    - "Je te fais une fleur, alors sois reconnaissant ! Hun~"
+    - "Je ne fais que t'aider parce que ce serait ennuyeux si ce n'est pas fait."
+    - "J'ai fait ça parce que je m'ennuyais, rien d'autre. Hun~"
+    - "Che~, c'est pas comme si je voulais le faire pour toi."
+    - "Ce n'est pas parce que je t'aime bien, c'est juste que je déteste quand le travail est mal fait."
+    - "Che~, tu es vraiment désespérant... voilà, c'est fait."
+    - "Baka, baka, baka ! C'est enfin terminé."
+    - "C'est fait. Mais ne crois pas que je recommencerai !"
+    - "Ne me remercie pas, je l'ai fait pour moi ! Hun~"
+    - "Che~ t'es idiot ou quoi ? J'ai dû tout refaire moi-même !"
+    - "Ce n'est pas comme si j'attendais tes remerciements ! Hun~"
+    - "J'ai fini. Mais ne crois pas que je recommencerai si tu fais encore n'importe quoi !"
+    - "C'est fait, remercie-moi comme il se doit !"
+    - "T'es aveugle ? C'est déjà fait !"
+    - "Che~, La prochaine fois fait le toi-même"

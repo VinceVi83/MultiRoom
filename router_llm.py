@@ -95,33 +95,27 @@ class RouterLLM:
         return context._archive_and_rename()
 
     def get_location(self, context):
-        print("get_location", Utils.enable_bypass(), "Test")
         if Utils.enable_bypass() and self.bypass_location(context):
-            print("enable_bypass")
             return
 
         local_res = llm.execute(context.user_input, cfg.ALL_PURPOSE.LOCATION_CLEANER_AGENT, verbose=False, debug=False)
-        context.add_durations(local_res)
         if local_res.get('cleaned_command') != 'none':
             context.location = local_res.get('location')
         context.add_step('LOCATION_CLEANER_AGENT', local_res)
         return
 
     def bypass_location(self, context):
-        print("bypass_location")
         user_input_lower = context.user_input.lower()
         for keyword in cfg.sys.config.BYPASS_ALL:
             if keyword.lower() in user_input_lower:
-                print("bypass_location 2", keyword, user_input_lower)
                 context.location = "ALL"
-                context.add_step('bypass_location', {'Location': "ALL", 'bypass': 1})
+                context.add_step('bypass_location', {'location': "ALL", 'bypass': 1})
                 return True
 
         for keyword in cfg.sys.config.REPLACE_LOCATIONS:
             if keyword.lower() in user_input_lower:
-                print("bypass_location 2", keyword, user_input_lower)
                 context.location = keyword
-                context.add_step('bypass_location', {'Location': keyword, 'bypass': 1})
+                context.add_step('bypass_location', {'location': keyword, 'bypass': 1})
                 return True
         return False
 
@@ -132,7 +126,7 @@ class RouterLLM:
             for keyword in keywords:
                 keyword_lower = keyword.lower()
                 if keyword_lower in user_input_lower:
-                    return {'PLUGIN': category, 'bypass': 1}
+                    return {'plugin': category, 'bypass': 1}
         return None
 
     def select_plugin(self, context):
@@ -141,14 +135,13 @@ class RouterLLM:
             category_res = self.bypass_router(context)
         if not category_res:
             category_res = llm.execute(context.user_input, cfg.ALL_PURPOSE.ROUTER_AGENT)
-            context.add_durations(category_res)
 
         context.add_step('ROUTER_AGENT', category_res)
-        context.category = category_res.get('PLUGIN', 'UNKNOWN')
+        context.category = category_res.get('plugin', 'UNKNOWN')
         return context.category.lower() in cfg.LOADED_PLUGINS
 
     def select_and_execute(self, context):
-        start_total = time.time()
+        context.start = time.time()
         try:
             if not self.select_plugin(context):
                 context.return_code = cfg.RETURN_CODE.ERR
@@ -171,7 +164,8 @@ class RouterLLM:
             logger.error(f"[!] Service {context.category} execute failed: {e}")
             return context._archive_and_rename()
 
-        context.duration = time.time() - context.start
+        context.report_action_status()
+        context.duration = round(time.time() - context.start, 3)
         return context._archive_and_rename()
 
     def callback_internal_request_api(self, context):
@@ -211,7 +205,6 @@ class RouterLLM:
                     response_context = self.execute_native(context)
                 elif self.test:
                     result = llm.execute(context.user_input, cfg.ALL_PURPOSE.pre_process_agent)
-                    context.add_durations(result)
                     if result.get('valid', 0):
                         response_context = self.select_and_execute(context)
                     else:

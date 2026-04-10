@@ -2,7 +2,7 @@ SCHEDULER:
   TIME_EXTRACTOR_AGENT:
     name: "TIME_EXTRACTOR_AGENT"
     model: "qwen2.5:3b"
-    use_json: true
+    use_json: false
     options:
       num_ctx: 2048
       temperature: 0.0
@@ -36,7 +36,7 @@ SCHEDULER:
   INTENT_AGENT:
     name: "INTENT_AGENT"
     model: "qwen2.5:3b"
-    use_json: true
+    use_json: false
     options:
       num_ctx: 2048
       temperature: 0.0
@@ -63,7 +63,7 @@ SCHEDULER:
   SYSTEM_AGENT:
     name: "SYSTEM_AGENT"
     model: "qwen2.5:3b"
-    use_json: true
+    use_json: false
     options:
       num_ctx: 2048
       temperature: 0.0

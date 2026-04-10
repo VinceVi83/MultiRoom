@@ -18,9 +18,9 @@ class SchedulerService:
     def execute(self, context, callback_internal_request_api):
         try:
             time_data = llm.execute(context.user_input, self.cfg.TIME_EXTRACTOR_AGENT)
-            context.add_durations(time_data)
+            context.add_step("TIME_EXTRACTOR_AGENT", time_data)
             action = llm.execute(context.user_input, self.cfg.INTENT_AGENT)
-            context.add_durations(action)
+            context.add_step("INTENT_AGENT", time_data)
             raw_cmd = action.get("action", context.user_input)
             tid = f"task_{int(datetime.now().timestamp())}"
             sched, run_time = self._build_schedule(time_data)
@@ -73,7 +73,7 @@ class SchedulerService:
 
     def _prepare_command(self, context, tid, cmd, p_type):
         mode = llm.execute(cmd, self.cfg.SYSTEM_AGENT)
-        context.add_durations(mode)
+        context.add_step("SYSTEM_AGENT", mode)
         clean = f" && crontab -l | grep -v '#ID:{tid}' | crontab -" if p_type != "RECURRING" else ""
         exe = self.handler_script if mode.get("type", "SYSTEM") == "SYSTEM" else "Path(cfg.root) / cfg.sys.SCRIPT_TTS"
         return f"{self.python_bin} {exe} {shlex.quote(cmd)}{clean}"

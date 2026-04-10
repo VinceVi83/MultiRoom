@@ -130,7 +130,6 @@ class SessionManager:
         return False
 
     def _handle_client_action(self, sock, action, payload):
-        print("_handle_client_action")
         if action == "Auth":
             user, pwd = payload.split(":", 1)
             if self._handle_auth(sock, user, pwd):

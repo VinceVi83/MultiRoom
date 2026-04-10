@@ -60,28 +60,25 @@ class MusicVlcService:
                 context.sub_category = category_res
             else:
                 category_res = llm.execute(context.user_input, self.cfg.MUSIC_AGENT)
-                context.add_durations(category_res)
-                context.sub_category = category_res.get('CATEGORY', 'NONE')
+                context.sub_category = category_res.get('category', 'NONE')
                 context.add_step('sub_category', category_res)
  
             if context.sub_category == 'PLAYLIST':
                 res = llm.execute(context.user_input, self.cfg.PLAYLIST_AGENT)
-                context.add_durations(res)
             elif context.sub_category == 'MUSIC':
                 res = llm.execute(context.user_input, self.cfg.VLC_AGENT)
-                context.add_durations(res)
             elif context.sub_category == 'DISCOVER':
                 context.result = 'Done'
-                res = {'ACTION': 'DISCOVER'}
+                res = {'action': 'DISCOVER'}
             else:
-                res = {'ACTION': 'ERR'}
+                res = {'action': 'ERR'}
                 return self.cfg.RETURN_CODE.ERR
 
         except Exception as e:
                 logger.error(f"[PLUGIN MusicVlcService MUSIC_AGENT ERROR] {e}")
                 return self.cfg.RETURN_CODE.ERR
 
-        action = res.get('ACTION', 'ERR')
+        action = res.get('action', 'ERR')
         context.add_step('Result', res)
         context.result = action
         return self.execute_native(context)

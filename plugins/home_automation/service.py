@@ -35,7 +35,7 @@ class HomeAutomationService:
             params = {}
             if context.sub_category and (',' in context.sub_category or ':' in context.sub_category):
                 params = dict(item.split(":") for item in context.sub_category.split(",") if ":" in item)
-                context.params = params 
+                context.params = params
                 return self.ha_service.handle_request(context)
             
         except Exception as e:
@@ -45,8 +45,7 @@ class HomeAutomationService:
     def execute(self, context, callback_internal_request_api):
         try:
             result = llm.execute(context.user_input, self.cfg.DOMOTIC_AGENT)
-            context.add_durations(result)
-            action, dtype = result.get('ACTION', 'NONE'), result.get('TYPE', 'NONE')
+            action, dtype = result.get('action', 'NONE'), result.get('type', 'NONE')
             context.sub_category = f"{dtype}:{action}"
             context.add_step('sub_category', result)
 

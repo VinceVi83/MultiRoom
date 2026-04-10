@@ -33,7 +33,6 @@ class MailerProton:
             return cfg.RETURN_CODE.ERR
 
         success = self._send_email(msg, target_ip, smtp_port, config)
-
         if debug:
             duration = time.time() - start_time
             logger.info(f"Mail delivered via {target_ip} in {duration:.2f}s")
@@ -44,8 +43,8 @@ class MailerProton:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.settimeout(3)
             if s.connect_ex((target_ip, smtp_port)) != 0:
-                logger.info(f"[!] Network Error: Windows Host {target_ip}:{smtp_port} is unreachable.")
-                logger.info("[!] Fix: Enable 'Allow LAN' in Proton Bridge and open Windows Firewall port 1025.")
+                logger.error(f"[!] Network Error: Windows Host {target_ip}:{smtp_port} is unreachable.")
+                logger.error("[!] Fix: Enable 'Allow LAN' in Proton Bridge and open Windows Firewall port 1025.")
                 return False
         return True
 

@@ -68,7 +68,7 @@ class OllamaClient:
             return
         if not self.debug:
             return
-        logger.info(message)
+        logger.debug(message)
         
     def _print_verbose(self, message):
         if not self.is_ready:
@@ -77,10 +77,14 @@ class OllamaClient:
             return
         logger.info(message)
 
+    def normalize_keys(self, d):
+        if isinstance(d, dict):
+            return {k.lower(): self.normalize_keys(v) for k, v in d.items()}
+        return d
+
     def execute(self, user_input, agent_cfg=None, debug=False, verbose=False):
         self.verbose = verbose
         self.debug = debug
-        
         if not self.is_ready:
             return {"error": "Ollama is offline", "status": "reconnecting"}
 
@@ -95,12 +99,24 @@ class OllamaClient:
                 self._print_verbose("USER INPUT    : " + user_input)
 
                 response = self.client.chat(**self._prepare(agent_cfg, user_input))
-
                 content = response['message']['content'].strip()
-                result = json.loads(content) if agent_cfg_final.use_json else content
 
+                if agent_cfg_final.use_json:
+                    result = json.loads(content)
+                elif "{" in content and "}" in content:
+                    try:
+                        start = content.find('{')
+                        end = content.rfind('}') + 1
+                        raw_dict = json.loads(content[start:end])
+                        result = {str(k).strip().upper(): v for k, v in raw_dict.items()}
+                    except json.JSONDecodeError:
+                        result = {"report": content, "error": "json.JSONDecodeError"}
+                    except Exception as e:
+                        result = {"report": content, "error": "json.JSONDecodeError"}
+                else:
+                    result = content
+                    
                 self._print_verbose("RESULT        : " + str(result))
-                
                 o_load   = response.get('load_duration', 0) / 1e9
                 o_p_eval = response.get('prompt_eval_duration', 0) / 1e9
                 o_eval   = response.get('eval_duration', 0) / 1e9
@@ -109,9 +125,8 @@ class OllamaClient:
                     "o_load": o_load, 
                     "inference_time": inference_time
                 }
-
-                if agent_cfg_final.use_json and isinstance(result, dict):
-                    result = result | metrics
+                if isinstance(result, dict):
+                        result = result | metrics
                 else:
                     result = {"content": result} | metrics
 
@@ -122,6 +137,7 @@ class OllamaClient:
                     self._print_debug("Inference (GPU)    : " + str(inference_time) + ".3fs")
                     self._print_debug("TOTAL DURATION     : " + str(o_total) + ".3fs\n")
 
+                result = self.normalize_keys(result)
                 return result
 
             except Exception as e:

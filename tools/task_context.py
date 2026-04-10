@@ -5,6 +5,9 @@ from pathlib import Path
 from dataclasses import dataclass, fields, asdict, field
 from config_loader import cfg, ReturnCode
 from tools.utils import Utils
+from tools.llm_agent import llm
+import random
+import copy
 import logging
 logger = logging.getLogger(__name__)
 
@@ -32,9 +35,9 @@ class TaskContext:
     result: str = "NONSENSE"
     duration_load: float = 0
     duration_inference: float = 0
-    duration: int = 0
+    duration: float = 0
     location: str = "NONSENSE"
-    start: float = 0
+    start: float = time.time()
     data: dict = field(default_factory=dict)
     data_request: dict = field(default_factory=dict)
     return_code: ReturnCode = cfg.RETURN_CODE.ERR
@@ -42,6 +45,7 @@ class TaskContext:
 
     def add_step(self, step_name, data):
         self.data[step_name] = data
+        self.add_durations(data)
 
     def clone_safe(self):
         self.return_code = Utils.format_result(self.return_code)
@@ -135,3 +139,26 @@ class TaskContext:
         except Exception as e:
             logger.error(f"[!] Error archiving in TaskContext : {e}")
             return self.clone_safe()
+
+    def report_action_status(self):
+        report_input = (
+            f"User Command: {self.user_input}\n"
+            f"Status: {self.return_code}\n"
+            f"Result: {self.result}"
+        )
+        try:
+            selected_replica = random.choice(cfg.sys.personality.TSUNDERE)
+            tmp_agent = copy.deepcopy(cfg.ALL_PURPOSE.TSUNDERE_V2_REPORT_AGENT)
+            tmp_agent.prompt = tmp_agent.prompt.replace('RANDOM_REPLICA', selected_replica)
+            report_text = llm.execute(report_input, tmp_agent, debug=True)
+            self.add_step('report', report_text)
+            report = report_text.get('content', 'FF')
+            logger.info(f"ALISU: {report}")
+            return report
+        
+        except Exception as e:
+            print("Exception", e)
+            if "success" in self.return_code:
+                return f"Action completed: {self.user_input}."
+            else:
+                return "I'm sorry, I encountered an issue processing that request."

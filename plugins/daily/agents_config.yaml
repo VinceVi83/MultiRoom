@@ -2,7 +2,7 @@ DAILY:
   DAILY_AGENT:
     name: "DAILY_AGENT"
     model: "qwen2.5:3b"
-    use_json: true
+    use_json: false
     options:
       temperature: 0.0
       num_predict: 20
@@ -25,7 +25,7 @@ DAILY:
   FRIDGE_AGENT:
     name: "FRIDGE_AGENT"
     model: "qwen2.5:3b"
-    use_json: true
+    use_json: false
     options:
       temperature: 0.0
       num_predict: 20
@@ -48,7 +48,7 @@ DAILY:
   EXTRACT_FOOD_AGENT:
     name: "EXTRACT_FOOD_AGENT"
     model: "qwen2.5:3b"
-    use_json: true
+    use_json: false
     options:
       temperature: 0.0
       num_predict: 100

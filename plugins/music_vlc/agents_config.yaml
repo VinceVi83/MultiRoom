@@ -2,7 +2,7 @@ MUSIC_VLC:
   MUSIC_AGENT:
     name: "MUSIC_AGENT"
     model: "qwen2.5:3b"
-    use_json: true
+    use_json: false
     options:
       temperature: 0.0
       num_predict: 100
@@ -25,7 +25,7 @@ MUSIC_VLC:
   PLAYLIST_AGENT:
     name: "PLAYLIST_AGENT"
     model: "qwen2.5:3b"
-    use_json: true
+    use_json: false
     options:
       temperature: 0.0
       num_predict: 100
@@ -66,7 +66,7 @@ MUSIC_VLC:
   VLC_AGENT:
     name: "VLC_AGENT"
     model: "qwen2.5:3b"
-    use_json: true
+    use_json: false
     options:
       temperature: 0.0
       num_predict: 100

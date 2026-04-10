@@ -3,7 +3,7 @@ PLUGIN_NAME:
   INTENT_AGENT:
     name: "INTENT_AGENT"
     model: "qwen2.5:3b"
-    use_json: true
+    use_json: false
     options:
       temperature: 0.0
       num_predict: 20
@@ -23,7 +23,7 @@ PLUGIN_NAME:
   EXTRACT_DATA:
     name: "EXTRACT_DATA"
     model: "qwen2.5:3b"
-    use_json: true
+    use_json: false
     options:
       temperature: 0.0
       num_ctx: 2048
