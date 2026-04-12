@@ -28,7 +28,7 @@ class UnifiedSpeechSystem:
         
         try:
             self.messenger = HubMessenger(
-                host="172.30.162.11",
+                host="127.0.0.1",
                 cert_path=cert_path, 
                 user=user, 
                 password=password

@@ -175,6 +175,7 @@ class SessionManager:
                 hw_sig, action = parts[0], parts[1]
                 payload = parts[2] if len(parts) > 2 else ""
                 if hw_sig not in self.allowed_sigs:
+                    logger.error(f"ERROR: Unauthorized Hardware {hw_sig}")
                     sock.sendall(b"ERROR: Unauthorized Hardware")
                     break
                 self._handle_client_action(sock, action, payload)

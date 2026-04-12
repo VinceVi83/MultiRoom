@@ -70,20 +70,13 @@ class HubMessenger:
         return ""
 
     def is_wsl(self):
-        wsl_files = glob.glob("/proc/sys/fs/binfmt_misc/WSL*")
-        if len(wsl_files) > 0:
-            return True
-        if "microsoft" in platform.release().lower():
-            return True    
-        return False
+        return "microsoft" in platform.release().lower() or os.path.exists("/proc/sys/fs/binfmt_misc/WSLInterop")
 
     def _get_hw_sign(self):
         try:
             system = platform.system().lower()
             node_name = platform.node()
-            is_wsl = "microsoft" in platform.release().lower() or os.path.exists("/proc/sys/fs/binfmt_misc/WSLInterop")
-
-            if self.is_wsl:
+            if self.is_wsl():
                 cmd = "powershell.exe -Command \"(Get-CimInstance Win32_ComputerSystemProduct).UUID\""
                 seed = subprocess.check_output(cmd, shell=True).decode().strip()
                 if not seed: seed = node_name

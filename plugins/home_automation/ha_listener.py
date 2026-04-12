@@ -5,7 +5,8 @@ import os
 import threading
 from tools.hub_messenger import HubMessenger
 import logging
-logger = logging.getLogger(__name__).setLevel(logging.INFO)
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 class HAListener:
     """Home Assistant WebSocket Event Listener

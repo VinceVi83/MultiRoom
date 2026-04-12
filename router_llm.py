@@ -164,7 +164,7 @@ class RouterLLM:
             logger.error(f"[!] Service {context.category} execute failed: {e}")
             return context._archive_and_rename()
 
-        context.report_action_status()
+        # context.report_action_status()
         context.duration = round(time.time() - context.start, 3)
         return context._archive_and_rename()
 

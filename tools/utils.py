@@ -18,10 +18,11 @@ class LocalFilesFilter(logging.Filter):
     def __init__(self):
         super().__init__()
         self.local_files = set()
-        files_dir = os.path.dirname(os.path.abspath(__file__))
-        for f in os.listdir(files_dir):
-            if f.endswith(".py"):
-                self.local_files.add(f)
+        root_dir = Path(__file__).resolve().parent.parent
+        for path in root_dir.rglob("*.py"):
+            if "__pycache__" in path.parts or any(part.startswith('.') for part in path.parts):
+                continue
+            self.local_files.add(path.name)
 
     def filter(self, record):
         return record.filename in self.local_files
