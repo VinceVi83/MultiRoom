@@ -19,9 +19,43 @@ class DailyService:
     def __init__(self, cfg):
         self.plugin_name = "Daily" 
         self.cfg = cfg
+        self.status = self.check_config()
+        if self.status != self.cfg.RETURN_CODE.SUCCESS:
+            return
         self.shopping = ShoppingService(self.cfg)
-        if not self.cfg:
-            logger.info(f"[!] Error: Configuration for {self.plugin_name} not found.")
+
+    def check_config(self):
+        required_keys = [
+            "DAILY_AGENT",
+            "DATA_DIR",
+            "EXTRACT_FOOD_AGENT",
+            "FRIDGE_AGENT",
+            "config.BYPASS_ROUTER.FRIDGE"
+        ]
+        
+        missing_keys = []
+
+        for key_path in required_keys:
+            keys = key_path.split('.')
+            current_obj = self.cfg
+            for key in keys:
+                if not hasattr(current_obj, key):
+                    missing_keys.append(key_path)
+                    break
+                current_obj = getattr(current_obj, key)
+
+        if missing_keys:
+            logger.error(f"Configuration {self.plugin_name} Error: Missing parameters: {', '.join(missing_keys)}")
+            return self.cfg.RETURN_CODE.ERR_NOT_CONFIGURED
+        
+        logger.info(f"Configuration {self.plugin_name} successfully loaded.")
+        return self.cfg.RETURN_CODE.SUCCESS
+    
+    def get_status(self):
+        if self.status != self.cfg.RETURN_CODE.SUCCESS:
+            logger.warn(f"{self.plugin_name} not configured")
+            return False
+        return True
 
     def switch_fridge(self, context):
         user_input_lower = context.user_input.lower()
@@ -33,6 +67,8 @@ class DailyService:
         return False
 
     def execute(self, context, callback_internal_request_api):
+        if not self.get_status():
+            return self.cfg.RETURN_CODE.ERR
         try:
             if self.switch_fridge(context):
                 category_res = llm.execute(context.user_input, self.cfg.FRIDGE_AGENT)

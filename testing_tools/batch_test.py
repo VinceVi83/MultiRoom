@@ -47,7 +47,6 @@ class HubTester:
         for cmd in commands:
             clean_cmd = cmd.replace('test:', '')
             print(f"[*] Sending: {clean_cmd[:40]:<40}", end="\r")
-            time.sleep(1)
             start_time = time.perf_counter()
             try:
                 response = self.messenger.send_stt(clean_cmd, wait_response=True)

@@ -159,7 +159,7 @@ class TaskContext:
             return report
 
         except Exception as e:
-            print("Exception", e)
+            logger.error("Exception", e)
             if "success" in self.return_code:
                 return f"Action completed: {self.user_input}."
             else:

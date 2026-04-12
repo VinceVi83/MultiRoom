@@ -19,7 +19,7 @@ class UnifiedSpeechSystem:
         _handle_ptt_action(self, frames) : Handle push-to-talk by saving audio and sending to hub.
         stop(self) : Stop the audio processing loop and cleanup resources.
     """
-    def __init__(self, mode, cert_path=None, user="test", password="test"):
+    def __init__(self, mode, cert_path=None, ip="127.0.0.1", user="test", password="test"):
         self.mode = mode
         self.running = True
         self.temp_wav = "temp_voice.wav"
@@ -28,7 +28,7 @@ class UnifiedSpeechSystem:
         
         try:
             self.messenger = HubMessenger(
-                host="127.0.0.1",
+                host=ip,
                 cert_path=cert_path, 
                 user=user, 
                 password=password
@@ -125,6 +125,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-m", "--mode", choices=['stt', 'ptt'], required=True, help="Operating mode")
     parser.add_argument("-c", "--cert", help="Path to the cert.pem certificate")
+    parser.add_argument("--ip", default="test", help="ip")
     parser.add_argument("--user", default="test", help="Login user")
     parser.add_argument("--password", default="test", help="Login password")
     args = parser.parse_args()
@@ -139,7 +140,7 @@ if __name__ == "__main__":
     signal.signal(signal.SIGINT, signal_handler)
 
     try:
-        node = UnifiedSpeechSystem(mode=args.mode, cert_path=args.cert, user=args.user, password=args.password)
+        node = UnifiedSpeechSystem(mode=args.mode, cert_path=args.cert, ip=args.ip, user=args.user, password=args.password)
         node.start()
     except KeyboardInterrupt:
         pass

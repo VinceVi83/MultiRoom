@@ -155,7 +155,7 @@ class RouterLLM:
             return context._archive_and_rename()
 
         try:
-            service_instance = self.service_registry.get(context.category)
+            service_instance = self.service_registry.get(context.category, None)
             if service_instance and hasattr(service_instance, 'execute'):
                 return_code = service_instance.execute(context, self.callback_internal_request_api)
                 context.return_code = Utils.format_result(return_code)
@@ -163,8 +163,8 @@ class RouterLLM:
         except Exception as e:
             logger.error(f"[!] Service {context.category} execute failed: {e}")
             return context._archive_and_rename()
-
-        # context.report_action_status()
+        if cfg.report:
+            context.report_action_status()
         context.duration = round(time.time() - context.start, 3)
         return context._archive_and_rename()
 
@@ -176,7 +176,7 @@ class RouterLLM:
             return cfg.RETURN_CODE.ERR
 
         plugin_name = data["plugin"]
-        service_instance = self.service_registry.get(plugin_name, "None")
+        service_instance = self.service_registry.get(plugin_name, None)
         if service_instance and hasattr(service_instance, 'execute_api'):
             try:
                 context.return_code = service_instance.execute_api(context, data)

@@ -26,10 +26,54 @@ class MusicVlcService:
         self.cfg.INTENT = ["UNKNOWN", "PLAYLIST_AGENT", "DISCOVERY", "VLC_AGENT", "DISCOVERY"]
         self.cfg.VLC_ACTIONS = ["UNKNOWN","TOGGLE", "PREVIOUS", "NEXT", "VOL_DOWN", "VOL_UP", "SHUFFLE", "INFO"]
         self.cfg.PLAYLIST_ACTION = ["UNKNOWN", "PLAY", "CREATE", "ADD_TO", "DELETE_TO", "INFO"]
+        self.status = self.check_config()
 
         self.occupied_indexes = []
         if not self.cfg:
             return
+        
+    def check_config(self):
+        required_keys = [
+            "DATA_DIR",
+            "INTENT",
+            "MUSIC_AGENT",
+            "PLAYLIST_ACTION",
+            "PLAYLIST_AGENT",
+            "VLC_ACTIONS",
+            "VLC_AGENT",
+            "config.BYPASS_ROUTER.MUSIC",
+            "config.BYPASS_ROUTER.PLAYLIST",
+            "config.LEN_ALBUMS_CACHE",
+            "config.SMB_MOUNT_POINT",
+            "config.VLC_PORT_START",
+            "extra.BYPASS_MUSIC",
+            "extra.BYPASS_PLAYLIST",
+            "security.VLC_USERS"
+        ]
+        
+        missing_keys = []
+
+        for key_path in required_keys:
+            keys = key_path.split('.')
+            current_obj = self.cfg
+            for key in keys:
+                if not hasattr(current_obj, key):
+                    missing_keys.append(key_path)
+                    break
+                current_obj = getattr(current_obj, key)
+
+        if missing_keys:
+            logger.error(f"Configuration {self.plugin_name} Error: Missing parameters: {', '.join(missing_keys)}")
+            return self.cfg.RETURN_CODE.ERR_NOT_CONFIGURED
+        
+        logger.info(f"Configuration {self.plugin_name} successfully loaded.")
+        return self.cfg.RETURN_CODE.SUCCESS
+    
+    def get_status(self):
+        if self.status != self.cfg.RETURN_CODE.SUCCESS:
+            logger.warn(f"{self.plugin_name} not configured")
+            return False
+        return True
 
     def bypass_router(self, context):
         user_input_lower = context.user_input.lower()
@@ -50,6 +94,8 @@ class MusicVlcService:
         return None
 
     def execute(self, context, callback_internal_request_api):
+        if not self.get_status():
+            return self.cfg.RETURN_CODE.ERR
         category_res = None
         if Utils.enable_bypass():
             category_res = self.bypass_router(context)
@@ -84,6 +130,8 @@ class MusicVlcService:
         return self.execute_native(context)
 
     def execute_native(self, context):
+        if not self.get_status():
+            return self.cfg.RETURN_CODE.ERR
         vlc_manager = self.check_user_use_service(context)
         if isinstance(vlc_manager, VLCUserManager):
             result = vlc_manager.interpret_vlc_command(context)
@@ -118,6 +166,3 @@ class MusicVlcService:
         if res == self.cfg.RETURN_CODE.SUCCESS:
             return user_mgr
         return self.cfg.RETURN_CODE.ERR
-
-    def get_status(self):
-        return {"status": "online", "plugin": self.plugin_name}

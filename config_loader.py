@@ -422,6 +422,7 @@ cfg = AlisuConfig().cfg
 
 cfg.debug = 1 if "-d" in sys.argv or "--debug" in sys.argv else 0
 cfg.verbose = 1 if "-v" in sys.argv or "--verbose" in sys.argv else 0
+cfg.report = 1 if "-r" in sys.argv or "--report" in sys.argv else 0
 cfg.no_bypass = 0 if "--no-bypass" in sys.argv else 1
 
 if not cfg.no_bypass:

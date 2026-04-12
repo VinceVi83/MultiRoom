@@ -20,6 +20,9 @@ class HomeAutomationService:
     def __init__(self, cfg):
         self.plugin_name = "Home Automation"
         self.cfg = cfg
+        self.status = self.check_config()
+        if self.status != self.cfg.RETURN_CODE.SUCCESS:
+            return
         self.ha_register = HomeAutomationRegistry(cfg)
         self.ha_register.update_device()
         self.ha_service = CommunicationHA(cfg)
@@ -30,7 +33,43 @@ class HomeAutomationService:
         if not self.cfg:
             logger.info(f"[!] Error: Configuration for {self.plugin_name} not found.")
 
+    def check_config(self):
+        required_keys = [
+            "DATA_DIR",
+            "RETURN_CODE",
+            "DOMOTIC_AGENT",
+            "ha_config.HA_HOSTNAME",
+            "ha_config.HA_TOKEN",
+            "ha_config.HA_WEATHER_LOCATION"
+        ]
+        
+        missing_keys = []
+
+        for key_path in required_keys:
+            keys = key_path.split('.')
+            current_obj = self.cfg
+            for key in keys:
+                if not hasattr(current_obj, key):
+                    missing_keys.append(key_path)
+                    break
+                current_obj = getattr(current_obj, key)
+
+        if missing_keys:
+            logger.error(f"Configuration {self.plugin_name} Error: Missing parameters: {', '.join(missing_keys)}")
+            return self.cfg.RETURN_CODE.ERR_NOT_CONFIGURED
+        
+        logger.info(f"Configuration {self.plugin_name} successfully loaded.")
+        return self.cfg.RETURN_CODE.SUCCESS
+    
+    def get_status(self):
+        if self.status != self.cfg.RETURN_CODE.SUCCESS:
+            logger.warn(f"{self.plugin_name} not configured")
+            return False
+        return True
+
     def execute_native(self, context):
+        if not self.get_status():
+            return self.cfg.RETURN_CODE.ERR
         try:
             params = {}
             if context.sub_category and (',' in context.sub_category or ':' in context.sub_category):
@@ -43,6 +82,8 @@ class HomeAutomationService:
             return self.cfg.RETURN_CODE.ERR
 
     def execute(self, context, callback_internal_request_api):
+        if not self.get_status():
+            return self.cfg.RETURN_CODE.ERR
         try:
             result = llm.execute(context.user_input, self.cfg.DOMOTIC_AGENT)
             action, dtype = result.get('action', 'NONE'), result.get('type', 'NONE')
@@ -67,4 +108,7 @@ class HomeAutomationService:
             return self.cfg.RETURN_CODE.ERR
     
     def get_status(self):
-        return {"status": "online", "plugin": self.plugin_name}
+        if self.status != self.cfg.RETURN_CODE.SUCCESS:
+            logger.warn(f"Home Automation not configured")
+            return False
+        return True

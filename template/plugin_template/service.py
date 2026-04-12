@@ -18,11 +18,42 @@ class YourPluginService:
     def __init__(self):
         self.plugin_name = "YourPlugin"
         self.config = getattr(cfg, self.plugin_name.lower(), None)
+        self.status = self.check_config()
+        if self.status != self.cfg.RETURN_CODE.SUCCESS:
+            return
+
+    def check_config(self):
+        required_keys = [
+            # grep -r "self\.cfg\." plugins/music_vlc/ | grep -v "RETURN" | sed -n 's/.*self\.cfg\.\([a-zA-Z0-9._]*\).*/"\1",/p' | sort -u
+        ]
         
-        if not self.config:
-            logger.info(f"[!] Error: Configuration for {self.plugin_name} not found.")
+        missing_keys = []
+
+        for key_path in required_keys:
+            keys = key_path.split('.')
+            current_obj = self.cfg
+            for key in keys:
+                if not hasattr(current_obj, key):
+                    missing_keys.append(key_path)
+                    break
+                current_obj = getattr(current_obj, key)
+
+        if missing_keys:
+            logger.error(f"Configuration {self.plugin_name} Error: Missing parameters: {', '.join(missing_keys)}")
+            return self.cfg.RETURN_CODE.ERR_NOT_CONFIGURED
+        
+        logger.info(f"Configuration {self.plugin_name} successfully loaded.")
+        return self.cfg.RETURN_CODE.SUCCESS
+    
+    def get_status(self):
+        if self.status != self.cfg.RETURN_CODE.SUCCESS:
+            logger.warn(f"{self.plugin_name} not configured")
+            return False
+        return True
 
     def execute(self, context, callback_internal_request_api):
+        if not self.get_status():
+            return self.cfg.RETURN_CODE.ERR
         logic = PluginLogic()
         
         intent_result = llm.execute(context.user_input, self.config.INTENT_AGENT)

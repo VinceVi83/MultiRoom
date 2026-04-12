@@ -9,13 +9,50 @@ class SchedulerService:
     def __init__(self, cfg):
         self.plugin_name = "scheduler"
         self.cfg = cfg
+        self.status = self.check_config()
+        if self.status != self.cfg.RETURN_CODE.SUCCESS:
+            return
         self.base_dir = Path(self.cfg.DATA_DIR)
         self.db_path = self.base_dir / "cron_tasks.json"
         self.handler_script = self.base_dir.parent.parent.parent / "tools" / "hub_messenger.py"
         self.python_bin = "python3"
         self._ensure_db()
 
+    def check_config(self):
+        required_keys = [
+            "DATA_DIR",
+            "INTENT_AGENT",
+            "SYSTEM_AGENT",
+            "TIME_EXTRACTOR_AGENT"
+        ]
+        
+        missing_keys = []
+
+        for key_path in required_keys:
+            keys = key_path.split('.')
+            current_obj = self.cfg
+            for key in keys:
+                if not hasattr(current_obj, key):
+                    missing_keys.append(key_path)
+                    break
+                current_obj = getattr(current_obj, key)
+
+        if missing_keys:
+            logger.error(f"Configuration {self.plugin_name} Error: Missing parameters: {', '.join(missing_keys)}")
+            return self.cfg.RETURN_CODE.ERR_NOT_CONFIGURED
+        
+        logger.info(f"Configuration {self.plugin_name} successfully loaded.")
+        return self.cfg.RETURN_CODE.SUCCESS
+    
+    def get_status(self):
+        if self.status != self.cfg.RETURN_CODE.SUCCESS:
+            logger.warn(f"{self.plugin_name} not configured")
+            return False
+        return True
+
     def execute(self, context, callback_internal_request_api):
+        if not self.get_status():
+            return self.cfg.RETURN_CODE.ERR
         try:
             time_data = llm.execute(context.user_input, self.cfg.TIME_EXTRACTOR_AGENT)
             context.add_step("TIME_EXTRACTOR_AGENT", time_data)
