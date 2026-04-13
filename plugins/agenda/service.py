@@ -48,7 +48,7 @@ class AgendaService:
         if unfinished_configs:
             logger.warning(f"User '{cfg.name}' configuration, ACTION REQUIRED: The following keys are still using default values: {', '.join(unfinished_configs)}")
             return self.cfg.RETURN_CODE.ERR_NOT_CONFIGURED
-            
+        
         logger.info(f"User '{cfg.name}' configuration: Verified (No defaults detected).")
         return self.cfg.RETURN_CODE.SUCCESS
 
@@ -65,7 +65,7 @@ class AgendaService:
             if context is None:
                 return self.cfg.RETURN_CODE.ERR
             
-            res = llm.execute(context.user_input, self.cfg.CALENDAR_AGENT, False, False)
+            res = llm.execute(context.user_input, self.cfg.CALENDAR_AGENT)
             action = res.get('action', 'NONE')
             context.sub_category = action
             context.add_step('sub_category', res)

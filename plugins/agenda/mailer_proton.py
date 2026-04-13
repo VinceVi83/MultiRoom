@@ -18,6 +18,9 @@ class MailerProton:
     
     Methods:
         send_mail(self, config, subject, body, to_email=None, attachment_path=None, debug=False) : Sends an email message with optional attachment via Proton Bridge SMTP server.
+        _check_network(self, target_ip, smtp_port) : Checks network connectivity to the SMTP server.
+        _build_message(self, config, subject, body, to_email, attachment_path, debug) : Builds the email message with headers and attachments.
+        _send_email(self, msg, target_ip, smtp_port, config) : Sends the email via SMTP server.
     """
 
     def send_mail(self, config, subject, body, to_email=None, attachment_path=None, debug=False):

@@ -17,10 +17,16 @@ class CalendarService:
     Methods:
         __new__(cls) : Singleton pattern implementation.
         __init__(self) : Initialize service instance.
+        _extract_event_data(self, vevent) : Extract event data from vevent object.
+        _parse_datetime(self, dt_start) : Parse datetime from event.
         _get_calendar_events(self, config) : Fetch raw calendar events from URL.
+        _filter_events(self, events, keyword, month) : Filter events by keyword and month.
         fetch_calendar_events(self, config, keyword='', month='', limit=None) : Filter and return calendar events.
+        _parse_concert_key(self, key) : Parse concert key from index.
         get_next_concert_data(self, config) : Get next concert data from index file.
+        _format_email_content(self, summary, date_str, pdf_file) : Format email content.
         mail_me_next_concert(self, config) : Email next concert details.
+        _get_week_boundaries(self, offset=0) : Get week boundaries.
         get_week_events(self, config, offset=0) : Get events for a specific week.
     """
 
