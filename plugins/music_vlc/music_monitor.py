@@ -171,7 +171,7 @@ class MusicMonitor:
                             self.current_music = filename
                             self.full_path = self.playlist_cache.get(filename, "")
                             if self.full_path == '':
-                                clean_name = Path(decoded_text).stem
+                                clean_name = Path(self.current_music).stem
                                 self.full_path = self.playlist_cache.get(clean_name, "")
                     
                     if self.full_path:
