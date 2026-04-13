@@ -4,6 +4,8 @@ import xml.etree.cElementTree as ET
 import mutagen
 import threading
 from dataclasses import dataclass
+from pathlib import Path
+import html
 import logging
 logger = logging.getLogger(__name__)
 
@@ -93,6 +95,7 @@ class MusicMetadata:
 
     def print_status(self):
         m = self.data
+        logger.info("="*50 + "\n")
         self._print_metadata_field("TITLE", m.title, "Unknown")
         self._print_metadata_field("ARTIST", m.artist, "Unknown")
         self._print_metadata_field("ALBUM", m.album, "Unknown")
@@ -132,6 +135,13 @@ class MusicMonitor:
         self._is_updating = False
         self._lock = threading.Lock()
 
+    def format_vlc_title(self, title):
+        if not title:
+            return ""
+        title = html.unescape(title)
+        title = title.strip()
+        return title
+
     def update_status(self):
         if self._is_updating or not self.vlc_instance:
             return
@@ -152,15 +162,21 @@ class MusicMonitor:
                 if t_node is not None and l_node is not None:
                     self.time_remaining = int(l_node.text) - int(t_node.text)
                 
+                self.current_music = ''
+                self.full_path = ''
                 for info in root.findall(".//category[@name='meta']/info"):
-                    if info.get('name') == 'title':
-                        filename = info.text
+                    if info.get('name') in ['filename', 'title'] and self.full_path == '':
+                        filename = self.format_vlc_title(info.text)
                         if filename != self.current_music or self.full_path == "":
                             self.current_music = filename
                             self.full_path = self.playlist_cache.get(filename, "")
-                            if self.full_path:
-                                self.metadata_handler.update_metadata(self.full_path)
-                                self.metadata_handler.print_status()
+                            if self.full_path == '':
+                                clean_name = Path(decoded_text).stem
+                                self.full_path = self.playlist_cache.get(clean_name, "")
+                    
+                    if self.full_path:
+                        self.metadata_handler.update_metadata(self.full_path)
+                        self.print_status()
 
         except Exception as e:
             self.time_remaining = 0
@@ -191,7 +207,5 @@ class MusicMonitor:
         logger.info(f"FULL PATH      : {self.full_path}")
         logger.info(f"TIME REMAINING : {self.time_remaining}s")
         
-        m = self.metadata_handler.data
-        logger.info(f"METADATA       : {m.title} - {m.artist} ({m.album})")
-        logger.info(f"GENRE/CIRCLE   : {m.genre} / {m.circle}")
+        m = self.metadata_handler.print_status()
         logger.info("-" * 30)

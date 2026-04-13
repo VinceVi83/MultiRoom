@@ -1,5 +1,6 @@
 import subprocess
 import xml.etree.ElementTree as ET
+import urllib.parse
 import logging
 logger = logging.getLogger(__name__)
 
@@ -76,18 +77,27 @@ class VLCControl:
     def change_playlist(self, target):
         self._vlc_request("status.xml", "command=pl_empty")
         self.current_path = target
-        return self._vlc_request("status.xml", f"command=in_play&input={target}")
+        encoded_target = urllib.parse.quote(target)
+        logger.info(f"VLC: Loading encoded path: {encoded_target}")
+        return self._vlc_request("status.xml", f"command=in_play&input={encoded_target}")
 
     def start_vlc(self, path="default"):
         self.current_path = path
         if self.process and self.process.poll() is None:
             return self.cfg.RETURN_CODE.SUCCESS
 
-        sout_param = f"#standard{{access=http,mux=ogg,dst=0.0.0.0:{self.port_stream}}}"
+        sout_param = f"#duplicate{{dst=display,dst=std{{access=http,mux=ogg,dst=0.0.0.0:{self.port_stream}}}}}"
+        
         args = [
-            "vlc", "--loop", "--playlist-enqueue", path,
-            f"--http-port={self.port_ctrl}", "--sout", sout_param,
-            "-I", "dummy", "--extraintf", "http", "--http-password", self.password
+            "vlc",
+            "--loop",
+            "--playlist-enqueue", path,
+            "--no-video",
+            f"--http-port={self.port_ctrl}",
+            "--sout", sout_param,
+            "-I", "dummy",
+            "--extraintf", "http",
+            "--http-password", self.password
         ]
 
         try:

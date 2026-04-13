@@ -8,6 +8,8 @@ from tools.utils import SimpleStore
 from plugins.music_vlc.vlc_control import VLCControl
 from plugins.music_vlc.music_monitor import MusicMonitor
 from plugins.music_vlc.playlist_manager import PlaylistManager
+import xml.etree.ElementTree as ET
+import urllib.parse
 import logging
 logger = logging.getLogger(__name__)
 
@@ -132,6 +134,7 @@ class VLCUserManager:
         elif action == "DEL" and name:
             return self.playlist_manager.delete_music(name, self.music_monitor.full_path)
         elif action == "INFO" and name:
+            self.print_playlist_summary()
             return self.current_playlist
         return self.cfg.RETURN_CODE.ERR
 
@@ -144,7 +147,6 @@ class VLCUserManager:
 
             if context.result in "INFO":
                 self.music_monitor.force_update()
-                self.music_monitor.print_status()
                 return self.cfg.RETURN_CODE.SUCCESS
 
             self.vlc_instance.handle_simple_command(context.result)
@@ -154,7 +156,7 @@ class VLCUserManager:
             return self.cfg.RETURN_CODE.SUCCESS
         return self.cfg.RETURN_CODE.ERR
 
-    def manage_monitor_playlist(self, delay=2):
+    def manage_monitor_playlist(self, delay=20):
         self.stop_event.set()
         if self.auto_switch_thread and self.auto_switch_thread.is_alive():
             if threading.current_thread() != self.auto_switch_thread:
@@ -174,7 +176,7 @@ class VLCUserManager:
         if self.stop_event.wait(timeout=initial_delay):
             return
         remaining = self.vlc_instance.get_total_remaining_seconds()
-        if remaining > 1:
+        if remaining > 5 or remaining == 0:
             interrupted = self.stop_event.wait(timeout=remaining - 1)
             if interrupted:
                 return
@@ -207,7 +209,6 @@ class VLCUserManager:
             self.vlc_instance.change_playlist(selection)
 
         self.current_album_name = album_name
-        self.manage_monitor_playlist()
         self._schedule_cache_update()
         return self.cfg.RETURN_CODE.SUCCESS
     
@@ -230,8 +231,6 @@ class VLCUserManager:
         
         if xml_data:
             try:
-                import xml.etree.ElementTree as ET
-                import urllib.parse
                 root = ET.fromstring(xml_data)
                 
                 for leaf in root.iter('leaf'):
@@ -248,6 +247,7 @@ class VLCUserManager:
                 self.music_monitor.playlist_cache = new_cache
                 self.music_monitor.force_update()
                 self.total_duration_sec = total_duration_sec
+                self.manage_monitor_playlist(total_duration_sec)
                 self.print_playlist_summary()
                 
             except Exception as e:
@@ -262,7 +262,6 @@ class VLCUserManager:
                 path = list(self.playlists.values())[0]
             self.vlc_instance = VLCControl(self.cfg, self.user_index, str(path))
             self.music_monitor.vlc_instance = self.vlc_instance
-            self.music_monitor.force_update()
             return True
         return False
 
@@ -299,7 +298,7 @@ class VLCUserManager:
             logger.info(f" Total Duration : {duration_str}")
             logger.info("-"*50)
             for i, (name, path) in enumerate(self.current_playlist_files.items()):
-                if i < 5:
+                if i < 10:
                     logger.info(f" [{i+1:02d}] {name}")
                 else:
                     logger.info(f" ... and {len(self.current_playlist_files) - 5} more.")
