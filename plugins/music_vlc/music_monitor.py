@@ -105,7 +105,7 @@ class MusicMetadata:
         self._print_metadata_field("COMMENT", m.comment, "")
         logger.info("="*50 + "\n")
 
-class MusicMonitor:
+class VLCMonitor:
     """VLC music monitoring and status update service
     
     Role: Monitors VLC instance, extracts music metadata, and schedules periodic updates.

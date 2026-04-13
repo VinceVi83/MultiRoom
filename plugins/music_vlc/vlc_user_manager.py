@@ -6,7 +6,7 @@ import copy
 from pathlib import Path
 from tools.utils import SimpleStore
 from plugins.music_vlc.vlc_control import VLCControl
-from plugins.music_vlc.music_monitor import MusicMonitor
+from plugins.music_vlc.music_monitor import VLCMonitor
 from plugins.music_vlc.playlist_manager import PlaylistManager
 import xml.etree.ElementTree as ET
 import urllib.parse
@@ -46,7 +46,7 @@ class VLCUserManager:
         self.smb_base = self.cfg.config.SMB_MOUNT_POINT
         history_path = Path(self.cfg.DATA_DIR) / self.user_session.username / f"history_user_{user_index}.json"
         self.store = SimpleStore(history_path, default_structure={"recently_played": []})
-        self.music_monitor = MusicMonitor(self.cfg, user_index)
+        self.music_monitor = VLCMonitor(self.cfg, user_index)
         self.base_dir_playlist = Path(self.cfg.DATA_DIR) / self.user_session.username / "Playlists"
         self.playlist_manager = PlaylistManager(self.base_dir_playlist)
 
