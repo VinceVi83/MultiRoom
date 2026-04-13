@@ -18,7 +18,10 @@ class VLCUserManager:
     
     Methods:
         __init__(self, cfg, session, user_index) : Initialize the VLC user manager with configuration and session.
-        interpret_vlc_command(self, context) : Route VLC commands based on sub-category (DISCOVER, PLAYLIST, MUSIC).
+        update_playlist_agent(self) : Update playlist agent prompt with current replace playlist.
+        launch_playlist(self, name) : Launch and manage a specific playlist.
+        interpret_vlc_command(self, context) : Route VLC commands based on sub-category.
+        playlist_format_data(self, context) : Parse and format playlist command data.
         execute_playlist(self, context) : Handle playlist operations (play, create, add, delete, info).
         execute_vlc(self, context) : Handle direct VLC commands (play, pause, next, previous, info).
         manage_monitor_playlist(self, delay=2) : Manage auto-switch playlist logic with delay.
@@ -29,6 +32,7 @@ class VLCUserManager:
         is_alive(self) : Check if VLC instance is running.
         _start_vlc_if_needed(self, path="") : Start VLC instance if not running.
         build_playlist_map(self) : Build mapping of playlist directories to paths.
+        _init_album_cache(self) : Initialize album cache from SMB directories.
         print_playlist_summary(self) : Print playlist cache summary to console.
         stop(self) : Stop VLC instance and cleanup resources.
         __del__(self) : Destructor cleanup method.
@@ -36,7 +40,6 @@ class VLCUserManager:
     def __init__(self, cfg, session, user_index):
         self.user_index = user_index
         self.user_session = session
-        print(self.user_session.username)
         self.cfg = cfg
         self.smb_base = self.cfg.config.SMB_MOUNT_POINT
         history_path = Path(self.cfg.DATA_DIR) / self.user_session.username / f"history_user_{user_index}.json"

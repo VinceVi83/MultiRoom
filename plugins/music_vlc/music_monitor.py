@@ -11,10 +11,10 @@ logger = logging.getLogger(__name__)
 class MusicInfo:
     """Music metadata information container
     
-    Role: Stores song metadata extracted from audio files.
+    Role: Stores music track metadata fields.
     
     Methods:
-        __init__(self) : Initialize metadata container with default empty values.
+        __init__(self, title='', artist='', genre='', album='', comment='', language='', circle='') : Initialize with default empty values.
     """
     title: str = ""
     artist: str = ""
@@ -25,14 +25,16 @@ class MusicInfo:
     circle: str = ""
 
 class MusicMetadata:
-    """Music metadata handler for VLC audio files
+    """Music metadata extraction and display handler
     
-    Role: Extracts and manages metadata from audio files using mutagen.
+    Role: Extracts metadata from audio files and prints status information.
     
     Methods:
-        __init__(self) : Initialize metadata handler.
+        __init__(self) : Initialize metadata handler with default MusicInfo instance.
+        _get_metadata_value(self, audio, tag) : Get metadata value from audio tags.
         update_metadata(self, song_path) : Update metadata from audio file.
-        print_status(self) : Print current playback status.
+        _print_metadata_field(self, field_name, value, default_value) : Print a metadata field.
+        print_status(self) : Print all current metadata fields.
     """
     METADATA_MAP = {
         "title": ["TIT2", "title", "nam"],
@@ -101,17 +103,17 @@ class MusicMetadata:
         logger.info("="*50 + "\n")
 
 class MusicMonitor:
-    """VLC music playback monitor
+    """VLC music monitoring and status update service
     
-    Role: Monitors VLC playback status and updates metadata periodically.
+    Role: Monitors VLC instance, extracts music metadata, and schedules periodic updates.
     
     Methods:
-        __init__(self, cfg, index, vlc=None) : Initialize monitor with config.
-        update_status(self) : Update playback status from VLC.
+        __init__(self, cfg, index, vlc=None) : Initialize monitor with config, index, and VLC instance.
+        update_status(self) : Update status from VLC and extract metadata.
         force_update(self) : Force immediate status update.
-        _schedule_next_auto_update(self) : Schedule next automatic update.
-        stop_timer(self) : Stop the update timer.
-        print_status(self) : Print monitor status summary.
+        _schedule_next_auto_update(self) : Schedule next automatic status update.
+        stop_timer(self) : Cancel and stop the update timer.
+        print_status(self) : Print monitor status information.
     """
     def __init__(self, cfg, index, vlc=None):
         self.index = index
