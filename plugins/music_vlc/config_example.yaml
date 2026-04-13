@@ -21,10 +21,6 @@ music_vlc:
       - passe
       - relance
       - volume
-    REPLACE_PLAYLISTS:
-    - Default
-    - Rock
-    - Touhou
     VLC_PORT_START: 48888
     LEN_ALBUMS_CACHE: 50
 

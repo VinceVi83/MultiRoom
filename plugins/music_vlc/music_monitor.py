@@ -90,17 +90,7 @@ class MusicMetadata:
         logger.info(f"{field_name}          : {actual_value}")
 
     def print_status(self):
-        m = self.metadata_handler.data
-        
-        logger.info("="*50)
-        logger.info("          VLC PLAYBACK STATUS")
-        logger.info("="*50)
-        logger.info(f"FILE           : {self.current_music}")
-        logger.info(f"PATH           : {self.full_path}")
-        logger.info(f"TIME REMAINING : {self.time_remaining}s")
-        logger.info("-" * 50)
-        logger.info("                METADATA")
-        logger.info("-" * 50)
+        m = self.data
         self._print_metadata_field("TITLE", m.title, "Unknown")
         self._print_metadata_field("ARTIST", m.artist, "Unknown")
         self._print_metadata_field("ALBUM", m.album, "Unknown")
@@ -161,9 +151,9 @@ class MusicMonitor:
                     self.time_remaining = int(l_node.text) - int(t_node.text)
                 
                 for info in root.findall(".//category[@name='meta']/info"):
-                    if info.get('name') == 'filename':
+                    if info.get('name') == 'title':
                         filename = info.text
-                        if filename != self.current_music:
+                        if filename != self.current_music or self.full_path == "":
                             self.current_music = filename
                             self.full_path = self.playlist_cache.get(filename, "")
                             if self.full_path:

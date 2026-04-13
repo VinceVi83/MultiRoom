@@ -45,22 +45,18 @@ class PlaylistManager:
     def create_playlist(self, name):
         file_path = self._get_path(name.lower())
         if file_path.exists():
-            return False
+            return None
         
         self._write_header(file_path)
-        
-        return True
+        return file_path
 
     def add_music(self, name, song_path):
         file_path = self._get_path(name)
-        
         if not file_path.exists():
             self.create_playlist(name)
 
         song_path_clean = song_path.strip()
-
         lines = self._read_lines(file_path)
-        
         if any(line.strip() == song_path_clean for line in lines):
             return False
 
@@ -74,10 +70,8 @@ class PlaylistManager:
             return False
 
         song_path_clean = song_path.strip()
-        
         lines = self._read_lines(file_path)
         new_lines = [l for l in lines if l.strip() != song_path_clean]
-
         if len(lines) == len(new_lines):
             return False
 

@@ -110,7 +110,9 @@ class MusicVlcService:
                 context.add_step('sub_category', category_res)
  
             if context.sub_category == 'PLAYLIST':
-                res = llm.execute(context.user_input, self.cfg.PLAYLIST_AGENT)
+                vlc_manager = self.check_user_use_service(context)
+                res = llm.execute(context.user_input, vlc_manager.playlist_agent)
+                res = {'action': f'{res.get('action', 'ERR')}:{res.get('name', 'ERR')}'}
             elif context.sub_category == 'MUSIC':
                 res = llm.execute(context.user_input, self.cfg.VLC_AGENT)
             elif context.sub_category == 'DISCOVER':
@@ -160,7 +162,7 @@ class MusicVlcService:
         if idx is None:
             return self.cfg.RETURN_CODE.ERR
         
-        user_mgr = VLCUserManager(self.cfg, context.session.services, idx)
+        user_mgr = VLCUserManager(self.cfg, context.session, idx)
         res = context.session.add_new_service(self.plugin_name, user_mgr)
         
         if res == self.cfg.RETURN_CODE.SUCCESS:
