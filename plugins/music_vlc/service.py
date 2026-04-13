@@ -27,8 +27,6 @@ class MusicVlcService:
         self.cfg.VLC_ACTIONS = ["UNKNOWN","TOGGLE", "PREVIOUS", "NEXT", "VOL_DOWN", "VOL_UP", "SHUFFLE", "INFO"]
         self.cfg.PLAYLIST_ACTION = ["UNKNOWN", "PLAY", "CREATE", "ADD_TO", "DELETE_TO", "INFO"]
         self.status = self.check_config()
-
-        self.occupied_indexes = []
         if not self.cfg:
             return
         
@@ -96,40 +94,45 @@ class MusicVlcService:
     def execute(self, context, callback_internal_request_api):
         if not self.get_status():
             return self.cfg.RETURN_CODE.ERR
-        category_res = None
-        if Utils.enable_bypass():
-            category_res = self.bypass_router(context)
 
+        category_res = self.bypass_router(context) if Utils.enable_bypass() else None
         try:
             if category_res:
-                context.add_step('sub_category', {'label': category_res, 'bypass': 1})
                 context.sub_category = category_res
+                step_data = {'label': category_res, 'bypass': 1}
             else:
-                category_res = llm.execute(context.user_input, self.cfg.MUSIC_AGENT)
-                context.sub_category = category_res.get('category', 'NONE')
-                context.add_step('sub_category', category_res)
- 
-            if context.sub_category == 'PLAYLIST':
-                vlc_manager = self.check_user_use_service(context)
-                res = llm.execute(context.user_input, vlc_manager.playlist_agent)
-                res = {'action': f'{res.get('action', 'ERR')}:{res.get('name', 'ERR')}'}
-            elif context.sub_category == 'MUSIC':
-                res = llm.execute(context.user_input, self.cfg.VLC_AGENT)
-            elif context.sub_category == 'DISCOVER':
-                context.result = 'Done'
-                res = {'action': 'DISCOVER'}
-            else:
-                res = {'action': 'ERR'}
+                llm_res = llm.execute(context.user_input, self.cfg.MUSIC_AGENT)
+                context.sub_category = llm_res.get('category', 'NONE')
+                step_data = llm_res
+            
+            context.add_step('sub_category', step_data)
+
+            handlers = {
+                'PLAYLIST': self._handle_playlist,
+                'MUSIC':    lambda ctx: llm.execute(ctx.user_input, self.cfg.VLC_AGENT),
+                'DISCOVER': lambda ctx: self._handle_discover(ctx)
+            }
+            handler = handlers.get(context.sub_category)
+            if not handler:
                 return self.cfg.RETURN_CODE.ERR
+            res = handler(context)
 
         except Exception as e:
-                logger.error(f"[PLUGIN MusicVlcService MUSIC_AGENT ERROR] {e}")
-                return self.cfg.RETURN_CODE.ERR
+            logger.error(f"[PLUGIN MusicVlcService MUSIC_AGENT ERROR] {e}")
+            return self.cfg.RETURN_CODE.ERR
 
-        action = res.get('action', 'ERR')
         context.add_step('Result', res)
-        context.result = action
+        context.result = res.get('action', 'ERR')
         return self.execute_native(context)
+
+    def _handle_playlist(self, context):
+        vlc_manager = self.check_user_use_service(context)
+        r = llm.execute(context.user_input, vlc_manager.playlist_agent)
+        return {'action': f"{r.get('action', 'ERR')}:{r.get('name', 'ERR')}"}
+
+    def _handle_discover(self, context):
+        context.result = 'Done'
+        return {'action': 'DISCOVER'}
 
     def execute_native(self, context):
         if not self.get_status():

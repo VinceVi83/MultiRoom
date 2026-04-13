@@ -90,7 +90,6 @@ class VLCControl:
         
         args = [
             "vlc",
-            "--loop",
             "--playlist-enqueue", path,
             "--no-video",
             f"--http-port={self.port_ctrl}",
@@ -183,6 +182,21 @@ class VLCControl:
             return {"total_after_current": total_after_current}
         except Exception:
             return None
+
+    def set_vlc_loop(self, target_state: bool):
+        xml_data = self._vlc_request("status.xml")
+        if not xml_data:
+            return
+
+        root = ET.fromstring(xml_data)
+        loop_text = root.find('loop').text.lower()
+        current_loop = (loop_text == 'true')
+
+        if current_loop != target_state:
+            logger.info(f"[VLC] Changing loop state to: {target_state}")
+            self._vlc_request("status.xml?command=pl_loop")
+        else:
+            logger.info(f"[VLC] Loop is already {target_state}, doing nothing.")
 
     def get_current_state(self):
         xml_data = self._vlc_request("status.xml")
