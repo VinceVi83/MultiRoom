@@ -6,7 +6,7 @@ import copy
 from pathlib import Path
 from tools.utils import SimpleStore
 from plugins.music_vlc.vlc_control import VLCControl
-from plugins.music_vlc.music_monitor import VLCMonitor
+from plugins.music_vlc.vlc_monitor import VLCMonitor
 from plugins.music_vlc.playlist_manager import PlaylistManager
 import xml.etree.ElementTree as ET
 import urllib.parse
