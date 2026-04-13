@@ -35,7 +35,6 @@ class RouterLLM:
         self.command_queue = queue.Queue()
         self.service_registry = {}
         self.is_running = True
-        self.debug = False
         self.test = False
         self._initialize_service_registry()
         self.start()
@@ -98,7 +97,7 @@ class RouterLLM:
         if Utils.enable_bypass() and self.bypass_location(context):
             return
 
-        local_res = llm.execute(context.user_input, cfg.ALL_PURPOSE.LOCATION_CLEANER_AGENT, verbose=False, debug=False)
+        local_res = llm.execute(context.user_input, cfg.ALL_PURPOSE.LOCATION_CLEANER_AGENT)
         if local_res.get('cleaned_command') != 'none':
             context.location = local_res.get('location')
         context.add_step('LOCATION_CLEANER_AGENT', local_res)

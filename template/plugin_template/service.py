@@ -12,8 +12,9 @@ class YourPluginService:
     
     Methods:
         __init__(self) : Initialize plugin with configuration.
-        execute(self, context, callback_internal_request_api) : Process user input and execute plugin actions.
+        check_config(self) : Validate required configuration keys and return status.
         get_status(self) : Return plugin status information.
+        execute(self, context, callback_internal_request_api) : Process user input and execute plugin actions.
     """
     def __init__(self):
         self.plugin_name = "YourPlugin"
@@ -72,6 +73,3 @@ class YourPluginService:
         if result == "NONSENSE":
             return cfg.RETURN_CODE.ERR
         return cfg.RETURN_CODE.SUCCESS
-
-    def get_status(self):
-        return {"status": "online", "plugin": self.plugin_name}

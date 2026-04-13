@@ -22,7 +22,7 @@ class OllamaClient:
         _print_verbose(self, message) : Print message if verbose mode is enabled.
         _print_debug(self, message) : Print message if debug mode is enabled.
         normalize_keys(self, d) : Normalize dictionary keys to lowercase.
-        execute(self, user_input, agent_cfg=None, debug=False, verbose=False) : Execute LLM query.
+        execute(self, user_input, agent_cfg=None) : Execute LLM query.
         manage_vram(self, target_model) : Manage VRAM by switching models.
         _prepare(self, c, user_input) : Prepare request parameters.
     """
@@ -31,8 +31,6 @@ class OllamaClient:
         self.client = ollama.Client(host=self.base_url)
         self.main_model = cfg.sys.config.MODEL_NAME_MAIN
         self.current_model = None
-        self.debug = False
-        self.verbose = False
         self._lock = threading.Lock()
         
         self.is_ready = True
@@ -69,14 +67,14 @@ class OllamaClient:
     def _print_debug(self, message):
         if not self.is_ready:
             return
-        if not self.debug:
+        if not cfg.debug:
             return
         logger.debug(message)
         
     def _print_verbose(self, message):
         if not self.is_ready:
             return
-        if not self.verbose:
+        if not cfg.verbose:
             return
         logger.info(message)
 
@@ -85,9 +83,7 @@ class OllamaClient:
             return {k.lower(): self.normalize_keys(v) for k, v in d.items()}
         return d
 
-    def execute(self, user_input, agent_cfg=None, debug=False, verbose=False):
-        self.verbose = verbose
-        self.debug = debug
+    def execute(self, user_input, agent_cfg=None):
         if not self.is_ready:
             return {"error": "Ollama is offline", "status": "reconnecting"}
 
@@ -133,7 +129,7 @@ class OllamaClient:
                 else:
                     result = {"content": result} | metrics
 
-                if self.debug:
+                if cfg.debug:
                     o_total  = response.get('total_duration', 0) / 1e9
                     self._print_debug("MODEL & AGENT      : " + f"{agent_cfg.name} {agent_cfg.model} \n")
                     self._print_debug("Load Time (VRAM)   : " + str(o_load) + ".3fs")
@@ -190,7 +186,7 @@ llm = OllamaClient()
 
 if __name__ == "__main__":
     config_from_yaml = cfg.ALL_PURPOSE.ROUTER_AGENT
-    result = llm.execute("Turn on the living room light", agent_cfg=cfg.ALL_PURPOSE.LOCATION_CLEANER_AGENT, verbose=True)
-    result = llm.execute("I want to listen to my Touhou playlist", agent_cfg=config_from_yaml, verbose=True)
-    result = llm.execute("Stop the music", agent_cfg=config_from_yaml, verbose=True)
-    result = llm.execute("I need to buy butter, eggs, steaks", agent_cfg=config_from_yaml, verbose=True)
+    result = llm.execute("Turn on the living room light", agent_cfg=cfg.ALL_PURPOSE.LOCATION_CLEANER_AGENT)
+    result = llm.execute("I want to listen to my Touhou playlist", agent_cfg=config_from_yaml)
+    result = llm.execute("Stop the music", agent_cfg=config_from_yaml)
+    result = llm.execute("I need to buy butter, eggs, steaks", agent_cfg=config_from_yaml)

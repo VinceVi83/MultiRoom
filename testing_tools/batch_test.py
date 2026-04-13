@@ -17,16 +17,17 @@ class HubTester:
     Role: Executes and validates test groups against a Hub server.
     
     Methods:
-        __init__(self, host="127.0.0.1", user="test", password="test") : Initialize with server credentials.
+        __init__(self, host="127.0.0.1", user="test", password="test", once=False) : Initialize with server credentials.
         _check_success(self, ctx, label) : Validate if server response matches expected label.
         _execute_group(self, group) : Execute a specific group of commands.
         run_interactive_mode(self, test_groups) : Interactive mode to select test groups.
         run_auto_mode(self, test_groups) : Auto mode to run all test groups sequentially.
         _display_global_report(self) : Display formatted final test report.
     """
-    def __init__(self, host="127.0.0.1", user="test", password="test"):
+    def __init__(self, host="127.0.0.1", user="test", password="test", once=False):
         self.messenger = HubMessenger(host=host, user=user, password=password)
         self.all_results = []
+        self.once = once
 
     def _check_success(self, ctx, label):
         cat_ok = ctx.category in label
@@ -61,6 +62,8 @@ class HubTester:
             status = "[OK]" if self._check_success(ctx, label) else "[KO]"
             print(f"{status} {clean_cmd[:40]:<40} ({ctx.time:.2f}s)")
             time.sleep(0.2)
+            if self.once:
+                break
 
         self.all_results.append({'label': label, 'contexts': group_contexts})
 
@@ -129,6 +132,7 @@ if __name__ == '__main__':
     parser.add_argument("file", type=str, help="Test JSON file")
     parser.add_argument("-a", "--auto", action="store_true", help="Auto mode")
     parser.add_argument("-r", "--rpi", action="store_true", help="RPI test")
+    parser.add_argument("-o", "--once", action="store_true", help="RPI test")
     parser.add_argument("--user", default="test")
     parser.add_argument("--passw", default="test")
     args = parser.parse_args()
@@ -142,9 +146,9 @@ if __name__ == '__main__':
         data = json.load(f)
 
     if args.rpi:
-        tester = HubTester(host="192.168.0.35", user=args.user, password=args.passw)
+        tester = HubTester(host="192.168.0.35", user=args.user, password=args.passw, once=args.once)
     else:
-        tester = HubTester(user=args.user, password=args.passw)
+        tester = HubTester(user=args.user, password=args.passw, once=args.once)
 
     if args.auto:
         tester.run_auto_mode(data)

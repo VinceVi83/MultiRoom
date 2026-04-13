@@ -156,7 +156,7 @@ def run_debug_server(host='0.0.0.0', port=28888):
         server.close()
 
 def get_location(context):
-    local_res = llm.execute(context.user_input, cfg.ALL_PURPOSE.LOCATION_CLEANER_AGENT, verbose=False, debug=False)
+    local_res = llm.execute(context.user_input, cfg.ALL_PURPOSE.LOCATION_CLEANER_AGENT)
     context.add_durations(local_res)
     if local_res.get('cleaned_command') != 'none':
         context.location = local_res.get('location')
@@ -167,7 +167,7 @@ def get_location(context):
 def test_full_chain(context):
     print(f"\n=== Testing Input: {context.user_input} ===")
     
-    route_res = llm.execute(context.user_input, cfg.ALL_PURPOSE.ROUTER_AGENT, verbose=False, debug=False)
+    route_res = llm.execute(context.user_input, cfg.ALL_PURPOSE.ROUTER_AGENT)
     context.add_durations(route_res)
     plugin_name = route_res.get('plugin', 'NONE')
     
@@ -193,13 +193,12 @@ def test_full_chain(context):
         print(f"Plugin {plugin_name} not managed.")
 
 def _handle_scheduler(context):
-    time_data = llm.execute(context.user_input, cfg.SCHEDULER.TIME_EXTRACTOR_AGENT, False, False)
+    time_data = llm.execute(context.user_input, cfg.SCHEDULER.TIME_EXTRACTOR_AGENT)
     context.add_durations(time_data)
-    intent_data = llm.execute(context.user_input, cfg.SCHEDULER.INTENT_AGENT, False, False)
+    intent_data = llm.execute(context.user_input, cfg.SCHEDULER.INTENT_AGENT)
     context.add_durations(intent_data)
-    
     raw_cmd = intent_data.get('action', context.user_input)
-    mode_data = llm.execute(raw_cmd, cfg.SCHEDULER.SYSTEM_AGENT, False, False)
+    mode_data = llm.execute(raw_cmd, cfg.SCHEDULER.SYSTEM_AGENT)
     context.add_durations(mode_data)
 
 def _handle_music(context):
@@ -215,13 +214,13 @@ def _handle_music(context):
         context.sub_category = matched
         context.add_step('sub_category', {'label': matched, 'bypass': 1})
     else:
-        res = llm.execute(context.user_input, cfg.MUSIC_VLC.MUSIC_AGENT, False, False)
+        res = llm.execute(context.user_input, cfg.MUSIC_VLC.MUSIC_AGENT)
         context.add_durations(res)
         context.sub_category = res.get('category', 'NONE')
         context.add_step('sub_category', res)
 
     if context.sub_category == 'PLAYLIST_AGENT':
-        pl_res = llm.execute(context.user_input, cfg.MUSIC_VLC.PLAYLIST_AGENT, False, False)
+        pl_res = llm.execute(context.user_input, cfg.MUSIC_VLC.PLAYLIST_AGENT)
         context.add_durations(pl_res)
         action = pl_res.get('action', 'ERR')
         if action in ['UNKNOWN', 'PLAY', 'CREATE', 'ADD', 'DEL', 'INFO']:
@@ -229,7 +228,7 @@ def _handle_music(context):
         context.add_step('Result', pl_res)
         
     elif context.sub_category == 'MUSIC':
-        vlc_res = llm.execute(context.user_input, cfg.MUSIC_VLC.VLC_AGENT, False, False)
+        vlc_res = llm.execute(context.user_input, cfg.MUSIC_VLC.VLC_AGENT)
         context.add_durations(vlc_res)
         action = vlc_res.get('action', '0')
         if action in ['UNKNOWN', 'TOGGLE', 'PREVIOUS', 'NEXT', 'VOL_DOWN', 'VOL_UP', 'SHUFFLE', 'INFO']:
@@ -240,7 +239,7 @@ def _handle_music(context):
         context.return_code = cfg.RETURN_CODE.SUCCESS
 
 def _handle_agenda(context):
-    res = llm.execute(context.user_input, cfg.AGENDA.CALENDAR_AGENT, False, False)
+    res = llm.execute(context.user_input, cfg.AGENDA.CALENDAR_AGENT)
     context.add_durations(res)
     action = res.get('action', 'NONE')
     context.sub_category = action
@@ -253,14 +252,14 @@ def _handle_daily(context):
     is_fridge = any(w in context.user_input.lower() for w in ['frigo', 'fridge'])
     agent = cfg.DAILY.FRIDGE_AGENT if is_fridge else cfg.DAILY.DAILY_AGENT
     
-    res = llm.execute(context.user_input, agent, False, False)
+    res = llm.execute(context.user_input, agent)
     context.add_durations(res)
     action = res.get('action', 'NONE')
     context.sub_category = action
     context.add_step('sub_category', res)
 
     if action in ['SHOP_ADD', 'FRIDGE_ADD']:
-        items = llm.execute(context.user_input, cfg.DAILY.EXTRACT_FOOD_AGENT, False, False)
+        items = llm.execute(context.user_input, cfg.DAILY.EXTRACT_FOOD_AGENT)
         context.add_durations(items)
         context.add_step('result', items)
         
@@ -269,7 +268,7 @@ def _handle_daily(context):
 
 def _handle_home_auto(context):
     get_location(context)
-    res = llm.execute(context.user_input, cfg.HOME_AUTOMATION.DOMOTIC_AGENT, False, False)
+    res = llm.execute(context.user_input, cfg.HOME_AUTOMATION.DOMOTIC_AGENT)
     context.add_durations(res)
     action, dtype = res.get('action', 'NONE'), res.get('type', 'NONE')
     context.sub_category = f"{dtype}:{action}"

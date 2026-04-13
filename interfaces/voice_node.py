@@ -13,7 +13,7 @@ class UnifiedSpeechSystem:
     Role: Manages audio input, speech-to-text transcription, and push-to-talk operations.
     
     Methods:
-        __init__(self, mode, cert_path=None, user='test', password='test') : Initialize the system with operating mode and credentials.
+        __init__(self, mode, cert_path=None, ip="127.0.0.1", user="test", password="test") : Initialize the system with operating mode and credentials.
         start(self) : Start the audio processing loop for continuous input.
         _handle_stt_action(self, frames) : Process audio frames through speech-to-text engine and send to hub.
         _handle_ptt_action(self, frames) : Handle push-to-talk by saving audio and sending to hub.
