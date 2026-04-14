@@ -33,12 +33,19 @@ def setup_logging():
         os.makedirs(log_dir_path, exist_ok=True)
 
     date_format = "%y%m%d:%H:%M:%S"
+
+    class SmartFormatter(logging.Formatter):
+        def format(self, record):
+            if record.funcName in ['print_current_track', 'print_playlist_summary']:
+                return record.getMessage()
+            return super().format(record)
+
     if cfg.verbose:
         log_format = "[%(asctime)s][%(filename)s][%(funcName)s](%(levelname)s): %(message)s"
     else:
         log_format = "[%(funcName)s](%(levelname)s): %(message)s"
     
-    formatter = logging.Formatter(fmt=log_format, datefmt=date_format)
+    formatter = SmartFormatter(fmt=log_format, datefmt=date_format)
 
     local_filter = LocalFilesFilter()
     console_handler = logging.StreamHandler(sys.stdout)

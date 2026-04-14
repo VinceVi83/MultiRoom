@@ -84,7 +84,7 @@ class VLCControl:
     def change_playlist(self, target):
         self._vlc_request("status.xml", "command=pl_empty")
         self.current_path = target
-        encoded_target = urllib.parse.quote(target)
+        encoded_target = urllib.parse.quote(str(target))
         return self._vlc_request("status.xml", f"command=in_play&input={encoded_target}")
 
     def start_vlc(self, path="default"):
