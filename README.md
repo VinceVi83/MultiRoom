@@ -18,20 +18,22 @@ To showcase the real-time capabilities of **A.L.I.S.U.**, a video demonstration 
 * **Reliability Focus:** The demo features the core logic, current development prioritizes **enhanced prompt robustness** for higher recognition accuracy and extract information.
 
 # Roadmap
-- [-] **Automated Routing**: Intent detection via local LLM + keyword bypass (Core logic operational, continuous refinement).
-- [+] **Env Initialization**: Automatically create a default `config*.yaml` in `~/Documents/ALISU_DATA/` if it's missing or empty.
-- [+] **Config Simplification**: Strict validation and isolation of unconfigured services.
-- [+] **Resilience & Fail-safe**: Dynamic deactivation of offline services during startup (Fail-Safe).
+- [x] **Automated Routing**: Intent detection via local LLM + keyword bypass (Core logic operational, continuous refinement).
+- [x] **Env Initialization**: Automatically create a default `config*.yaml` in `~/Documents/ALISU_DATA/` if it's missing or empty.
+- [x] **Config Simplification**: Strict validation and isolation of unconfigured services.
+- [x] **Resilience & Fail-safe**: Dynamic deactivation of offline services during startup (Fail-Safe).
 - [-] **Benchmarking & Regression**: Refactoring existing internal test suite.
-- [ ] **Auto Test**: Automated testing suite for core services and orchestrator logic.
-- [+] **Rolling Buffer**: Audio stream optimization (RAM-based).
+    * *Current state:* System already records `.wav` and `.json` logs. A "Replay" system exists to compare **Expected vs Obtained** results.
+	* *Benchemark:* Done, with batch_test.py
+- [-] **Auto Test**: Automated testing suite for core services and orchestrator logic.
+- [x] **Rolling Buffer**: Audio stream optimization (RAM-based).
 - [-] **Playlists & Alarms**: Music queue management and scheduled musical alarms.
     * *Current state:* Schedule alarm possible but too complex get an expected result, because it need better prompting and phrasing...
-- [ ] **Local TTS Integration**: Implementing **VoiceSpeak** (or similar CLI-based TTS) for voice feedback.
-- [ ] **Edge Hardware**: Integration of Raspberry Pi nodes as satellite microphones/speakers.
-- [ ] **Synchronize-Latency Multiroom**: Integrate real-time audio synchronization for multiple VLC clients on the same stream without offset or drift (**Already tested a working solution**).
-- [ ] **Physical PTT Nodes**: Use of Bluetooth/WiFi devices (e.g., shutter buttons) as remote Push-To-Talk triggers for command input.
-- [+] **Future Optimization**: Experimenting with lighter models (Phi-3, Gemma) for lower hardware requirements.
+- [-] **Local TTS Integration**: Implementing **VoiceSpeak** (or similar CLI-based TTS) for voice feedback.
+- [-] **Edge Hardware**: Integration of Raspberry Pi nodes as satellite microphones/speakers.
+- [-] **Synchronize-Latency Multiroom**: Integrate real-time audio synchronization for multiple VLC clients on the same stream without offset or drift (**Already tested a working solution**).
+- [-] **Physical PTT Nodes**: Use of Bluetooth/WiFi devices (e.g., shutter buttons) as remote Push-To-Talk triggers for command input.
+- [x] **Future Optimization**: Experimenting with lighter models (Phi-3, Gemma) for lower hardware requirements.
     * *Current state:* Change llama3.1:8b to qwen2.5:3b, optimized all prompts for performance and implemented keyword-based regex routing to bypass unnecessary LLM calls. Disabled JSON mode to further reduce request latency.
 ## Vision & Origines
 This project was born during my student years, long before the rise of modern LLMs. It originated from a dream: building a personal Jarvis to manage a massive local music library (Touhou music) stored on a NAS, and to control smart objects via voice commands.
