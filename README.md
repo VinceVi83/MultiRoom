@@ -23,8 +23,6 @@ To showcase the real-time capabilities of **A.L.I.S.U.**, a video demonstration 
 - [+] **Config Simplification**: Strict validation and isolation of unconfigured services.
 - [+] **Resilience & Fail-safe**: Dynamic deactivation of offline services during startup (Fail-Safe).
 - [-] **Benchmarking & Regression**: Refactoring existing internal test suite.
-    * *Current state:* System already records `.wav` and `.json` logs. A "Replay" system exists to compare **Expected vs Obtained** results.
-	* *Benchemark:* Done, with batch_test.py
 - [ ] **Auto Test**: Automated testing suite for core services and orchestrator logic.
 - [+] **Rolling Buffer**: Audio stream optimization (RAM-based).
 - [-] **Playlists & Alarms**: Music queue management and scheduled musical alarms.
