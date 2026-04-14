@@ -145,13 +145,15 @@ class MusicVlcService:
         return self.cfg.RETURN_CODE.ERR
 
     def _get_free_index(self):
-        for index, instance in self.active_instances.items():
-            if not instance.is_alive():
-                self.active_instances.pop(index)
-            return index
+        dead_keys = [i for i, inst in self.active_instances.items() if not inst.is_alive()]
+        for k in dead_keys:
+            del self.active_instances[k]
 
-        new_idx = max(self.active_instances.keys(), default=-1) + 1
-        return new_idx
+        index = 0
+        while index in self.active_instances:
+            index += 1
+            
+        return index
 
     def check_user_use_service(self, context):
         existing_mgr = context.session.services.get(self.plugin_name)
@@ -160,14 +162,18 @@ class MusicVlcService:
                 return existing_mgr
             else:
                 del context.session.services[self.plugin_name]
+                idx_to_free = next((k for k, v in self.active_instances.items() if v == existing_mgr), None)
+                if idx_to_free is not None:
+                    self.active_instances.pop(idx_to_free)
         
         idx = self._get_free_index()
         if idx is None:
             return self.cfg.RETURN_CODE.ERR
         
         user_mgr = VLCUserManager(self.cfg, context.session, idx)
+        self.active_instances[idx] = user_mgr
         res = context.session.add_new_service(self.plugin_name, user_mgr)
-        
         if res == self.cfg.RETURN_CODE.SUCCESS:
             return user_mgr
+
         return self.cfg.RETURN_CODE.ERR

@@ -152,7 +152,7 @@ class TaskContext:
             selected_replica = random.choice(cfg.sys.personality.TSUNDERE)
             tmp_agent = copy.deepcopy(cfg.ALL_PURPOSE.TSUNDERE_V2_REPORT_AGENT)
             tmp_agent.prompt = tmp_agent.prompt.replace('RANDOM_REPLICA', selected_replica)
-            report_text = llm.execute(report_input, tmp_agent, debug=True)
+            report_text = llm.execute(report_input, tmp_agent)
             self.add_step('report', report_text)
             report = report_text.get('content', 'FF')
             logger.info(f"ALISU: {report}")

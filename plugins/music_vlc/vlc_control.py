@@ -1,6 +1,9 @@
 import subprocess
 import xml.etree.ElementTree as ET
 import urllib.parse
+import requests
+from requests.auth import HTTPBasicAuth
+import time
 import logging
 logger = logging.getLogger(__name__)
 
@@ -53,21 +56,24 @@ class VLCControl:
 
     def _vlc_request(self, endpoint, params=None):
         url = f"{self.base_url}/{endpoint}"
-        if params:
-            url += f"?{params}"
+        auth = HTTPBasicAuth('', self.password)
         
         try:
-            result = subprocess.run(
-                ["curl", "-s", "--user", f":{self.password}", url],
-                shell=False, capture_output=True, text=True, timeout=5
+            response = requests.get(
+                url, 
+                params=params, 
+                auth=auth, 
+                timeout=5
             )
-            if result.returncode == 0:
-                return result.stdout
+            if response.status_code == 200:
+                return response.text
             else:
+                logger.error(f"VLC Error {response.status_code}: {response.reason}")
                 return None
-        except Exception as e:
+                
+        except requests.exceptions.RequestException as e:
             logger.error(f"Request Exception: {e}")
-        return None
+            return None
 
     def handle_simple_command(self, action):
         cmd = self.vlc_commands.get(action)
@@ -103,6 +109,7 @@ class VLCControl:
             self.process = subprocess.Popen(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             self.is_initialized = True
             self.is_playing = True
+            time.sleep(5)
             return self.cfg.RETURN_CODE.SUCCESS
         except Exception:
             return self.cfg.RETURN_CODE.ERR
