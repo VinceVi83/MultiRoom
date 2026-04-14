@@ -26,16 +26,12 @@ class VLCUserManager:
         playlist_format_data(self, context) : Parse and format playlist command data.
         execute_playlist(self, context) : Handle playlist operations (play, create, add, delete, info).
         execute_vlc(self, context) : Handle direct VLC commands (play, pause, next, previous, info).
-        manage_monitor_playlist(self, delay=2) : Manage auto-switch playlist logic with delay.
-        _auto_switch_logic(self, initial_delay) : Auto-switch between albums when track ends.
         play_random_album(self) : Play a random album not in recently played list.
-        _schedule_cache_update(self) : Schedule playlist cache update timer.
-        _update_playlist_cache(self, path=None) : Update playlist cache from VLC XML data.
         is_alive(self) : Check if VLC instance is running.
         _start_vlc_if_needed(self, path="") : Start VLC instance if not running.
         build_playlist_map(self) : Build mapping of playlist directories to paths.
         _init_album_cache(self) : Initialize album cache from SMB directories.
-        print_playlist_summary(self) : Print playlist cache summary to console.
+        _append_album_cache(self, directory) : Append directory to album cache.
         stop(self) : Stop VLC instance and cleanup resources.
         __del__(self) : Destructor cleanup method.
     """

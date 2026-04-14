@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class MusicInfo:
-    """Music metadata information holder
+    """Data class to hold music metadata information.
     
     Role: Stores extracted metadata from audio files.
     
@@ -28,16 +28,16 @@ class MusicInfo:
     circle: str = ""
 
 class MusicMetadata:
-    """Music metadata extraction and display service
+    """Music Metadata Extractor
     
-    Role: Extracts and displays metadata from audio files using mutagen.
+    Role: Extracts and manages metadata from audio files using mutagen.
     
     Methods:
-        __init__(self) : Initialize with default MusicInfo data.
-        _get_metadata_value(self, audio, tag) : Get metadata value for a given tag.
-        update_metadata(self, song_path) : Update metadata from an audio file.
+        __init__(self) : Initialize metadata extractor with default MusicInfo.
+        _get_metadata_value(self, audio, tag) : Get metadata value from audio tags.
+        update_metadata(self, song_path) : Update metadata from a song file path.
         _print_metadata_field(self, field_name, value, default_value) : Print a metadata field.
-        print_status(self) : Print all current metadata fields.
+        print_status(self) : Print current metadata status to logger.
     """
     METADATA_MAP = {
         "title": ["TIT2", "title", "nam"],
@@ -107,20 +107,22 @@ class MusicMetadata:
         logger.info("="*50 + "\n")
 
 class VLCMonitor:
-    """VLC media player monitoring service
+    """VLC Media Player Monitor
     
-    Role: Monitors VLC playback and tracks current track information.
+    Role: Monitors VLC media player state, tracks current track, playlist, and provides status updates.
     
     Methods:
-        __init__(self, cfg, index, vlc_instance=None, on_album_end_callback=None) : Initialize with configuration and callbacks.
+        __init__(self, manager) : Initialize monitor with manager instance.
         start(self) : Start the monitoring thread.
         stop(self) : Stop the monitoring thread.
         trigger_update(self) : Trigger a manual update.
         _monitor_loop(self) : Main monitoring loop.
+        format_vlc_title(self, title) : Format VLC title string.
         update_track_info(self, base_delay=4) : Update track information from VLC.
         _sync_playlist_data(self) : Sync playlist data from VLC.
-        _is_last_track(self) : Check if current track is the last in playlist.
-        print_current_track(self) : Print current track information.
+        get_playlist_remaining_time(self) : Get remaining time for playlist.
+        _is_last_track(self) : Check if current track is last in playlist.
+        print_current_track(self) : Print current track status.
         print_playlist_summary(self) : Print playlist summary.
     """
     def __init__(self, manager):
@@ -144,13 +146,11 @@ class VLCMonitor:
         self.stop_event.clear()
         self.monitor_thread = threading.Thread(target=self._monitor_loop, daemon=True)
         self.monitor_thread.start()
-        logger.info(f"[Monitor] Service started")
 
     def stop(self):
         self.stop_event.set()
         if self.monitor_thread:
             self.monitor_thread.join(timeout=2)
-        logger.info("[Monitor] Service stopped.")
 
     def trigger_update(self):
         self.stop_event.set()
@@ -163,7 +163,6 @@ class VLCMonitor:
         while not self.stop_event.is_set():
             self.update_track_info(base_delay=4)
             if self.vlc_state == "stopped":
-                logger.info("VLC arrêté détecté. Passage à l'album suivant maintenant.")
                 self.manager.play_random_album()
                 break
 

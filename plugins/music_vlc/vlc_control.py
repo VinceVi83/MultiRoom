@@ -21,6 +21,7 @@ class VLCControl:
         get_current_state(self) : Get current playback state.
         _parse_status_xml(self, xml_data) : Parse status XML response.
         _parse_playlist_xml(self, xml_data) : Parse playlist XML response.
+        set_vlc_loop(self, target_state: bool) : Set VLC loop state.
         __del__(self) : Cleanup on object deletion.
     """
     def __init__(self, cfg, index, playlist=""):
@@ -78,7 +79,6 @@ class VLCControl:
         self._vlc_request("status.xml", "command=pl_empty")
         self.current_path = target
         encoded_target = urllib.parse.quote(target)
-        logger.info(f"VLC: Loading encoded path: {encoded_target}")
         return self._vlc_request("status.xml", f"command=in_play&input={encoded_target}")
 
     def start_vlc(self, path="default"):
@@ -193,10 +193,9 @@ class VLCControl:
         current_loop = (loop_text == 'true')
 
         if current_loop != target_state:
-            logger.info(f"[VLC] Changing loop state to: {target_state}")
             self._vlc_request("status.xml?command=pl_loop")
         else:
-            logger.info(f"[VLC] Loop is already {target_state}, doing nothing.")
+            pass
 
     def get_current_state(self):
         xml_data = self._vlc_request("status.xml")
