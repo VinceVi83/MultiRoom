@@ -74,7 +74,7 @@ class UnifiedSpeechSystem:
                         else:
                             silent_chunks = 0
                         
-                        if silent_chunks > 25 or len(frames) > 215:
+                        if silent_chunks > 20 or len(frames) > 150:
                             break
                     else:
                         self.pre_roll.append(data)
