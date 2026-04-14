@@ -46,7 +46,8 @@ class PlaylistManager:
         file_path = self._get_path(name.lower())
         if file_path.exists():
             return None
-        
+
+        logger.info(f"Create playlist {name}")
         self._write_header(file_path)
         return file_path
 
@@ -56,6 +57,7 @@ class PlaylistManager:
             self.create_playlist(name)
 
         song_path_clean = song_path.strip()
+        logger.info(f"Add {song_path_clean} to playlist {name}")
         lines = self._read_lines(file_path)
         if any(line.strip() == song_path_clean for line in lines):
             return False
@@ -71,9 +73,12 @@ class PlaylistManager:
 
         song_path_clean = song_path.strip()
         lines = self._read_lines(file_path)
-        new_lines = [l for l in lines if l.strip() != song_path_clean]
-        if len(lines) == len(new_lines):
-            return False
+        new_lines = []
+        for l in lines:
+            if not song_path in l:
+                new_lines.append(l)
+            else:
+                logger.warn(f"Remove {song_path} from playlist {name}")
 
         self._write_lines(file_path, new_lines)
         return True

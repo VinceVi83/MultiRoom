@@ -97,6 +97,8 @@ class VLCUserManager:
         
         action, name = self.playlist_format_data(context)
         context.result = f'{action}:{name}'
+        if name == "current" and self.playlists.get(self.current_album_name):
+            name = self.current_album_name
         if action == "PLAY":
             playlist_path = self.playlists.get(name, "default")
             self.current_album_name = name
@@ -111,11 +113,11 @@ class VLCUserManager:
                 self.update_playlist_agent()
                 return "Done"
             return "Failed"
-        elif action == "ADD" and name:
+        elif action == "ADD" and name and name != self.current_album_name:
             return self.playlist_manager.add_music(name, self.vlc_monitor.full_path)
         elif action == "DEL" and name:
             return self.playlist_manager.delete_music(name, self.vlc_monitor.full_path)
-        elif action == "INFO" and name:
+        elif action == "INFO":
             self.vlc_monitor._sync_playlist_data()
             self.vlc_monitor.print_playlist_summary()
             return "Done"
