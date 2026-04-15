@@ -63,7 +63,7 @@ class HomeAutomationService:
     
     def get_status(self):
         if self.status != self.cfg.RETURN_CODE.SUCCESS:
-            logger.warn(f"{self.plugin_name} not configured")
+            logger.warning(f"{self.plugin_name} not configured")
             return False
         return True
 
@@ -109,6 +109,6 @@ class HomeAutomationService:
     
     def get_status(self):
         if self.status != self.cfg.RETURN_CODE.SUCCESS:
-            logger.warn(f"Home Automation not configured")
+            logger.warning(f"Home Automation not configured")
             return False
         return True

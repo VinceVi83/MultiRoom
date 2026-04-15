@@ -78,7 +78,7 @@ class PlaylistManager:
             if not song_path in l:
                 new_lines.append(l)
             else:
-                logger.warn(f"Remove {song_path} from playlist {name}")
+                logger.warning(f"Remove {song_path} from playlist {name}")
 
         self._write_lines(file_path, new_lines)
         return True
