@@ -139,6 +139,7 @@ class VLCMonitor:
         self.stop_event = threading.Event()
         self.monitor_thread = None
         self._lock = threading.Lock()
+        self.inactivity = 0
 
     def start(self):
         if self.monitor_thread and self.monitor_thread.is_alive():
@@ -167,9 +168,16 @@ class VLCMonitor:
                 break
 
             if self.vlc_state == "paused":
-                self.stop_event.wait(timeout=10)
+                self.inactivity += 1
+                if self.inactivity > 6:
+                    self.manager.vlc_instance.empty_current_playlist()
+                    logger.warning(f"[Monitor] Inactivity timeout ({self.inactivity * 10}min). Clearing playlist.")
+                    self.vlc_monitor.stop_event.set()
+                    break
+                self.stop_event.wait(timeout=600)
                 continue
 
+            self.inactivity = 0
             if not self.playlist_cache or self.current_track not in self.playlist_cache:
                 self._sync_playlist_data()
                 with self._lock:

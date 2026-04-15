@@ -81,8 +81,11 @@ class VLCControl:
             return self._vlc_request("status.xml", f"command={cmd}")
         return None
 
-    def change_playlist(self, target):
+    def empty_current_playlist(self):
         self._vlc_request("status.xml", "command=pl_empty")
+
+    def change_playlist(self, target):
+        self.empty_current_playlist()
         self.current_path = target
         encoded_target = urllib.parse.quote(str(target))
         return self._vlc_request("status.xml", f"command=in_play&input={encoded_target}")
