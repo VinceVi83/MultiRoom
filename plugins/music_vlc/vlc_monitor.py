@@ -128,14 +128,13 @@ class VLCMonitor:
     def __init__(self, manager):
         self.manager = manager
         self.cfg = manager.cfg
-        
-        self.current_track = ""
+        self.current_track = None
         self.full_path = ""
         self.time_remaining = 0
         self.playlist_cache = {}
         self.total_duration = 0
         self.vlc_state = "unknown"
-        
+
         self.stop_event = threading.Event()
         self.monitor_thread = None
         self._lock = threading.Lock()
@@ -160,8 +159,10 @@ class VLCMonitor:
     def _monitor_loop(self):
         last_track = ""
         last_playlist_snapshot = []
+        playlist_reported = True
+        retry = 5
 
-        while not self.stop_event.is_set():
+        while not self.stop_event.is_set() and retry:
             self.update_track_info(base_delay=4)
             if self.vlc_state == "stopped":
                 self.manager.play_random_album()
@@ -180,18 +181,26 @@ class VLCMonitor:
             self.inactivity = 0
             if not self.playlist_cache or self.current_track not in self.playlist_cache:
                 self._sync_playlist_data()
-                with self._lock:
-                    track_data = self.playlist_cache.get(self.current_track, "")
-                    self.full_path = track_data.get("path", "")
+                try:
+                    with self._lock:
+                        track_data = self.playlist_cache.get(self.current_track, "")
+                        if not track_data:
+                            retry -= 1
+                            logger.warning(f"[Monitor] can't link current_track with playlist, retry later")
+                            self.stop_event.wait(timeout=5)
+                            continue
+                        retry = 5
+                        self.full_path = track_data.get("path", "")
+                except Exception as e:
+                    logger.error(f"[Monitor] Error: {e}")
 
-            if self.current_track != last_track:
+            if last_track == "" or self.current_track != last_track:
                 self.print_current_track()
                 last_track = self.current_track
 
-            current_snapshot = list(self.playlist_cache.keys())
-            if current_snapshot != last_playlist_snapshot:
+            if playlist_reported:
+                playlist_reported = False
                 self.print_playlist_summary()
-                last_playlist_snapshot = current_snapshot
 
             sleep_duration = max(1, self.time_remaining+10)
             remaining_str = time.strftime('%H:%M:%S', time.gmtime(sleep_duration))

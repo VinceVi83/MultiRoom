@@ -158,7 +158,7 @@ class TaskContext:
             report_text = llm.execute(report_input, tmp_agent)
             self.add_step('report', report_text)
             report = report_text.get('content', 'FF')
-            logger.info(f"ALISU: {report}")
+            logger.info(f"\nALISU: {report}")
             return report
 
         except Exception as e:

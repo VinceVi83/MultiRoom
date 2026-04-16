@@ -49,8 +49,9 @@ class VLCUserManager:
         self.album_cache = []
         self._init_album_cache()
 
-        self.vlc_monitor = VLCMonitor(self)
+        self.vlc_monitor = None
         self.base_dir_playlist = Path(self.cfg.DATA_DIR) / self.user_session.username / "Playlists"
+        self.tmp_playlist = Path("/tmp") / f"tmp_{self.user_session.username}.m3u8"
         self.playlist_manager = PlaylistManager(self.base_dir_playlist)
 
         self.playlists = {}
@@ -63,7 +64,8 @@ class VLCUserManager:
     def launch_playlist(self, target):
         if not self._start_vlc_if_needed(target):
             self.vlc_instance.change_playlist(target)
-        self.vlc_monitor.trigger_update()
+            if self.vlc_monitor:
+                self.vlc_monitor.trigger_update()
         return self.cfg.RETURN_CODE.SUCCESS
 
     def interpret_vlc_command(self, context):
@@ -114,50 +116,87 @@ class VLCUserManager:
                 return "Done"
             return "Failed"
         elif action == "ADD" and name and name != self.current_album_name:
-            return self.playlist_manager.add_music(name, self.vlc_monitor.full_path)
+            if self.vlc_monitor and self.vlc_monitor.full_path:
+                return self.playlist_manager.add_music(name, self.vlc_monitor.full_path)
         elif action == "DEL" and name:
-            return self.playlist_manager.delete_music(name, self.vlc_monitor.full_path)
+            if self.vlc_monitor and self.vlc_monitor.full_path:
+                return self.playlist_manager.delete_music(name, self.vlc_monitor.full_path)
         elif action == "INFO":
-            self.vlc_monitor._sync_playlist_data()
-            self.vlc_monitor.print_playlist_summary()
-            return "Done"
+            if self.vlc_monitor:
+                self.vlc_monitor._sync_playlist_data()
+                self.vlc_monitor.print_playlist_summary()
+                return "Done"
         return self.cfg.RETURN_CODE.ERR
 
     def execute_vlc(self, context):
         if not self._start_vlc_if_needed():
             if context.result in "INFO":
-                self.vlc_monitor.update_track_info()
-                self.vlc_monitor.print_current_track()
+                if self.vlc_monitor:
+                    self.vlc_monitor.update_track_info()
+                    self.vlc_monitor.print_current_track()
                 return self.cfg.RETURN_CODE.SUCCESS
 
             self.vlc_instance.handle_simple_command(context.result)
             if context.result in "TOGGLE":
-                self.vlc_monitor.trigger_update()
+                if self.vlc_monitor:
+                    self.vlc_monitor.trigger_update()
                 return self.cfg.RETURN_CODE.SUCCESS
 
             if context.result in ["NEXT", "PREVIOUS"]:
-                self.vlc_monitor.trigger_update()
+                if self.vlc_monitor:
+                    self.vlc_monitor.trigger_update()
             return self.cfg.RETURN_CODE.SUCCESS
         return self.cfg.RETURN_CODE.ERR
+
+    def add_album_to_playlist(self, folder_path):
+        count = 0
+        valid_ext = {'.mp3', '.flac', '.wav', '.m4a', '.aac', '.ogg', '.opus', '.wma'}
+        tmp_name = f'tmp_{self.user_session.username}'
+        try:
+            existing_lines = []
+            if Path(self.tmp_playlist).exists():
+                with open(self.tmp_playlist, 'r', encoding='utf-8') as f:
+                    existing_lines = [line.strip() for line in f.readlines()]
+
+            with open(self.tmp_playlist, 'w', encoding='utf-8') as f:
+                entries = sorted(os.scandir(str(folder_path)), key=lambda e: e.name)
+                for entry in entries:
+                    if entry.is_file() and Path(entry.name).suffix.lower() in valid_ext:
+                        song_path = entry.path.strip()
+                        if song_path not in existing_lines:
+                            f.write(song_path + '\n')
+                            existing_lines.append(song_path)
+                            count += 1
+            return count
+        except Exception as e:
+            logger.error(f"Error while building temporary playlist: {e}", exc_info=True)
+            return 0
 
     def play_random_album(self):
         if not self.album_cache:
             return self.cfg.RETURN_CODE.ERROR
 
-        if self.vlc_monitor:
-            self.vlc_monitor.stop_event.set()
+        res = self.cfg.RETURN_CODE.ERROR
+        for retry in range(5):
+            if self.vlc_monitor:
+                self.vlc_monitor.stop_event.set()
 
-        selection = random.choice(self.album_cache)
-        attempts = 0
-        while os.path.basename(selection) in self.recently_played and attempts < 20:
             selection = random.choice(self.album_cache)
-            attempts += 1
+            attempts = 0
+            while os.path.basename(selection) in self.recently_played and attempts < 20:
+                selection = random.choice(self.album_cache)
+                attempts += 1
 
-        self.current_album_name = os.path.basename(selection)
-        res = self.launch_playlist(selection)
-        self.vlc_instance.set_vlc_loop(False)
-        self.vlc_monitor = VLCMonitor(self)
-        self.vlc_monitor.start()
+            self.current_album_name = os.path.basename(selection)
+            if self.add_album_to_playlist(selection):
+                self.vlc_monitor = VLCMonitor(self)
+                res = self.launch_playlist(str(self.tmp_playlist))
+                self.vlc_instance.set_vlc_loop(False)
+                self.vlc_monitor.start()
+                return res
+            else:
+                logger.warning(f"Empty folder: {selection}. Retrying...")
+                continue
         return res
 
     def is_alive(self):
@@ -168,8 +207,9 @@ class VLCUserManager:
             if not path and self.playlists:
                 path = list(self.playlists.values())[0]
             self.vlc_instance = VLCControl(self.cfg, self.user_index, str(path))
-            self.vlc_monitor.vlc_instance = self.vlc_instance
-            self.vlc_monitor.start()
+            if not self.vlc_monitor:
+                self.vlc_monitor = VLCMonitor(self)
+                self.vlc_monitor.start()
             return True
         return False
 
@@ -188,7 +228,6 @@ class VLCUserManager:
         for directory in self.smb_base:
             if os.path.exists(directory):
                 self._append_album_cache(directory)
-
         if not self.album_cache:
             logger.error(f"No Music collection")
             return False

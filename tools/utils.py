@@ -37,7 +37,12 @@ def setup_logging():
     class SmartFormatter(logging.Formatter):
         def format(self, record):
             if record.funcName in ['print_current_track', 'print_playlist_summary']:
-                return record.getMessage()
+                msg = record.getMessage()
+                try:
+                    msg = msg.encode('latin-1').decode('utf-8')
+                except (UnicodeEncodeError, UnicodeDecodeError):
+                    pass
+                return msg
             return super().format(record)
 
     if cfg.verbose:
