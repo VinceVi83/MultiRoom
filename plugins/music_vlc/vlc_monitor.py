@@ -181,7 +181,8 @@ class VLCMonitor:
             if not self.playlist_cache or self.current_track not in self.playlist_cache:
                 self._sync_playlist_data()
                 with self._lock:
-                    self.full_path = self.playlist_cache.get(self.current_track, "")
+                    track_data = self.playlist_cache.get(self.current_track, "")
+                    self.full_path = track_data.get("path", "")
 
             if self.current_track != last_track:
                 self.print_current_track()
