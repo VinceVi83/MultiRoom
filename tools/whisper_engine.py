@@ -8,7 +8,7 @@ try:
     WHISPER_MODE = cfg.sys.WHISPER
     LANGUAGE = cfg.sys.LANGUAGE
 except Exception as e:
-    WHISPER_MODE = "CPU"
+    WHISPER_MODE = "GPU"
     LANGUAGE = "fr"
 
 def initialize_cuda():

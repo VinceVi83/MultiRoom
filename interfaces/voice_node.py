@@ -6,6 +6,7 @@ from collections import deque
 import signal
 from tools.whisper_engine import WhisperEngine
 from tools.hub_messenger import HubMessenger
+import keyboard
 
 class UnifiedSpeechSystem:
     """Unified Speech Processing System
@@ -25,6 +26,7 @@ class UnifiedSpeechSystem:
         self.temp_wav = "temp_voice.wav"
         self.pre_roll = deque(maxlen=40)
         self.stream = None
+        self.is_listening = False
         
         try:
             self.messenger = HubMessenger(
@@ -47,12 +49,30 @@ class UnifiedSpeechSystem:
         self.stream = stream
         BAR_WIDTH = 20
         MAX_RMS = 2500
-        
+        self.is_listening = False
+        last_toggle_time = 0
+        print(f"\n[*] System Ready.")
+        print(f"[*] Press 'T' to TOGGLE Microphone (ON/OFF)")
+
         try:
             while self.running:
                 frames, recording, silent_chunks = [], False, 0
                 
                 while self.running:
+                    if keyboard.is_pressed('t'):
+                        if time.time() - last_toggle_time > 0.3:
+                            self.is_listening = not self.is_listening
+                            last_toggle_time = time.time()
+                            if not self.is_listening:
+                                self.pre_roll.clear()
+                                frames = []
+                                recording = False
+
+                    if not self.is_listening:
+                        print(f" [MUTED] | {'-' * BAR_WIDTH} | Press 'T' to Wake Up      ", end="\r")
+                        time.sleep(0.1)
+                        continue
+
                     try:
                         data = stream.read(1024, exception_on_overflow=False)
                     except Exception as e:
@@ -131,7 +151,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     
     def signal_handler(sig, frame):
-        print("\n[INFO] Arrêt forcé...")
+        print("\n[INFO] Terminate...")
         if node:
             node.running = False
         import os
@@ -148,5 +168,5 @@ if __name__ == "__main__":
         print(f"[FATAL] Node crashed: {e}")
         sys.exit(1)
     finally:
-        print("[INFO] Nettoyage des ressources terminé.")
+        print("[INFO] Stop STT to server.")
         sys.exit(0)
