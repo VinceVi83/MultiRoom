@@ -218,7 +218,11 @@ if __name__ == "__main__":
         sys.exit(1)
 
     text_to_send = " ".join(sys.argv[1:])
-    messenger = HubMessenger()
+
+    from config_loader import cfg
+    user = "system"
+    pwd = getattr(cfg.config.USERS, user, None)
+    messenger = HubMessenger(user=user, password=pwd)
     success = messenger.send_stt(text_to_send, wait_response=True)
 
     if success:
