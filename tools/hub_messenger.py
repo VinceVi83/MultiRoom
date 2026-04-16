@@ -221,7 +221,7 @@ if __name__ == "__main__":
 
     from config_loader import cfg
     user = "system"
-    pwd = getattr(cfg.config.USERS, user, None)
+    pwd = getattr(cfg.sys.security.USERS, user, None)
     messenger = HubMessenger(user=user, password=pwd)
     success = messenger.send_stt(text_to_send, wait_response=True)
 

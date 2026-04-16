@@ -33,7 +33,7 @@ class HAListener:
         self._load_mapping()
 
         user = "system"
-        pwd = getattr(cfg.config.USERS, user, None) 
+        pwd = getattr(cfg.config.USERS, user, None)
 
         self.messenger = HubMessenger(
             host="127.0.0.1",
