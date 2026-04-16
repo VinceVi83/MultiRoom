@@ -100,12 +100,12 @@ class MusicVlcService:
             if category_res:
                 context.sub_category = category_res
                 step_data = {'label': category_res, 'bypass': 1}
+                context.add_step('sub_category', step_data, True)
             else:
                 llm_res = llm.execute(context.user_input, self.cfg.MUSIC_AGENT)
                 context.sub_category = llm_res.get('category', 'NONE')
                 step_data = llm_res
-            
-            context.add_step('sub_category', step_data)
+                context.add_step('sub_category', step_data)
 
             handlers = {
                 'PLAYLIST': self._handle_playlist,
@@ -121,7 +121,8 @@ class MusicVlcService:
             logger.error(f"[PLUGIN MusicVlcService MUSIC_AGENT ERROR] {e}")
             return self.cfg.RETURN_CODE.ERR
 
-        context.add_step('Result', res)
+        if context.sub_category != "DISCOVER":
+            context.add_step('Result', res)
         context.result = res.get('action', 'ERR')
         return self.execute_native(context)
 

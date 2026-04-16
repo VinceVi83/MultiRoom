@@ -45,8 +45,10 @@ class TaskContext:
     return_code: ReturnCode = cfg.RETURN_CODE.ERR
     call_counter: int = 0
 
-    def add_step(self, step_name, data):
+    def add_step(self, step_name, data, bypass=False):
         self.data[step_name] = data
+        if bypass:
+            return
         self.add_durations(data)
 
     def clone_safe(self):
@@ -70,6 +72,7 @@ class TaskContext:
         logger.info("="*50)
         logger.info(f"{'DISPATCH REPORT':^50}")
         logger.info("="*50)
+        logger.info(f"{'LLMCallCount:':<15} {self.call_counter}")
         logger.info(f"{'Input:':<15} {self.user_input}")
         logger.info(f"{'File:':<15} {new_audio_name}")
         logger.info("-" * 50)

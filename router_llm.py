@@ -108,13 +108,13 @@ class RouterLLM:
         for keyword in cfg.sys.config.BYPASS_ALL:
             if keyword.lower() in user_input_lower:
                 context.location = "ALL"
-                context.add_step('bypass_location', {'location': "ALL", 'bypass': 1})
+                context.add_step('bypass_location', {'location': "ALL", 'bypass': 1}, True)
                 return True
 
         for keyword in cfg.sys.config.REPLACE_LOCATIONS:
             if keyword.lower() in user_input_lower:
                 context.location = keyword
-                context.add_step('bypass_location', {'location': keyword, 'bypass': 1})
+                context.add_step('bypass_location', {'location': keyword, 'bypass': 1}, True)
                 return True
         return False
 
@@ -132,10 +132,11 @@ class RouterLLM:
         category_res = None
         if Utils.enable_bypass():
             category_res = self.bypass_router(context)
+            context.add_step('ROUTER_AGENT', category_res, True)
         if not category_res:
             category_res = llm.execute(context.user_input, cfg.ALL_PURPOSE.ROUTER_AGENT)
+            context.add_step('ROUTER_AGENT', category_res)
 
-        context.add_step('ROUTER_AGENT', category_res)
         context.category = category_res.get('plugin', 'UNKNOWN')
         return context.category.lower() in cfg.LOADED_PLUGINS
 
