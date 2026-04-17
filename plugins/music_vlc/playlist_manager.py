@@ -42,6 +42,16 @@ class PlaylistManager:
         with open(file_path, "a", encoding="utf-8") as f:
             f.write(f"{line}\n")
 
+    def _filter_lines(self, lines, song_path):
+        song_path_clean = song_path.strip()
+        new_lines = []
+        for l in lines:
+            if not song_path_clean in l:
+                new_lines.append(l)
+            else:
+                logger.warning(f"Remove {song_path_clean} from playlist")
+        return new_lines
+
     def create_playlist(self, name):
         file_path = self._get_path(name.lower())
         if file_path.exists():
@@ -68,17 +78,10 @@ class PlaylistManager:
 
     def delete_music(self, name, song_path):
         file_path = self._get_path(name)
-        if not file_path.exists(): 
+        if not file_path.exists():
             return False
 
-        song_path_clean = song_path.strip()
         lines = self._read_lines(file_path)
-        new_lines = []
-        for l in lines:
-            if not song_path in l:
-                new_lines.append(l)
-            else:
-                logger.warning(f"Remove {song_path} from playlist {name}")
-
+        new_lines = self._filter_lines(lines, song_path)
         self._write_lines(file_path, new_lines)
         return True

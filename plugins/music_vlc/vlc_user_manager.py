@@ -65,7 +65,9 @@ class VLCUserManager:
         if not self._start_vlc_if_needed(target):
             self.vlc_instance.change_playlist(target)
             if self.vlc_monitor:
-                self.vlc_monitor.trigger_update()
+                self.vlc_monitor.stop()
+                self.vlc_monitor = VLCMonitor(self)
+                self.vlc_monitor.start()
         return self.cfg.RETURN_CODE.SUCCESS
 
     def interpret_vlc_command(self, context):
@@ -78,7 +80,7 @@ class VLCUserManager:
         return self.cfg.RETURN_CODE.SUCCESS
 
     def playlist_format_data(self, context):
-        action = None 
+        action = None
         name = None
         try:
             data = context.result.split(":")
@@ -174,9 +176,9 @@ class VLCUserManager:
 
     def play_random_album(self):
         if not self.album_cache:
-            return self.cfg.RETURN_CODE.ERROR
+            return self.cfg.RETURN_CODE.ERR
 
-        res = self.cfg.RETURN_CODE.ERROR
+        res = self.cfg.RETURN_CODE.ERR
         for retry in range(5):
             if self.vlc_monitor:
                 self.vlc_monitor.stop_event.set()

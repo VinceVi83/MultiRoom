@@ -16,6 +16,7 @@ class VLCControl:
         __init__(self, cfg, index, playlist="") : Initialize VLC control instance with config.
         _vlc_request(self, endpoint, params=None) : Make HTTP request to VLC control port.
         handle_simple_command(self, action) : Handle simple VLC commands via command mapping.
+        empty_current_playlist(self) : Empty the current playlist.
         change_playlist(self, target) : Change the current playlist to target path.
         start_vlc(self, path="default") : Start VLC with given playlist path.
         kill_vlc(self) : Stop and clean up VLC process.
@@ -139,10 +140,14 @@ class VLCControl:
         
         try:
             root = ET.fromstring(xml_data)
+            time_val = root.findtext('time', '0')
+            length_val = root.findtext('length', '0')
+            state_val = root.findtext('state', 'unknown')
+            
             return {
-                "time": int(root.findtext('time', '0')),
-                "length": int(root.findtext('length', '0')),
-                "state": root.findtext('state', 'unknown').lower()
+                "time": int(time_val),
+                "length": int(length_val),
+                "state": state_val.lower()
             }
         except Exception:
             return None
@@ -204,8 +209,6 @@ class VLCControl:
 
         if current_loop != target_state:
             self._vlc_request("status.xml?command=pl_loop")
-        else:
-            pass
 
     def get_current_state(self):
         xml_data = self._vlc_request("status.xml")

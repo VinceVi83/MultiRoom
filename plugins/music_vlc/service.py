@@ -4,20 +4,42 @@ from tools.utils import Utils
 import logging
 logger = logging.getLogger(__name__)
 
+REQUIRED_CONFIG_KEYS = [
+    "DATA_DIR",
+    "INTENT",
+    "MUSIC_AGENT",
+    "PLAYLIST_ACTION",
+    "PLAYLIST_AGENT",
+    "VLC_ACTIONS",
+    "VLC_AGENT",
+    "config.BYPASS_ROUTER.MUSIC",
+    "config.BYPASS_ROUTER.PLAYLIST",
+    "config.LEN_ALBUMS_CACHE",
+    "config.SMB_MOUNT_POINT",
+    "config.VLC_PORT_START",
+    "extra.BYPASS_MUSIC",
+    "extra.BYPASS_PLAYLIST",
+    "security.VLC_USERS"
+]
+
 class MusicVlcService:
     """Music VLC Service Plugin
     
-    Role: Manages VLC music playback, playlist operations, and user session management.
+    Role: Manages music playback, playlist operations, and discovery through VLC integration.
     
     Methods:
-        __init__(self, cfg): Initialize the service with configuration and active instances.
-        bypass_router(self, context): Route user input to playlist or music category.
-        execute(self, context, callback_internal_request_api): Process user input and execute music commands via LLM.
-        execute_native(self, context): Execute native VLC commands through user manager.
-        _get_free_index(self): Get or create a free instance index for active instances.
-        check_user_use_service(self, context): Check and create user service manager.
-        get_status(self): Return service status information.
+        __init__(self, cfg) : Initialize the service with configuration.
+        check_config(self) : Validate required configuration parameters.
+        get_status(self) : Check if service is properly configured.
+        bypass_router(self, context) : Route requests based on bypass keywords.
+        execute(self, context, callback_internal_request_api) : Main execution handler.
+        _handle_playlist(self, context) : Handle playlist-related requests.
+        _handle_discover(self, context) : Handle discovery requests.
+        execute_native(self, context) : Execute native VLC commands.
+        _get_free_index(self) : Get available instance index.
+        check_user_use_service(self, context) : Check or create user service instance.
     """
+    
     def __init__(self, cfg):
         self.plugin_name = "Music VLC" 
         self.cfg = cfg
@@ -31,27 +53,8 @@ class MusicVlcService:
             return
         
     def check_config(self):
-        required_keys = [
-            "DATA_DIR",
-            "INTENT",
-            "MUSIC_AGENT",
-            "PLAYLIST_ACTION",
-            "PLAYLIST_AGENT",
-            "VLC_ACTIONS",
-            "VLC_AGENT",
-            "config.BYPASS_ROUTER.MUSIC",
-            "config.BYPASS_ROUTER.PLAYLIST",
-            "config.LEN_ALBUMS_CACHE",
-            "config.SMB_MOUNT_POINT",
-            "config.VLC_PORT_START",
-            "extra.BYPASS_MUSIC",
-            "extra.BYPASS_PLAYLIST",
-            "security.VLC_USERS"
-        ]
-        
         missing_keys = []
-
-        for key_path in required_keys:
+        for key_path in REQUIRED_CONFIG_KEYS:
             keys = key_path.split('.')
             current_obj = self.cfg
             for key in keys:
@@ -123,12 +126,13 @@ class MusicVlcService:
 
         if context.sub_category != "DISCOVER":
             context.add_step('Result', res)
-        context.result = res.get('action', 'ERR')
+            context.result = res.get('action', 'ERR')
         return self.execute_native(context)
 
     def _handle_playlist(self, context):
         vlc_manager = self.check_user_use_service(context)
         r = llm.execute(context.user_input, vlc_manager.playlist_agent)
+        context.add_step('Result', r)
         return {'action': f"{r.get('action', 'ERR')}:{r.get('name', 'ERR')}"}
 
     def _handle_discover(self, context):
@@ -146,14 +150,17 @@ class MusicVlcService:
         return self.cfg.RETURN_CODE.ERR
 
     def _get_free_index(self):
-        dead_keys = [i for i, inst in self.active_instances.items() if not inst.is_alive()]
+        dead_keys = []
+        for i, inst in self.active_instances.items():
+            if not inst.is_alive():
+                dead_keys.append(i)
+
         for k in dead_keys:
             del self.active_instances[k]
 
         index = 0
         while index in self.active_instances:
             index += 1
-            
         return index
 
     def check_user_use_service(self, context):
@@ -163,10 +170,14 @@ class MusicVlcService:
                 return existing_mgr
             else:
                 del context.session.services[self.plugin_name]
-                idx_to_free = next((k for k, v in self.active_instances.items() if v == existing_mgr), None)
+                idx_to_free = None
+                for k, v in self.active_instances.items():
+                    if v == existing_mgr:
+                        idx_to_free = k
+                        break
                 if idx_to_free is not None:
                     self.active_instances.pop(idx_to_free)
-        
+
         idx = self._get_free_index()
         if idx is None:
             return self.cfg.RETURN_CODE.ERR
