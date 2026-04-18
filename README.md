@@ -9,7 +9,7 @@ The goal is to simplify service execution (music, home automation, agenda, shopp
 ## Demo & Performance
 To showcase the real-time capabilities of **A.L.I.S.U.**, a video demonstration is available. It highlights the full pipeline: Voice Capture ➔ Whisper Transcription ➔ LLM Intent Extraction ➔ Service Execution.
 
-### [Watch the Demo: Voice-Controlled Media Orchestration](https://www.youtube.com/watch?v=JYTv3L7crkk)
+### [Watch the Demo: Voice-Controlled Media Orchestration](https://youtu.be/C8C_hTu1G1Q)
 *(Note: This video is unlisted and intended for technical review.)*
 
 **What you will see in the demo:**

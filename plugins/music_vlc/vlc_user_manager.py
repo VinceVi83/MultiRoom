@@ -157,10 +157,10 @@ class VLCUserManager:
         try:
             existing_lines = []
             if Path(self.tmp_playlist).exists():
-                with open(self.tmp_playlist, 'r', encoding='utf-8') as f:
+                with open(self.tmp_playlist, 'r', encoding='utf-8', errors='replace') as f:
                     existing_lines = [line.strip() for line in f.readlines()]
 
-            with open(self.tmp_playlist, 'w', encoding='utf-8') as f:
+            with open(self.tmp_playlist, 'w', encoding='utf-8', errors='replace') as f:
                 entries = sorted(os.scandir(str(folder_path)), key=lambda e: e.name)
                 for entry in entries:
                     if entry.is_file() and Path(entry.name).suffix.lower() in valid_ext:
