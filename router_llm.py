@@ -72,7 +72,7 @@ class RouterLLM:
 
     def execute_native(self, context):
         parts = context.user_input.lstrip('@').split(';-;', 3)
-        
+        Utils.send_discord_notification(f'A.L.I.S.U will execute : {context.user_input}')
         if len(parts) < 4:
             logger.info(f"[!] Native Format Error: {context.user_input}")
             return "FORMAT_ERROR"
@@ -190,6 +190,7 @@ class RouterLLM:
 
     def inference_loop(self):
         llm.execute("Be ready", cfg.ALL_PURPOSE.ROUTER_AGENT)
+        Utils.send_discord_notification('A.L.I.S.U is ready for commands')
         last_activity = time.time()
         keep_alive_threshold = 240
 

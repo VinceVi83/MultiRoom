@@ -4,6 +4,8 @@ from pathlib import Path
 from config_loader import cfg
 import sys
 import logging
+import threading
+import requests
 logger = logging.getLogger(__name__)
 
 class LocalFilesFilter(logging.Filter):
@@ -48,7 +50,7 @@ def setup_logging():
     if cfg.verbose:
         log_format = "[%(asctime)s][%(filename)s][%(funcName)s](%(levelname)s): %(message)s"
     else:
-        log_format = "[%(funcName)s](%(levelname)s): %(message)s"
+        log_format = "[%(asctime)s][%(funcName)s](%(levelname)s): %(message)s"
     
     formatter = SmartFormatter(fmt=log_format, datefmt=date_format)
 
@@ -136,6 +138,27 @@ class Utils:
     @staticmethod
     def enable_bypass():
         return cfg.no_bypass
+
+    @staticmethod
+    def send_discord_notification(message, channel=None, files=None):
+        if getattr(cfg.sys.discord, 'PORT', None) is None:
+            logger.info("Discord not configured")
+            return
+
+        def post_request():
+            try:
+                payload = {
+                    "channel_name": channel if channel else cfg.sys.discord.CHANNEL,
+                    "msg": message,
+                    "attachments": files if files else []
+                }
+                requests.post(f"http://{cfg.sys.discord.HOST}:{cfg.sys.discord.PORT}/send",
+                              json=payload,
+                              timeout=5)
+            except Exception as e:
+                pass
+
+        threading.Thread(target=post_request, daemon=True).start()
 
 class SimpleStore:
     """Simple Key-Value Store with JSON Persistence
