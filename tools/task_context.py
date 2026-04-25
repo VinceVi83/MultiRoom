@@ -159,6 +159,7 @@ class TaskContext:
             self.add_step('report', report_text)
             report = report_text.get('content', 'FF')
             logger.info(f"\nALISU: {report}")
+            Utils.send_discord_notification(f'A.L.I.S.U : {report}')
             return report
 
         except Exception as e:
