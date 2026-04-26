@@ -10,6 +10,7 @@ from http.server import SimpleHTTPRequestHandler, HTTPServer
 import glob
 import sys
 from pathlib import Path
+import argparse
 import logging
 logger = logging.getLogger(__name__)
 
@@ -34,7 +35,7 @@ class HubMessenger:
     def __init__(self, host="127.0.0.1", port="28888", cert_path=None, user="test", password="test"):
         self.host = host
         self.port = int(port)
-        self.http_port = 8090
+        self.http_port = 8100
         self.user = user
         self.password = password
         self.hw_signature = self._get_hw_sign()
@@ -213,17 +214,32 @@ class HubMessenger:
         return True
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        logger.info("Usage: python3 hub_messenger.py \"your message here\"")
-        sys.exit(1)
-
-    text_to_send = " ".join(sys.argv[1:])
-
+    from tools.utils import setup_logging
     from config_loader import cfg
+
+    setup_logging()
+    logger = logging.getLogger(__name__)
+    logger.info('HubMessenger')
+    parser = argparse.ArgumentParser(description="Hub Messenger CLI")
+    parser.add_argument("-ptt", "--ptt", action="store_true")
+    parser.add_argument("payload", nargs="+")
+
+    args = parser.parse_args()
+    content = " ".join(args.payload).strip()
     user = "system"
     pwd = getattr(cfg.sys.security.USERS, user, None)
     messenger = HubMessenger(user=user, password=pwd)
-    success = messenger.send_stt(text_to_send, wait_response=True)
+    if args.ptt:
+        if os.path.isfile(content):
+            logger.info(f"Processing audio file: {content}")
+            success = messenger.send_ptt(content)
+        else:
+            logger.info(f"Error: File {content} not found.")
+            sys.exit(1)
+    else:
+        text_to_send = content
+        logger.info(f"Sending text message: {text_to_send}")
+        success = messenger.send_stt(text_to_send, wait_response=True)
 
     if success:
         logger.info(f"[+] Message sent successfully. Response: {success}")
