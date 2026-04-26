@@ -141,7 +141,7 @@ class Utils:
 
     @staticmethod
     def send_discord_notification(message, channel=None, files=None):
-        if getattr(cfg.sys.discord, 'PORT', None) is None:
+        if getattr(cfg.sys, 'discord', None) is None:
             logger.info("Discord not configured")
             return
 

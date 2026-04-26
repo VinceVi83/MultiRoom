@@ -27,42 +27,46 @@ class OllamaClient:
         _prepare(self, c, user_input) : Prepare request parameters.
     """
     def __init__(self):
-        self.base_url = cfg.sys.config.OLLAMA_SERVER
-        self.client = ollama.Client(host=self.base_url)
+        self.local_url = getattr(cfg.sys.config, 'OLLAMA_SERVER_LAN', "http://127.0.0.1:11434")
+        self.wan_url = getattr(cfg.sys.config, 'OLLAMA_SERVER_WAN', None)
+
+        self.client_local = ollama.Client(host=self.local_url)
+        self.client_wan = ollama.Client(host=self.wan_url) if self.wan_url else None
         self.main_model = cfg.sys.config.MODEL_NAME_MAIN
         self.current_model = None
         self._lock = threading.Lock()
-        
         self.is_ready = True
-        self.retry_count = 0
-        self.max_delay = 3600
-        
-        self._check_connection()
+        self.wan_available = False
+        self._interrupt_monitor = threading.Event()
+        threading.Thread(target=self._monitor_loop, daemon=True).start()
 
-    def _check_connection(self):
-        try:
-            self.client.list()
-            self.is_ready = True
-            self.retry_count = 0
-        except:
-            self.is_ready = False
-            self._start_reconnect_thread()
-
-    def _start_reconnect_thread(self):
-        thread = threading.Thread(target=self._reconnect_loop, daemon=True)
-        thread.start()
-
-    def _reconnect_loop(self):
-        while not self.is_ready:
-            self.retry_count += 1
-            delay = min(self.retry_count ** 2, self.max_delay)
-            time.sleep(delay)
+    def _monitor_loop(self):
+        last_wan_state = None
+        while True:
+            wait_time = 600
+            if self.wan_url:
+                try:
+                    self.wan_available = requests.get(f"{self.wan_url}/api/version", timeout=1.5).status_code == 200
+                except:
+                    self.wan_available = False
             try:
-                self.client.list()
-                self.is_ready = True
-                self.retry_count = 0
+                self.is_ready = requests.get(f"{self.local_url}/api/version", timeout=1.0).status_code == 200
             except:
-                pass
+                self.is_ready = False
+            
+            if not self.is_ready or not self.wan_available:
+                wait_time = 60
+
+            if self.wan_available != last_wan_state:
+                if not self.wan_available:
+                    logger.warning(f"WAN DISCONNECTED | Switching to 1min monitoring")
+                else:
+                    logger.info(f"WAN CONNECTED | Standard monitoring (10min)")
+                last_wan_state = self.wan_available
+
+            logger.warning(f"wait_time lan wan : {wait_time}")    
+            self._interrupt_monitor.wait(timeout=wait_time)
+            self._interrupt_monitor.clear()
 
     def _print_debug(self, message):
         if not self.is_ready:
@@ -84,23 +88,27 @@ class OllamaClient:
         return d
 
     def execute(self, user_input, agent_cfg=None):
-        if not self.is_ready:
+        if not self.is_ready and not self.wan_available:
             return {"error": "Ollama is offline", "status": "reconnecting"}
+        
+        if agent_cfg and getattr(agent_cfg, 'model', None) is None:
+            agent_cfg.model = self.main_model
 
         with self._lock:
-            self.manage_vram(agent_cfg.model)
-            agent_cfg_final = agent_cfg
-            agent_cfg_final.user_input = user_input
+            is_wan = self.wan_available and self.client_wan
+            client = self.client_wan if is_wan else self.client_local
+            active_url = self.wan_url if is_wan else self.local_url
+            self.manage_vram(agent_cfg.model, active_url)
 
             try:
-                self._print_verbose("TARGET MODEL  : " + agent_cfg_final.model)
-                self._print_verbose("SYSTEM PROMPT : " + agent_cfg_final.prompt + "...")
+                self._print_verbose("TARGET MODEL  : " + agent_cfg.model)
+                self._print_verbose("SYSTEM PROMPT : " + agent_cfg.prompt + "...")
                 self._print_verbose("USER INPUT    : " + user_input)
 
-                response = self.client.chat(**self._prepare(agent_cfg, user_input))
+                response = client.chat(**self._prepare(agent_cfg, user_input))
                 content = response['message']['content'].strip()
 
-                if agent_cfg_final.use_json:
+                if agent_cfg.use_json:
                     result = json.loads(content)
                 elif "{" in content and "}" in content:
                     try:
@@ -137,23 +145,26 @@ class OllamaClient:
                     self._print_debug("TOTAL DURATION     : " + str(o_total) + ".3fs\n")
 
                 result = self.normalize_keys(result)
+                if isinstance(result, dict):
+                    result['engine'] = 'wan' if is_wan else 'local'
                 return result
 
             except Exception as e:
+                if is_wan:
+                    self.wan_available = False
+                    self._interrupt_monitor.set()
+                    logger.warning(f"WAN failed: {e}. Retrying locally...")
+                    return self.execute(user_input, agent_cfg)
                 self.is_ready = False
-                self._start_reconnect_thread()
-                return {'ID': '0', 'error': str(e)}
+                return {'id': '0', 'error': str(e)}
 
-    def manage_vram(self, target_model):
-        if self.current_model is not None and self.current_model != target_model:
-            self._print_debug("manage_vram change model")
+    def manage_vram(self, target_model, url):
+        if self.current_model and self.current_model != target_model:
             try:
-                requests.post(
-                    f"{self.base_url}/api/generate",
-                    json={"model": self.current_model, "keep_alive": 0},
-                    timeout=5
-                )
-            except Exception:
+                requests.post(f"{url}/api/generate", 
+                             json={"model": self.current_model, "keep_alive": 0}, 
+                             timeout=1)
+            except:
                 pass
         self.current_model = target_model
 

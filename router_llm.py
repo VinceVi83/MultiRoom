@@ -163,7 +163,7 @@ class RouterLLM:
         except Exception as e:
             logger.error(f"[!] Service {context.category} execute failed: {e}")
             return context._archive_and_rename()
-        if cfg.report:
+        if llm.wan_available:
             context.report_action_status()
         context.duration = round(time.time() - context.start, 3)
         return context._archive_and_rename()
