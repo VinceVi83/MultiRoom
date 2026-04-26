@@ -21,7 +21,7 @@ class SimpleVoiceNode:
         self.port = port
         self.running = True
         self.pre_roll = deque(maxlen=40)
-        self.whisper = WhisperEngine()
+        self.whisper = WhisperEngine('GPU', 'fr')
         self.pa = pyaudio.PyAudio()
 
     def start(self):

@@ -45,7 +45,7 @@ class SessionManager:
         self.disable_whisper = disable_whisper
 
         if not self.disable_whisper:
-            self.whisper = WhisperEngine()
+            self.whisper = WhisperEngine(cfg.sys.config.WHISPER, cfg.sys.config.LANGUAGE)
         else:
             self.whisper = None
             

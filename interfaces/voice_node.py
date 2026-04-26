@@ -37,7 +37,7 @@ class UnifiedSpeechSystem:
             )
 
             if self.mode == "stt":
-                self.whisper = WhisperEngine()
+                self.whisper = WhisperEngine('GPU', 'fr')
             self.pa = pyaudio.PyAudio()
         except Exception as e:
             print(f"[CRITICAL] System initialization failed: {e}")
