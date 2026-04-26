@@ -27,8 +27,8 @@ class OllamaClient:
         _prepare(self, c, user_input) : Prepare request parameters.
     """
     def __init__(self):
-        self.local_url = cfg.sys.config.OLLAMA_SERVER_LAN
-        self.wan_url = cfg.sys.config.OLLAMA_SERVER_WAN
+        self.local_url = getattr(cfg.sys.config, 'OLLAMA_SERVER_LAN', "http://127.0.0.1:11434")
+        self.wan_url = getattr(cfg.sys.config, 'OLLAMA_SERVER_WAN', None)
 
         self.client_local = ollama.Client(host=self.local_url)
         self.client_wan = ollama.Client(host=self.wan_url) if self.wan_url else None
@@ -36,6 +36,7 @@ class OllamaClient:
         self.current_model = None
         self._lock = threading.Lock()
         self.is_ready = True
+        self.wan_available = False
         
         threading.Thread(target=self._monitor_loop, daemon=True).start()
 

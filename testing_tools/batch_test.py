@@ -146,7 +146,7 @@ if __name__ == '__main__':
         data = json.load(f)
 
     if args.rpi:
-        tester = HubTester(host="192.168.0.35", user=args.user, password=args.passw, once=args.once)
+        tester = HubTester(host='192.168.0.23', user=args.user, password=args.passw, once=args.once)
     else:
         tester = HubTester(user=args.user, password=args.passw, once=args.once)
 
