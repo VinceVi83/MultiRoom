@@ -41,6 +41,7 @@ class OllamaClient:
 
     def _monitor_loop(self):
         while True:
+            wait_time = 600
             if self.wan_url:
                 try:
                     self.wan_available = requests.get(f"{self.wan_url}/api/version", timeout=1.5).status_code == 200
@@ -51,7 +52,9 @@ class OllamaClient:
             except:
                 self.is_ready = False
             
-            time.sleep(600)
+            if not self.is_ready and not self.wan_available:
+                wait_time = 60
+            time.sleep(wait_time)
 
     def _print_debug(self, message):
         if not self.is_ready:
