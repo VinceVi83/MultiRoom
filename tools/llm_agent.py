@@ -64,7 +64,6 @@ class OllamaClient:
                     logger.info(f"WAN CONNECTED | Standard monitoring (10min)")
                 last_wan_state = self.wan_available
 
-            logger.warning(f"wait_time lan wan : {wait_time}")    
             self._interrupt_monitor.wait(timeout=wait_time)
             self._interrupt_monitor.clear()
 
