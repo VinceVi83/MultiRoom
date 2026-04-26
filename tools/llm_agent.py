@@ -37,10 +37,11 @@ class OllamaClient:
         self._lock = threading.Lock()
         self.is_ready = True
         self.wan_available = False
-        
+        self._interrupt_monitor = threading.Event()
         threading.Thread(target=self._monitor_loop, daemon=True).start()
 
     def _monitor_loop(self):
+        last_wan_state = None
         while True:
             wait_time = 600
             if self.wan_url:
@@ -53,9 +54,19 @@ class OllamaClient:
             except:
                 self.is_ready = False
             
-            if not self.is_ready and not self.wan_available:
+            if not self.is_ready or not self.wan_available:
                 wait_time = 60
-            time.sleep(wait_time)
+
+            if self.wan_available != last_wan_state:
+                if not self.wan_available:
+                    logger.warning(f"WAN DISCONNECTED | Switching to 1min monitoring")
+                else:
+                    logger.info(f"WAN CONNECTED | Standard monitoring (10min)")
+                last_wan_state = self.wan_available
+
+            logger.warning(f"wait_time lan wan : {wait_time}")    
+            self._interrupt_monitor.wait(timeout=wait_time)
+            self._interrupt_monitor.clear()
 
     def _print_debug(self, message):
         if not self.is_ready:
@@ -141,9 +152,9 @@ class OllamaClient:
             except Exception as e:
                 if is_wan:
                     self.wan_available = False
+                    self._interrupt_monitor.set()
                     logger.warning(f"WAN failed: {e}. Retrying locally...")
-                    return self.execute(user_input, agent_cfg) # Récursion vers le local
-                
+                    return self.execute(user_input, agent_cfg)
                 self.is_ready = False
                 return {'id': '0', 'error': str(e)}
 
