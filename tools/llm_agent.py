@@ -2,10 +2,8 @@ import threading
 import ollama
 import json
 import requests
-import time
 from config_loader import cfg
 from types import SimpleNamespace
-import threading
 import logging
 logger = logging.getLogger(__name__)
 
@@ -16,12 +14,13 @@ class OllamaClient:
     
     Methods:
         __init__(self) : Initialize the Ollama client with configuration.
-        _check_connection(self) : Verify Ollama server connectivity.
-        _start_reconnect_thread(self) : Start background reconnection thread.
-        _reconnect_loop(self) : Loop to reconnect when offline.
-        _print_verbose(self, message) : Print message if verbose mode is enabled.
-        _print_debug(self, message) : Print message if debug mode is enabled.
+        _monitor_loop(self) : Monitor WAN/LOCAL connection status in background thread.
+        _print_debug(self, message) : Print debug message if debug mode is enabled.
+        _print_verbose(self, message) : Print verbose message if verbose mode is enabled.
         normalize_keys(self, d) : Normalize dictionary keys to lowercase.
+        _extract_metrics(self, response) : Extract inference metrics from response.
+        _build_result_with_metrics(self, result, metrics) : Build result with metrics.
+        _build_debug_output(self, agent_cfg, response, inference_time) : Build debug output.
         execute(self, user_input, agent_cfg=None) : Execute LLM query.
         manage_vram(self, target_model) : Manage VRAM by switching models.
         _prepare(self, c, user_input) : Prepare request parameters.
@@ -86,6 +85,32 @@ class OllamaClient:
             return {k.lower(): self.normalize_keys(v) for k, v in d.items()}
         return d
 
+    def _extract_metrics(self, response):
+        o_load = response.get('load_duration', 0) / 1e9
+        o_p_eval = response.get('prompt_eval_duration', 0) / 1e9
+        o_eval = response.get('eval_duration', 0) / 1e9
+        inference_time = o_p_eval + o_eval
+        metrics = {
+            "o_load": o_load, 
+            "inference_time": inference_time
+        }
+        return metrics
+
+    def _build_result_with_metrics(self, result, metrics):
+        if isinstance(result, dict):
+            result = result | metrics
+        else:
+            result = {"content": result} | metrics
+        return result
+
+    def _build_debug_output(self, agent_cfg, response, inference_time):
+        o_total = response.get('total_duration', 0) / 1e9
+        o_load = response.get('load_duration', 0) / 1e9
+        self._print_debug("MODEL & AGENT      : " + f"{agent_cfg.name} {agent_cfg.model} \n")
+        self._print_debug("Load Time (VRAM)   : " + str(o_load) + ".3fs")
+        self._print_debug("Inference (GPU)    : " + str(inference_time) + ".3fs")
+        self._print_debug("TOTAL DURATION     : " + str(o_total) + ".3fs\n")
+
     def execute(self, user_input, agent_cfg=None):
         if not self.is_ready and not self.wan_available:
             return {"error": "Ollama is offline", "status": "reconnecting"}
@@ -123,25 +148,11 @@ class OllamaClient:
                     result = content
                     
                 self._print_verbose("RESULT        : " + str(result))
-                o_load   = response.get('load_duration', 0) / 1e9
-                o_p_eval = response.get('prompt_eval_duration', 0) / 1e9
-                o_eval   = response.get('eval_duration', 0) / 1e9
-                inference_time = o_p_eval + o_eval
-                metrics = {
-                    "o_load": o_load, 
-                    "inference_time": inference_time
-                }
-                if isinstance(result, dict):
-                        result = result | metrics
-                else:
-                    result = {"content": result} | metrics
+                metrics = self._extract_metrics(response)
+                result = self._build_result_with_metrics(result, metrics)
 
                 if cfg.debug:
-                    o_total  = response.get('total_duration', 0) / 1e9
-                    self._print_debug("MODEL & AGENT      : " + f"{agent_cfg.name} {agent_cfg.model} \n")
-                    self._print_debug("Load Time (VRAM)   : " + str(o_load) + ".3fs")
-                    self._print_debug("Inference (GPU)    : " + str(inference_time) + ".3fs")
-                    self._print_debug("TOTAL DURATION     : " + str(o_total) + ".3fs\n")
+                    self._build_debug_output(agent_cfg, response, metrics['inference_time'])
 
                 result = self.normalize_keys(result)
                 if isinstance(result, dict):

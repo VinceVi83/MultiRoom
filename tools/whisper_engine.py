@@ -1,11 +1,26 @@
 from faster_whisper import WhisperModel
 import os
 import logging
+
 logger = logging.getLogger(__name__)
 
+
 def initialize_cuda():
-    base_nvidia = os.path.join(os.environ['APPDATA'], 'Python', 'Python312', 'site-packages', 'nvidia')
-    sub_folders = ['cublas/bin', 'cudnn/bin', 'cuda_runtime/bin', 'cublas_cu12/bin']
+    base_nvidia = os.path.join(
+        os.environ['APPDATA'],
+        'Python',
+        'Python312',
+        'site-packages',
+        'nvidia'
+    )
+    
+    sub_folders = [
+        'cublas/bin',
+        'cudnn/bin',
+        'cuda_runtime/bin',
+        'cublas_cu12/bin'
+    ]
+    
     for folder in sub_folders:
         path = os.path.normpath(os.path.join(base_nvidia, folder))
         if os.path.exists(path):
@@ -15,8 +30,10 @@ def initialize_cuda():
             except Exception as e:
                 pass
 
+
 if os.name == 'nt':
     initialize_cuda()
+
 
 class WhisperEngine:
     """Whisper Speech Recognition Engine
@@ -24,19 +41,38 @@ class WhisperEngine:
     Role: Initializes and manages Whisper model for audio transcription with VAD filtering.
     
     Methods:
-        __init__(self, WHISPER_MODE, LANGUAGE) : Initialize Whisper model with GPU or CPU backend.
+        __init__(self, mode, lang) : Initialize Whisper model with GPU or CPU backend.
         transcribe(self, audio) : Transcribe audio file and return cleaned text segments.
     """
+    
     def __init__(self, mode, lang):
         self.lang = lang
+        
         if mode == "GPU":
-            self.model = WhisperModel("medium", device="cuda", compute_type="float16")
+            self.model = WhisperModel(
+                "medium",
+                device="cuda",
+                compute_type="float16"
+            )
         else:
-            self.model = WhisperModel("medium", device="cpu", compute_type="int8", cpu_threads=4, num_workers=1)
-
-        self.vad_params = dict(threshold=0.35, min_speech_duration_ms=250)
-
+            self.model = WhisperModel(
+                "medium",
+                device="cpu",
+                compute_type="int8",
+                cpu_threads=4,
+                num_workers=1
+            )
+        
+        self.vad_params = dict(
+            threshold=0.35,
+            min_speech_duration_ms=250
+        )
+    
     def transcribe(self, audio):
-        segments, _ = self.model.transcribe(audio, language=self.lang, vad_filter=True,
-                                       initial_prompt="Alisu, Touhou, Playlist, VLC, Japanese, Mail-moi.")
+        segments, _ = self.model.transcribe(
+            audio,
+            language=self.lang,
+            vad_filter=True,
+            initial_prompt="Alisu, Touhou, Playlist, VLC, Japanese, Mail-moi."
+        )
         return "".join([s.text for s in segments]).strip()

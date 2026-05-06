@@ -10,7 +10,7 @@ def deep_merge_with_placeholder(source, destination):
         if isinstance(value, dict):
             node = destination.setdefault(key, {})
             if not isinstance(node, dict):
-                destination[key] = value 
+                destination[key] = value
             else:
                 deep_merge_with_placeholder(value, node)
         else:
@@ -45,10 +45,14 @@ def migrate_yaml_pair(source_path, target_path, label):
     logger.info(f"[{label}] Sync completed: {source_path.name} -> {target_path.name}")
 
 def run_migration(reverse=False):
-    ROOT = Path(__file__).resolve().parent.parent 
+    ROOT = Path(__file__).resolve().parent.parent
     DATA_DIR = Path.home() / "Documents" / "ALISU_DATA"
     
-    mode_label = "REVERSE (Data -> Template)" if reverse else "NORMAL (Template -> Data)"
+    if reverse:
+        mode_label = "REVERSE (Data -> Template)"
+    else:
+        mode_label = "NORMAL (Template -> Data)"
+    
     logger.info(f"--- RUNNING MIGRATION: {mode_label} ---")
 
     src_global = ROOT / "config_example.yaml"

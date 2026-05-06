@@ -11,6 +11,7 @@ import copy
 import logging
 logger = logging.getLogger(__name__)
 
+
 @dataclass
 class TaskContext:
     """Task Context Manager
@@ -19,7 +20,7 @@ class TaskContext:
     
     Methods:
         __init__(self, user_input, session=None, audio_path=None, category='NONSENSE', sub_category='NONSENSE', result='NONSENSE', duration_load=0, duration_inference=0, duration=0, location='NONSENSE', start=None, data=None, data_request=None, return_code=None, call_counter=0) : Initialize task context with input, session, and metadata.
-        add_step(self, step_name, data) : Add a step with data to the context.
+        add_step(self, step_name, data, bypass=False) : Add a step with data to the context.
         clone_safe(self) : Create a safe clone of the context with formatted return code.
         from_json(self, json_str) : Create TaskContext instance from JSON string.
         to_dict(self) : Convert context to dictionary, excluding session.
@@ -68,28 +69,57 @@ class TaskContext:
         data.pop('session', None)
         return data
 
+    def _build_report_header(self):
+        header = f"{'='*50}\n"
+        header += f"{'DISPATCH REPORT':^50}\n"
+        header += f"{'='*50}\n"
+        return header
+
+    def _build_report_metadata(self):
+        call_count = self.call_counter
+        input_text = self.user_input
+        file_name = self.audio_path if self.audio_path else "None"
+        location = self.location
+        category = self.category
+        label = self.sub_category
+        result = Utils.format_result(self.result)
+        return_code = Utils.format_result(self.return_code)
+        duration = self.duration
+        load_time = self.duration_load
+        inference_time = self.duration_inference
+        metadata = (
+            f"{'LLMCallCount:':<15} {call_count}\n"
+            f"{'Input:':<15} {input_text}\n"
+            f"{'File:':<15} {file_name}\n"
+            f"{'-' * 50}\n"
+            f"{'Location:':<15} {location}\n"
+            f"{'Category:':<15} {category}\n"
+            f"{'Label:':<15} {label}\n"
+            f"{'Result:':<15} {result}\n"
+            f"{'ReturnCode:':<15} {return_code}\n"
+            f"{'Duration:':<15} {duration}s\n"
+            f"{'LoadTimeLLM:':<15} {load_time}s\n"
+            f"{'InferenceTime:':<15} {inference_time}s\n"
+            f"{'='*50}"
+        )
+        return metadata
+
+    def format_report(self, new_audio_name="None"):
+        header = self._build_report_header()
+        metadata = self._build_report_metadata()
+        if new_audio_name != "None":
+            metadata = metadata.replace("None", new_audio_name)
+        return header + metadata
+
     def display_report(self, new_audio_name="None"):
-        logger.info("="*50)
-        logger.info(f"{'DISPATCH REPORT':^50}")
-        logger.info("="*50)
-        logger.info(f"{'LLMCallCount:':<15} {self.call_counter}")
-        logger.info(f"{'Input:':<15} {self.user_input}")
-        logger.info(f"{'File:':<15} {new_audio_name}")
-        logger.info("-" * 50)
-        logger.info(f"{'Location:':<15} {self.location}")
-        logger.info(f"{'Category:':<15} {self.category}")
-        logger.info(f"{'Label:':<15} {self.sub_category}")
-        logger.info(f"{'Result:':<15} {Utils.format_result(self.result)}")
-        logger.info(f"{'ReturnCode:':<15} {Utils.format_result(self.return_code)}")
-        logger.info(f"{'Duration:':<15} {self.duration}s")
-        logger.info(f"{'LoadTimeLLM:':<15} {self.duration_load}s")
-        logger.info(f"{'InferenceTime:':<15} {self.duration_inference}s")
-        logger.info("="*50 + "\n")
+        print(self.format_report(new_audio_name))
 
     def add_durations(self, json_data: dict):
         try:
-            self.duration_load += json_data.get('o_load', 0)
-            self.duration_inference += json_data.get('inference_time', 0)
+            load_value = json_data.get('o_load', 0)
+            inference_value = json_data.get('inference_time', 0)
+            self.duration_load += load_value
+            self.duration_inference += inference_value
             self.call_counter += 1
         except Exception:
             pass
@@ -103,18 +133,27 @@ class TaskContext:
             try:
                 with open(record_path, 'r', encoding='utf-8') as f:
                     records = json.load(f)
-            except:
+            except Exception:
                 records = []
 
+        success_value = "True"
+        command_value = str(Utils.format_result(self.user_input))
+        category_value = str(Utils.format_result(self.category))
+        subcategory_value = str(Utils.format_result(self.sub_category))
+        location_value = str(Utils.format_result(self.location))
+        result_value = str(Utils.format_result(self.result))
+        return_code_value = str(Utils.format_result(self.return_code))
+        audio_path_value = str(Utils.format_result(name))
+
         current_data = {
-            "Success":     "True",
-            "Command":     str(Utils.format_result(self.user_input)),
-            "Category":    str(Utils.format_result(self.category)),
-            "Subcategory": str(Utils.format_result(self.sub_category)),
-            "Location":    str(Utils.format_result(self.location)),
-            "Result":      str(Utils.format_result(self.result)),
-            "ReturnCode":  str(Utils.format_result(self.return_code)),
-            "audio_path":  str(Utils.format_result(name))
+            "Success":     success_value,
+            "Command":     command_value,
+            "Category":    category_value,
+            "Subcategory": subcategory_value,
+            "Location":    location_value,
+            "Result":      result_value,
+            "ReturnCode":  return_code_value,
+            "audio_path":  audio_path_value
         }
 
         records.append(current_data)
@@ -131,8 +170,9 @@ class TaskContext:
 
             archive_dir = Path(cfg.DATA_DIR) / "Archive"
             dest_path, new_name = Utils.get_unique_path(archive_dir, base, ".wav")
-
-            self.display_report(new_name)
+            report = self.format_report(new_name)
+            self.display_report(report)
+            Utils.send_discord_notification(report)
 
             if self.audio_path and Path(self.audio_path).exists():
                 shutil.move(self.audio_path, dest_path)

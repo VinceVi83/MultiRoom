@@ -14,7 +14,7 @@ class ScraperService:
     
     Methods:
         __new__(cls) : Singleton pattern implementation.
-        __init__(self, debug=False) : Initialize the service instance.
+        __init__(self) : Initialize the service instance.
         get_search_candidates(self, query, count=8, lang=None, time_boost=False) : Search for web candidates with scoring.
         scrape_full_content(self, url) : Extract full content from a URL.
         get_web_summary(self, query, agent_cfg) : Get summarized content from search results.
@@ -41,6 +41,13 @@ class ScraperService:
 
         self._initialized = True
 
+    def _calculate_date_score(self, days_old, time_boost):
+        if time_boost:
+            return round(0.8 * (0.85 ** days_old), 3)
+        elif days_old <= 14:
+            return round(0.1 * (1 - (days_old / 14)), 3)
+        return 0
+
     def get_search_candidates(self, query, count=8, lang=None, time_boost=False):
         try:
             params = {
@@ -66,10 +73,7 @@ class ScraperService:
             if date_str:
                 try:
                     days_old = (now - datetime.strptime(date_str[:10], '%Y-%m-%d')).days
-                    if time_boost:
-                        score += round(0.8 * (0.85 ** days_old), 3)
-                    elif days_old <= 14:
-                        score += round(0.1 * (1 - (days_old / 14)), 3)
+                    score += self._calculate_date_score(days_old, time_boost)
                 except ValueError:
                     pass
 

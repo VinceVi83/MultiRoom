@@ -6,6 +6,7 @@ logger = logging.getLogger(__name__)
 OLD_YAML = "agents_config.yaml"
 NEW_YAML = "agents_config_new.yaml"
 
+
 def get_yaml_structure(filepath):
     if not os.path.exists(filepath):
         return None
@@ -22,6 +23,7 @@ def get_yaml_structure(filepath):
     except Exception as e:
         logger.error(f"reading {filepath}: {e}")
         return None
+
 
 def run_audit():
     old_struct = get_yaml_structure(OLD_YAML)
@@ -61,15 +63,21 @@ def run_audit():
                 logger.info(f"New agent: {a}")
 
     has_error = False
-    if not missing_sections and not extra_sections:
-        has_error = False
-    else:
+    if missing_sections or extra_sections:
         has_error = True
+    else:
+        for section in common_sections:
+            old_agents = old_struct[section]
+            new_agents = new_struct[section]
+            if old_agents != new_agents:
+                has_error = True
+                break
 
     if not has_error:
         logger.info("Structure is identical (or increased)! Migration is safe.")
     else:
         logger.info("Differences detected. Check the indentation of your new file.")
+
 
 if __name__ == "__main__":
     run_audit()

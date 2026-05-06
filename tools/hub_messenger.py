@@ -20,14 +20,14 @@ class HubMessenger:
     Role: Manages secure socket connections and message transmission to hub.
     
     Methods:
-        __init__(self, host, port, cert_path, user, password) : Initialize messenger with connection settings.
-        _resolve_cert_path(self, cert_path) : Resolve certificate file path.
+        __init__(self, host, port, cert_path, user, password) : Initialize messenger with connection settings and credentials.
+        _resolve_cert_path(self, cert_path) : Resolve certificate file path from various sources.
         is_wsl(self) : Check if running in WSL environment.
         _get_hw_sign(self) : Get hardware signature for authentication.
         _get_secure_context(self) : Create SSL context for secure connections.
-        _get_connection(self) : Establish secure socket connection.
+        _get_connection(self) : Establish secure socket connection to hub.
         _authenticate(self, ssock) : Authenticate with remote server.
-        _send_raw(self, tag, content, wait_response) : Send raw message packet.
+        _send_raw(self, tag, content, wait_response) : Send raw message packet to hub.
         send_stt(self, text, wait_response) : Send single text to speech message.
         send_multiple_stt(self, text, wait_response) : Send multiple text to speech messages.
         send_ptt(self, file_path) : Send push-to-talk file via HTTP server.
@@ -55,15 +55,16 @@ class HubMessenger:
     def _resolve_cert_path(self, cert_path):
         if cert_path and os.path.exists(cert_path):
             return cert_path
-        else:
-            try:
-                from config_loader import cfg
-                cert_path = Path(cfg.DATA_DIR) / "Certification" / "cert.pem"
-                path_from_cfg = os.path.join(cfg.DATA_DIR, "Certification", "cert.pem")
-                if os.path.exists(path_from_cfg):
-                    return path_from_cfg
-            except:
-                pass
+        
+        try:
+            from config_loader import cfg
+            cert_path = Path(cfg.DATA_DIR) / "Certification" / "cert.pem"
+            path_from_cfg = os.path.join(cfg.DATA_DIR, "Certification", "cert.pem")
+            if os.path.exists(path_from_cfg):
+                return path_from_cfg
+        except:
+            pass
+        
         local_fallback = os.path.join("Certification", "cert.pem")
         if os.path.exists(local_fallback):
             return local_fallback
@@ -71,32 +72,41 @@ class HubMessenger:
         return ""
 
     def is_wsl(self):
-        return "microsoft" in platform.release().lower() or os.path.exists("/proc/sys/fs/binfmt_misc/WSLInterop")
+        release_lower = platform.release().lower()
+        wsl_interop_path = "/proc/sys/fs/binfmt_misc/WSLInterop"
+        return "microsoft" in release_lower or os.path.exists(wsl_interop_path)
 
     def _get_hw_sign(self):
         try:
             system = platform.system().lower()
             node_name = platform.node()
+            
             if self.is_wsl():
                 cmd = "powershell.exe -Command \"(Get-CimInstance Win32_ComputerSystemProduct).UUID\""
-                seed = subprocess.check_output(cmd, shell=True).decode().strip()
-                if not seed: seed = node_name
-            
+                try:
+                    seed = subprocess.check_output(cmd, shell=True).decode().strip()
+                except Exception:
+                    seed = node_name
             elif "android" in sys.platform.lower() or os.path.exists("/system/build.prop"):
                 try:
                     seed = subprocess.check_output("getprop ro.serialno", shell=True).decode().strip()
-                except:
-                    seed = subprocess.check_output("getprop ro.build.id", shell=True).decode().strip()
-
+                except Exception:
+                    try:
+                        seed = subprocess.check_output("getprop ro.build.id", shell=True).decode().strip()
+                    except Exception:
+                        seed = node_name
             elif system == "linux":
                 if os.path.exists("/etc/machine-id"):
                     with open("/etc/machine-id", "r") as f:
                         seed = f.read().strip()
                 else:
                     seed = node_name
-            
             else:
-                os_id = subprocess.check_output('wmic csproduct get uuid').decode().split('\n')[1].strip()
+                try:
+                    os_id = subprocess.check_output('wmic csproduct get uuid').decode().split('\n')[1].strip()
+                except Exception:
+                    os_id = node_name
+                
                 mac = ':'.join(['{:02x}'.format((uuid.getnode() >> e) & 0xff) for e in range(0, 48, 8)][::-1])
                 seed = f"{os_id}-{mac}"
             
@@ -147,8 +157,9 @@ class HubMessenger:
         raw_response = ssock.recv(4096).decode('utf-8').strip()
         
         valid_responses = ["AUTH_OK", "ALREADY_AUTH", "AUTH_SUCCESS"]
-        if any(word in raw_response for word in valid_responses):
-            return True
+        for word in valid_responses:
+            if word in raw_response:
+                return True
         return False
 
     def _send_raw(self, tag, content, wait_response=False):
@@ -185,7 +196,8 @@ class HubMessenger:
         return result
 
     def send_ptt(self, file_path):
-        if not os.path.exists(file_path): return False
+        if not os.path.exists(file_path):
+            return False
 
         filename = os.path.basename(file_path)
         directory = os.path.dirname(os.path.abspath(file_path))
