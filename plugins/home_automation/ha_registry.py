@@ -44,7 +44,6 @@ class HomeAutomationRegistry:
 
         self.model_strict_suffixes = {
             "cuco": "_switch",
-            "purifier": "_switch"
         }
 
         self.black_actions = [

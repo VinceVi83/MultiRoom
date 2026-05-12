@@ -1,3 +1,4 @@
+import os
 import subprocess
 import xml.etree.ElementTree as ET
 import urllib.parse
@@ -96,12 +97,15 @@ class VLCControl:
         if self.process and self.process.poll() is None:
             return self.cfg.RETURN_CODE.SUCCESS
 
+        custom_env = os.environ.copy()
+        custom_env["XDG_RUNTIME_DIR"] = "/run/user/1000"
         sout_param = f"#duplicate{{dst=display,dst=std{{access=http,mux=ogg,dst=0.0.0.0:{self.port_stream}}}}}"
         
         args = [
             "vlc",
             "--playlist-enqueue", path,
             "--no-video",
+            "--aout", "pulse",
             f"--http-port={self.port_ctrl}",
             "--sout", sout_param,
             "-I", "dummy",
@@ -110,7 +114,12 @@ class VLCControl:
         ]
 
         try:
-            self.process = subprocess.Popen(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            self.process = subprocess.Popen(
+                args,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                env=custom_env
+            )
             self.is_initialized = True
             self.is_playing = True
             time.sleep(5)

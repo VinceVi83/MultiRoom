@@ -196,7 +196,7 @@ class TaskContext:
             tmp_agent = copy.deepcopy(cfg.ALL_PURPOSE.TSUNDERE_V2_REPORT_AGENT)
             tmp_agent.prompt = tmp_agent.prompt.replace('RANDOM_REPLICA', selected_replica)
             report_text = llm.execute(report_input, tmp_agent)
-            self.add_step('report', report_text)
+            # self.add_step('report', report_text)
             report = report_text.get('content', 'FF')
             logger.info(f"\nALISU: {report}")
             Utils.send_discord_notification(f'A.L.I.S.U : {report}')
