@@ -5,6 +5,7 @@ import socket
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.application import MIMEApplication
+from email.utils import formataddr
 from email import utils
 from pathlib import Path
 from config_loader import cfg
@@ -53,8 +54,8 @@ class MailerProton:
 
     def _build_message(self, config, subject, body, to_email, attachment_path, debug):
         msg = MIMEMultipart()
-        msg['From'] = f"{config.USERNAME} <{config.USER_MAIL}>"
-        msg['To'] = to_email or getattr(config, 'ALTERNATE_MAIL', None) or config.USER_MAIL
+        msg['From'] = formataddr((config.USERNAME, config.USER_MAIL))
+        msg['To'] = to_email or getattr(config, 'MAIL_TO', None) or config.USER_MAIL
         msg['Subject'] = subject
         msg['Date'] = utils.formatdate(localtime=True)
         msg['Message-ID'] = utils.make_msgid()
