@@ -162,14 +162,18 @@ class HubMessenger:
                 return True
         return False
 
-    def _send_raw(self, tag, content, wait_response=False):
+    def _send_raw(self, tag, content, wait_response=False, attempts=0):
         packet = f"{self.hw_signature}:{tag}:{content}\n"
-        
-        ssock = self._get_connection()
-        if not ssock:
+
+        if attempts >= 3:
+            logger.error("[!] Critical failure: Unable to send packet after 3 attempts.")
             return None
 
-        try:
+        try:        
+            ssock = self._get_connection()
+            if not ssock:
+                return None
+
             ssock.sendall(packet.encode('utf-8'))
             
             if wait_response:
@@ -180,8 +184,9 @@ class HubMessenger:
 
         except (socket.error, ssl.SSLError) as e:
             logger.error(f"[!] Disconnection detected ({e}). Attempting reconnection...")
+            self._ssock.close()
             self._ssock = None
-            return self._send_raw(tag, content, wait_response)
+            return self._send_raw(tag, content, wait_response, attempts=attempts + 1)
 
 
     def send_stt(self, text, wait_response=False):

@@ -8,6 +8,7 @@ from pathlib import Path
 import html
 import mutagen
 import logging
+from tools.utils import Utils
 logger = logging.getLogger(__name__)
 
 @dataclass
@@ -334,28 +335,43 @@ class VLCMonitor:
 
     def print_current_track(self):
         remaining_str = time.strftime('%H:%M:%S', time.gmtime(self.time_remaining))
-        logger.info("=" * 50)
-        logger.info("[CURRENT TRACK]")
-        logger.info(f"   VLC status : {self.vlc_state}")
-        logger.info(f"   Name       : {self.current_track}")
-        logger.info(f"   Remaining  : {remaining_str}s")
-        logger.info(f"   Path       : {self.full_path}")
-        logger.info("=" * 50 + "\n")
+        log_message = (
+            f"\n{'=' * 50}\n"
+            f"[CURRENT TRACK]\n"
+            f"   VLC status : {self.vlc_state}\n"
+            f"   Name       : {self.current_track}\n"
+            f"   Remaining  : {remaining_str}s\n"
+            f"{'=' * 50}"
+        )
+
+        logger.info(log_message)
+        Utils.send_discord_notification(log_message, channel=f"multiroom-{self.manager.user_session.username}")
 
     def print_playlist_summary(self):
         total_str = time.strftime('%H:%M:%S', time.gmtime(self.total_duration))
         remaining_sec = self.get_playlist_remaining_time()
         remaining_str = time.strftime('%H:%M:%S', time.gmtime(remaining_sec))
-        logger.info("=" * 50)
-        logger.info(f"[CURRENT PLAYLIST]")
-        logger.info(f"   VLC status        : {self.vlc_state}")
-        logger.info(f"   Name              : {self.manager.current_album_name}")
-        logger.info(f"   Total Duration    : {total_str}")
-        logger.info(f"   Remaining to Play : {remaining_str}")
-        logger.info(f"   Total Tracks      : {len(self.playlist_cache)}")
-        logger.info("-" * 50)
+
         tracks = list(self.playlist_cache.keys())
+        tracks_lines = []
         for i, t in enumerate(tracks):
             mark = " > " if t == self.current_track else "   "
-            logger.info(f"{mark}[{i+1:02d}] {t}")
-        logger.info("=" * 50 + "\n")
+            tracks_lines.append(f"{mark}[{i+1:02d}] {t}")
+
+        tracks_str = "\n".join(tracks_lines)
+
+        log_message = (
+            f"\n{'=' * 50}\n"
+            f"[CURRENT PLAYLIST]\n"
+            f"   VLC status        : {self.vlc_state}\n"
+            f"   Name              : {self.manager.current_album_name}\n"
+            f"   Total Duration    : {total_str}\n"
+            f"   Remaining to Play : {remaining_str}\n"
+            f"   Total Tracks      : {len(self.playlist_cache)}\n"
+            f"{'-' * 50}\n"
+            f"{tracks_str}\n"
+            f"{'=' * 50}"
+        )
+
+        logger.info(log_message)
+        Utils.send_discord_notification(log_message, channel=f"multiroom-{self.manager.user_session.username}")

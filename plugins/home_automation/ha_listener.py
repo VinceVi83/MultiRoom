@@ -55,13 +55,27 @@ class HAListener:
         def _target():
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
+            
+            def handle_async_exception(loop, context):
+                msg = context.get("exception", context["message"])
+                logger.error(f"Async task crash: {msg}", exc_info=context.get("exception"))
+            
+            loop.set_exception_handler(handle_async_exception)
+
             try:
+                logger.info("Starting Home Assistant listener thread.")
                 loop.run_until_complete(self.start())
             except Exception as e:
-                logger.error(f"[HAListener Thread Error] {e}")
+                logger.critical(f"Fatal crash in listener thread: {e}", exc_info=True)
+            finally:
+                logger.warning("Listener thread stopped.")
 
         thread = threading.Thread(target=_target, daemon=True)
         thread.start()
+
+    def handle_async_exception(loop, context):
+        msg = context.get("exception", context["message"])
+        logger.error(f"[CRITICAL ASYNC ERROR] {msg}")
 
     async def start(self):
         while True:
@@ -144,8 +158,10 @@ class HAListener:
             )
 
 if __name__ == "__main__":
+    from config_loader import cfg
     try:
-        asyncio.run(HAListener().start())
+        ha_listener = HAListener(cfg.home_automation)
+        asyncio.run(ha_listener.start())
     except KeyboardInterrupt:
         logger.error("\nStopping the listener.")
     except Exception as e:
