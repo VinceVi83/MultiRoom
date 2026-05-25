@@ -16,3 +16,5 @@ home_automation:
     HA_TOKEN: YOUR_HOME_ASSISTANT_TOKEN
     HA_HOSTNAME: ha_hostname
     HA_WEATHER_LOCATION: weather.city
+    python_bin: "/home/$user/PYTHON_PROJECT_ENV/projects/bin/python"
+    working_dir: "/home/$user/path/MultiRoom"
