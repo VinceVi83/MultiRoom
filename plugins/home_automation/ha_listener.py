@@ -2,8 +2,9 @@ import asyncio
 import websockets
 import json
 import os
+import time
 import threading
-from tools.hub_messenger import HubMessenger
+import subprocess
 import logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -28,19 +29,18 @@ class HAListener:
         self.cfg = cfg
         self.uri = f"ws://{self.cfg.ha_config.HA_HOSTNAME}:8123/api/websocket"
         self.token = self.cfg.ha_config.HA_TOKEN
+        self.start_time = time.time()
         self.mapping = {}
         self.pending_clicks = {}
         self._load_mapping()
 
-        user = "system"
-        pwd = getattr(cfg.config.USERS, user, None)
-
-        self.messenger = HubMessenger(
-            host="127.0.0.1",
-            port="28888",
-            user=user,
-            password=pwd
-        )
+    def send_cmd(self, content):
+        try:
+            cmd = [self.cfg.ha_config.python_bin, "-m", "tools.hub_messenger"]
+            cmd.append(content.strip())
+            subprocess.Popen(cmd, cwd=self.cfg.ha_config.working_dir)
+        except Exception as e:
+            logger.error(f"HAListener sent order error: {e}")
 
     def _load_mapping(self):
         mapping_file = os.path.join(self.cfg.DATA_DIR, "ha_action_mapping.json")
@@ -52,6 +52,7 @@ class HAListener:
             logger.error(f"loading mapping: {e}")
 
     def run_ha_listener(self):
+        self.start_time = time.time()
         def _target():
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
@@ -73,21 +74,18 @@ class HAListener:
         thread = threading.Thread(target=_target, daemon=True)
         thread.start()
 
-    def handle_async_exception(loop, context):
-        msg = context.get("exception", context["message"])
-        logger.error(f"[CRITICAL ASYNC ERROR] {msg}")
-
     async def start(self):
         while True:
             try:
                 async with websockets.connect(self.uri, ping_interval=20, ping_timeout=10) as ws:
                     if await self._auth(ws):
                         await self._sub(ws)
+                        self.start_time = time.time()
                         while True:
                             raw_msg = await ws.recv()
                             msg = json.loads(raw_msg)
                             if msg.get("type") == "event":
-                                self._process(msg["event"])
+                                await self._process(msg["event"])
             except Exception as e:
                 logger.error(f"Reconnecting in 5s... ({e})")
                 await asyncio.sleep(5)
@@ -105,7 +103,10 @@ class HAListener:
     async def _sub(self, ws):
         await ws.send(json.dumps({"id": 1, "type": "subscribe_events"}))
 
-    def _process(self, event):
+    async def _process(self, event):
+        if time.time() - self.start_time < 10:
+            return
+
         edata = event.get("data", {})
         eid = edata.get("entity_id")
         
@@ -154,7 +155,7 @@ class HAListener:
         else:
             logger.info(f"Sending to AI Hub: '{command}'")
             asyncio.create_task(
-                asyncio.to_thread(self.messenger.send_stt, command, False)
+                asyncio.to_thread(self.send_cmd, command)
             )
 
 if __name__ == "__main__":

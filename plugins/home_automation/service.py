@@ -3,6 +3,7 @@ from plugins.home_automation.ha_listener import HAListener
 from plugins.home_automation.ha_registry import HomeAutomationRegistry
 from plugins.home_automation.ha_weather import WeatherHaApi, WeatherStatus
 from tools.llm_agent import llm
+import asyncio
 import logging
 logger = logging.getLogger(__name__)
 

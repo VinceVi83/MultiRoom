@@ -184,10 +184,13 @@ class HubMessenger:
 
         except (socket.error, ssl.SSLError) as e:
             logger.error(f"[!] Disconnection detected ({e}). Attempting reconnection...")
-            self._ssock.close()
+            if self._ssock:
+                try:
+                    self._ssock.close()
+                except Exception:
+                    pass
             self._ssock = None
             return self._send_raw(tag, content, wait_response, attempts=attempts + 1)
-
 
     def send_stt(self, text, wait_response=False):
         if "\n" in text:

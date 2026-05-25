@@ -163,6 +163,14 @@ class VLCUserManager:
             with open(self.tmp_playlist, 'w', encoding='utf-8', errors='replace') as f:
                 entries = sorted(os.scandir(str(folder_path)), key=lambda e: e.name)
                 for entry in entries:
+                    skip = False
+                    for key in ['off vocal', 'inst', 'no voice']:
+                        if key in entry.name:
+                            skip = True
+                            break
+                    if skip:
+                        continue
+
                     if entry.is_file() and Path(entry.name).suffix.lower() in valid_ext:
                         song_path = entry.path.strip()
                         if song_path not in existing_lines:
