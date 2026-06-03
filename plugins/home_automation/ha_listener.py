@@ -17,6 +17,8 @@ class HAListener:
     Methods:
         __init__(self, cfg) : Initialize listener with config, mapping, and hub messenger.
         _load_mapping(self) : Load action mapping from JSON file.
+        _parse_and_learn_from_output(self, output, entity_id, action, original_command) : Parse command output and learn native commands.
+        _update_action_mapping(self, entity_id, action, new_command) : Update mapping with learned native command.
         run_ha_listener(self) : Start listener in daemon thread.
         start(self) : Main loop to connect to WebSocket and process events.
         _auth(self, ws) : Authenticate with Home Assistant WebSocket.
@@ -34,13 +36,27 @@ class HAListener:
         self.pending_clicks = {}
         self._load_mapping()
 
-    def send_cmd(self, content):
+    def send_cmd(self, content, entity_id=None, action=None):
         try:
             cmd = [self.cfg.ha_config.python_bin, "-m", "tools.hub_messenger"]
             cmd.append(content.strip())
-            subprocess.Popen(cmd, cwd=self.cfg.ha_config.working_dir)
+            process = subprocess.Popen(
+                cmd, 
+                cwd=self.cfg.ha_config.working_dir,
+                stdout=subprocess.PIPE, 
+                stderr=subprocess.PIPE,
+                text=True
+            )
+            stdout, stderr = process.communicate()
+
+            if entity_id and action and not content.startswith('@'):
+                combined_output = (stdout or "") + (stderr or "")
+                if combined_output.strip():
+                    self._parse_and_learn_from_output(combined_output, entity_id, action, content)
+            return stdout, stderr
         except Exception as e:
             logger.error(f"HAListener sent order error: {e}")
+            return None, str(e)
 
     def _load_mapping(self):
         mapping_file = os.path.join(self.cfg.DATA_DIR, "ha_action_mapping.json")
@@ -50,6 +66,67 @@ class HAListener:
                     self.mapping = json.load(f)
         except Exception as e:
             logger.error(f"loading mapping: {e}")
+
+    def _parse_and_learn_from_output(self, output, entity_id, action, original_command):
+        if not output or not output.strip():
+            return
+
+        json_str = output.strip()
+        if '{' in json_str and '}' in json_str:
+            first_brace = json_str.find('{')
+            last_brace = json_str.rfind('}')
+            if first_brace < last_brace:
+                json_str = json_str[first_brace:last_brace+1]
+        try:
+            data = json.loads(json_str)
+            success = False
+            result_action = None
+            category = "Unknown"
+            sub_category = "Unknown"
+            location = "Unknown"
+
+            return_code = data.get('return_code') or data.get('returnCode') or data.get('ReturnCode')
+            if return_code and 'SUCCESS' in str(return_code):
+                success = True
+
+            result_action = data.get('result') or data.get('Result') or data.get('RESULT')
+            if not result_action and isinstance(data.get('Result'), dict):
+                result_action = data.get('Result', {}).get('action')
+
+            category = data.get('category') or data.get('Category') or data.get('CATEGORY') or "Unknown"
+            location = data.get('location') or data.get('Location') or data.get('LOCATION') or "Unknown"
+            if not location and isinstance(data.get('data'), dict):
+                location = data.get('data', {}).get('LOCATION_CLEANER_AGENT', {}).get('location') or "Unknown"
+
+            sub_cat_data = data.get('sub_category') or data.get('subCategory') or data.get('sub_category')
+            if isinstance(sub_cat_data, dict):
+                sub_category = sub_cat_data.get('label') or "Unknown"
+            elif sub_cat_data:
+                sub_category = sub_cat_data
+
+            if sub_category == "Unknown":
+                sub_category = data.get('sub_category') or data.get('subCategory') or "Unknown"
+
+            if success and result_action:
+                full_native_command = f"@{category.lower()};-;{location};-;{sub_category};-;{result_action}"
+                self._update_action_mapping(entity_id, action, full_native_command)
+                logger.info(f"Learned native command for {entity_id}/{action}: '{original_command}' -> '{full_native_command}'")
+        except json.JSONDecodeError:
+            pass
+        except Exception as e:
+            logger.error(f"Error parsing learning output: {e}")
+
+    def _update_action_mapping(self, entity_id, action, new_command):
+        mapping_file = os.path.join(self.cfg.DATA_DIR, "ha_action_mapping.json")
+        try:
+            if entity_id in self.mapping:
+                actions = self.mapping[entity_id].get("actions", {})
+                if action in actions:
+                    actions[action] = new_command
+                    with open(mapping_file, "w", encoding="utf-8") as f:
+                        json.dump(self.mapping, f, indent=2, ensure_ascii=False)
+        except Exception as e:
+            logger.error(f"Failed to update action mapping: {e}")
 
     def run_ha_listener(self):
         self.start_time = time.time()
@@ -155,7 +232,7 @@ class HAListener:
         else:
             logger.info(f"Sending to AI Hub: '{command}'")
             asyncio.create_task(
-                asyncio.to_thread(self.send_cmd, command)
+                asyncio.to_thread(self.send_cmd, command, eid, action)
             )
 
 if __name__ == "__main__":
