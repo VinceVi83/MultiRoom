@@ -211,6 +211,25 @@ class VLCMonitor:
     def format_vlc_title(self, title):
         if not title:
             return ""
+        
+        if isinstance(title, bytes):
+            try:
+                title = title.decode('utf-8')
+            except UnicodeDecodeError:
+                try:
+                    title = title.decode('shift-jis')
+                except UnicodeDecodeError:
+                    try:
+                        title = title.decode('euc-jp')
+                    except UnicodeDecodeError:
+                        title = title.decode('latin-1', errors='replace')
+        elif isinstance(title, str):
+            try:
+                if any(c in title for c in ['ã', '©', '®', '¬']):
+                    title = title.encode('latin-1').decode('utf-8')
+            except (UnicodeEncodeError, UnicodeDecodeError):
+                pass
+        
         title = html.unescape(title)
         title = title.strip()
         return title
@@ -226,6 +245,11 @@ class VLCMonitor:
                 time.sleep(2)
                 status_xml = self.manager.vlc_instance._vlc_request("status.xml")
                 if status_xml:
+                    if isinstance(status_xml, bytes):
+                        try:
+                            status_xml = status_xml.decode('utf-8')
+                        except UnicodeDecodeError:
+                            status_xml = status_xml.decode('latin-1')
                     root = ET.fromstring(status_xml)
                     new_track_name = ""
                     self.full_path = ""
@@ -279,6 +303,15 @@ class VLCMonitor:
             if not xml_data:
                 return
 
+            if isinstance(xml_data, bytes):
+                try:
+                    xml_data = xml_data.decode('utf-8')
+                except UnicodeDecodeError:
+                    try:
+                        xml_data = xml_data.decode('shift-jis')
+                    except UnicodeDecodeError:
+                        xml_data = xml_data.decode('latin-1')
+
             new_cache = {}
             total_sec = 0
             root = ET.fromstring(xml_data)
@@ -287,6 +320,7 @@ class VLCMonitor:
                 uri = leaf.get('uri')
                 duration = leaf.get('duration')
                 if name and uri:
+                    name = self.format_vlc_title(name)
                     clean_path = urllib.parse.unquote(uri.replace("file://", ""))
                     d = int(duration) if (duration and duration.isdigit()) else 0
                     new_cache[name] = {

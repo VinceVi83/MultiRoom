@@ -40,11 +40,12 @@ def setup_logging():
         def format(self, record):
             if record.funcName in ['print_current_track', 'print_playlist_summary']:
                 msg = record.getMessage()
+                if isinstance(msg, str):
+                    return msg
                 try:
-                    msg = msg.encode('latin-1').decode('utf-8')
+                    return str(msg, encoding='utf-8')
                 except (UnicodeEncodeError, UnicodeDecodeError):
-                    pass
-                return msg
+                    return str(msg)
             return super().format(record)
 
     if cfg.verbose:
@@ -58,6 +59,9 @@ def setup_logging():
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setFormatter(formatter)
     console_handler.addFilter(local_filter)
+    if hasattr(sys.stdout, 'buffer') and hasattr(sys.stdout.buffer, 'encoding'):
+        console_handler.stream = sys.stdout
+        console_handler.encoding = 'utf-8'
 
     log_file = log_dir_path / "debug.log"
     file_handler = logging.FileHandler(log_file, mode="a", encoding="utf-8")

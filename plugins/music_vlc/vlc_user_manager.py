@@ -164,7 +164,7 @@ class VLCUserManager:
                 entries = sorted(os.scandir(str(folder_path)), key=lambda e: e.name)
                 for entry in entries:
                     skip = False
-                    for key in ['off vocal', 'inst', 'no voice']:
+                    for key in ['off vocal', 'inst', 'no voice', 'Inst']:
                         if key in entry.name:
                             skip = True
                             break
