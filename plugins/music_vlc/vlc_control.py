@@ -12,14 +12,17 @@ class VLCControl:
     """VLC Media Player Control Service
     
     Role: Manages VLC media player instances via HTTP control interface for music playback.
+    Also controls system volume via PulseAudio/PipeWire with automatic sink detection.
     
     Methods:
         __init__(self, cfg, index, playlist="") : Initialize VLC control instance with config.
         _vlc_request(self, endpoint, params=None) : Make HTTP request to VLC control port.
         handle_simple_command(self, action) : Handle simple VLC commands via command mapping.
+        _detect_audio_sink(self) : Automatically detect the best audio sink to use.
+        _control_system_volume(self, action) : Control system volume using PulseAudio/PipeWire.
         empty_current_playlist(self) : Empty the current playlist.
         change_playlist(self, target) : Change the current playlist to target path.
-        start_vlc(self, path="default") : Start VLC with given playlist path.
+        start_vlc(self, path="default") : Start VLC with given playlist path and set system volume to 100%.
         kill_vlc(self) : Stop and clean up VLC process.
         get_remaining_seconds(self) : Get remaining time for current track.
         get_total_remaining_seconds(self) : Get total remaining time including queue.
@@ -41,6 +44,7 @@ class VLCControl:
         self.is_initialized = False
         self.is_playing = False
         self.current_path = playlist
+        self.audio_sink = None
 
         self.vlc_commands = {
             "TOGGLE": "pl_pause",
@@ -78,10 +82,96 @@ class VLCControl:
             return None
 
     def handle_simple_command(self, action):
+        if action in ["VOL_DOWN", "VOL_UP"]:
+            return self._control_system_volume(action)
+        
         cmd = self.vlc_commands.get(action)
         if cmd:
             return self._vlc_request("status.xml", f"command={cmd}")
         return None
+
+    def _run_pactl_command(self, args, check=True):
+        env = os.environ.copy()
+        env['XDG_RUNTIME_DIR'] = '/run/user/1000'
+        env['PULSE_SERVER'] = 'unix:/run/user/1000/pulse/native'
+        
+        try:
+            result = subprocess.run(
+                ["pactl"] + args,
+                capture_output=True,
+                text=True,
+                check=check,
+                env=env
+            )
+            return result
+        except subprocess.CalledProcessError as e:
+            if check:
+                raise
+            return e
+
+    def _detect_audio_sink(self):
+        try:
+            try:
+                self._run_pactl_command(["get-sink-volume", "@DEFAULT_SINK@"])
+                return "@DEFAULT_SINK@"
+            except subprocess.CalledProcessError:
+                pass
+
+            result = self._run_pactl_command(["list", "short", "sinks"])
+            
+            lines = result.stdout.strip().split('\n')
+            if lines:
+                first_sink_index = lines[0].split('\t')[0]
+                logger.info(f"Using first available audio sink: {first_sink_index}")
+                return first_sink_index
+            
+            logger.error("No audio sinks found")
+            return None
+            
+        except Exception as e:
+            logger.error(f"Failed to detect audio sink: {e}")
+            return None
+
+    def _control_system_volume(self, action):
+        try:
+            if self.audio_sink is None:
+                self.audio_sink = self._detect_audio_sink()
+                if self.audio_sink is None:
+                    return None
+            
+            result = self._run_pactl_command(["get-sink-volume", self.audio_sink])
+
+            import re
+            match = re.search(r'/\s*(\d+)%', result.stdout)
+            if not match:
+                match = re.search(r'(\d+)%', result.stdout)
+            
+            if not match:
+                logger.error(f"Could not parse current volume. Output: {result.stdout}")
+                return None
+            
+            current_volume = int(match.group(1))
+            
+            step = 10
+            if action == "VOL_DOWN":
+                new_volume = max(0, current_volume - step)
+            else:
+                new_volume = min(100, current_volume + step)
+
+            self._run_pactl_command(["set-sink-volume", self.audio_sink, f"{new_volume}%"])
+            
+            logger.info(f"System volume changed from {current_volume}% to {new_volume}% (sink: {self.audio_sink})")
+            return f"Volume system modified: {current_volume}% -> {new_volume}%"
+            
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Failed to control system volume: {e}. stderr: {e.stderr}")
+            return None
+        except FileNotFoundError:
+            logger.error("pactl not found. Is PulseAudio/PipeWire installed?")
+            return None
+        except Exception as e:
+            logger.error(f"Error controlling volume: {e}")
+            return None
 
     def empty_current_playlist(self):
         self._vlc_request("status.xml", "command=pl_empty")
@@ -123,6 +213,17 @@ class VLCControl:
             self.is_initialized = True
             self.is_playing = True
             time.sleep(5)
+
+            try:
+                self.audio_sink = self._detect_audio_sink()
+                if self.audio_sink is None:
+                    raise Exception("No audio sink detected")
+                
+                self._run_pactl_command(["set-sink-volume", self.audio_sink, "100%"])
+                logger.info(f"System volume set to 100% after VLC startup (sink: {self.audio_sink})")
+            except Exception as e:
+                logger.error(f"Failed to set volume to 100%: {e}")
+            
             return self.cfg.RETURN_CODE.SUCCESS
         except Exception:
             return self.cfg.RETURN_CODE.ERR
