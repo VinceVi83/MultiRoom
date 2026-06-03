@@ -225,10 +225,18 @@ class VLCMonitor:
                         title = title.decode('latin-1', errors='replace')
         elif isinstance(title, str):
             try:
-                if any(c in title for c in ['ã', '©', '®', '¬']):
+                if any(c in title for c in ['ã', '©', '®', '¬', 'å', 'ä', 'ç']):
                     title = title.encode('latin-1').decode('utf-8')
             except (UnicodeEncodeError, UnicodeDecodeError):
                 pass
+
+        try:
+            if any(ord(c) > 127 for c in title):
+                corrected = title.encode('latin-1').decode('utf-8', errors='ignore')
+                if corrected != title:
+                    title = corrected
+        except (UnicodeEncodeError, UnicodeDecodeError):
+            pass
         
         title = html.unescape(title)
         title = title.strip()
