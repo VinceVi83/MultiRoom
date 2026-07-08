@@ -134,7 +134,7 @@ class HomeAutomationRegistry:
 
         mapping_file = "ha_action_mapping.json"
         current_mapping = self._safe_load_json(mapping_file)
-        new_mapping = {}
+        new_mapping = dict(current_mapping)
         added = 0
 
         for s in states:
@@ -201,7 +201,9 @@ class HomeAutomationRegistry:
         self.sync_batteries()
 
 if __name__ == "__main__":
-    reg = HomeAutomationRegistry()
-    logger.info(f"Actuators: {reg.sync_actuators()}")
-    logger.info(f"Buttons: {reg.sync_button_mapping()}")
-    logger.info(f"Batteries: {reg.sync_batteries()}")
+    from config_loader import cfg
+    reg = HomeAutomationRegistry(cfg.home_automation)
+    reg.update_device()
+    # logger.info(f"Actuators: {reg.sync_actuators()}")
+    # logger.info(f"Buttons: {reg.sync_button_mapping()}")
+    # logger.info(f"Batteries: {reg.sync_batteries()}")

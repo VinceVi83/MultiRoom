@@ -10,10 +10,10 @@ logger = logging.getLogger(__name__)
 
 class VLCControl:
     """VLC Media Player Control Service
-    
+
     Role: Manages VLC media player instances via HTTP control interface for music playback.
     Also controls system volume via PulseAudio/PipeWire with automatic sink detection.
-    
+
     Methods:
         __init__(self, cfg, index, playlist="") : Initialize VLC control instance with config.
         _vlc_request(self, endpoint, params=None) : Make HTTP request to VLC control port.
@@ -40,7 +40,6 @@ class VLCControl:
         self.port_stream = str(int(self.cfg.config.VLC_PORT_START) + 1000 + index)
         self.password = getattr(self.cfg.security.VLC_USERS, "test", None)
         self.base_url = f"http://127.0.0.1:{self.port_ctrl}/requests"
-        
         self.is_initialized = False
         self.is_playing = False
         self.current_path = playlist
@@ -57,13 +56,11 @@ class VLCControl:
             "playlist": "",
             'dir': "in_play&input="
         }
-
         self.start_vlc(playlist)
 
     def _vlc_request(self, endpoint, params=None):
         url = f"{self.base_url}/{endpoint}"
         auth = HTTPBasicAuth('', self.password)
-        
         try:
             response = requests.get(
                 url, 
@@ -76,7 +73,6 @@ class VLCControl:
             else:
                 logger.error(f"VLC Error {response.status_code}: {response.reason}")
                 return None
-                
         except requests.exceptions.RequestException as e:
             logger.error(f"Request Exception: {e}")
             return None
@@ -84,7 +80,6 @@ class VLCControl:
     def handle_simple_command(self, action):
         if action in ["VOL_DOWN", "VOL_UP"]:
             return self._control_system_volume(action)
-        
         cmd = self.vlc_commands.get(action)
         if cmd:
             return self._vlc_request("status.xml", f"command={cmd}")
@@ -94,7 +89,6 @@ class VLCControl:
         env = os.environ.copy()
         env['XDG_RUNTIME_DIR'] = '/run/user/1000'
         env['PULSE_SERVER'] = 'unix:/run/user/1000/pulse/native'
-        
         try:
             result = subprocess.run(
                 ["pactl"] + args,
@@ -118,16 +112,13 @@ class VLCControl:
                 pass
 
             result = self._run_pactl_command(["list", "short", "sinks"])
-            
             lines = result.stdout.strip().split('\n')
             if lines:
                 first_sink_index = lines[0].split('\t')[0]
                 logger.info(f"Using first available audio sink: {first_sink_index}")
                 return first_sink_index
-            
             logger.error("No audio sinks found")
             return None
-            
         except Exception as e:
             logger.error(f"Failed to detect audio sink: {e}")
             return None
@@ -138,20 +129,16 @@ class VLCControl:
                 self.audio_sink = self._detect_audio_sink()
                 if self.audio_sink is None:
                     return None
-            
-            result = self._run_pactl_command(["get-sink-volume", self.audio_sink])
 
+            result = self._run_pactl_command(["get-sink-volume", self.audio_sink])
             import re
             match = re.search(r'/\s*(\d+)%', result.stdout)
             if not match:
                 match = re.search(r'(\d+)%', result.stdout)
-            
             if not match:
                 logger.error(f"Could not parse current volume. Output: {result.stdout}")
                 return None
-            
             current_volume = int(match.group(1))
-            
             step = 10
             if action == "VOL_DOWN":
                 new_volume = max(0, current_volume - step)
@@ -190,7 +177,6 @@ class VLCControl:
         custom_env = os.environ.copy()
         custom_env["XDG_RUNTIME_DIR"] = "/run/user/1000"
         sout_param = f"#duplicate{{dst=display,dst=std{{access=http,mux=ogg,dst=0.0.0.0:{self.port_stream}}}}}"
-        
         args = [
             "vlc",
             "--playlist-enqueue", path,
@@ -218,12 +204,10 @@ class VLCControl:
                 self.audio_sink = self._detect_audio_sink()
                 if self.audio_sink is None:
                     raise Exception("No audio sink detected")
-                
-                self._run_pactl_command(["set-sink-volume", self.audio_sink, "100%"])
+                self._run_pactl_command(["set-sink-volume", self.audio_sink, "40%"])
                 logger.info(f"System volume set to 100% after VLC startup (sink: {self.audio_sink})")
             except Exception as e:
                 logger.error(f"Failed to set volume to 100%: {e}")
-            
             return self.cfg.RETURN_CODE.SUCCESS
         except Exception:
             return self.cfg.RETURN_CODE.ERR
@@ -247,13 +231,11 @@ class VLCControl:
     def _parse_status_xml(self, xml_data):
         if not xml_data:
             return None
-        
         try:
             root = ET.fromstring(xml_data)
             time_val = root.findtext('time', '0')
             length_val = root.findtext('length', '0')
             state_val = root.findtext('state', 'unknown')
-            
             return {
                 "time": int(time_val),
                 "length": int(length_val),
@@ -265,10 +247,8 @@ class VLCControl:
     def get_remaining_seconds(self):
         xml_data = self._vlc_request("status.xml")
         parsed_data = self._parse_status_xml(xml_data)
-        
         if parsed_data is None:
             return -1
-        
         curr_time = parsed_data["time"]
         total_length = parsed_data["length"]
         return max(0, total_length - curr_time)
@@ -276,34 +256,27 @@ class VLCControl:
     def get_total_remaining_seconds(self):
         current_remaining = self.get_remaining_seconds()
         xml_data = self._vlc_request("playlist.xml")
-        
         if not xml_data:
             return current_remaining
-        
         parsed_playlist = self._parse_playlist_xml(xml_data)
         total_after_current = parsed_playlist.get("total_after_current", 0) if parsed_playlist else 0
-        
         return current_remaining + total_after_current
 
     def _parse_playlist_xml(self, xml_data):
         if not xml_data:
             return None
-        
         try:
             root = ET.fromstring(xml_data)
             total_after_current = 0
             found_current = False
-            
             for leaf in root.iter('leaf'):
                 if leaf.get('current') == 'current':
                     found_current = True
                     continue
-                
                 if found_current:
                     duration_val = leaf.get('duration')
                     if duration_val:
                         total_after_current += int(duration_val)
-                        
             return {"total_after_current": total_after_current}
         except Exception:
             return None
@@ -323,10 +296,8 @@ class VLCControl:
     def get_current_state(self):
         xml_data = self._vlc_request("status.xml")
         parsed_data = self._parse_status_xml(xml_data)
-        
         if parsed_data is None:
             return "unknown"
-        
         return parsed_data["state"]
 
     def __del__(self):

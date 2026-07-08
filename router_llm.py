@@ -78,6 +78,7 @@ class RouterLLM:
             return "FORMAT_ERROR"
 
         plugin_name = parts[0]
+        context.category = plugin_name.upper()
         context.location = parts[1] if parts[1] else "Unknown"
         context.sub_category = parts[2].upper()
         context.result   = parts[3]
