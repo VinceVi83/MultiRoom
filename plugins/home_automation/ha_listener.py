@@ -5,9 +5,95 @@ import os
 import time
 import threading
 import subprocess
+from collections import deque
+from datetime import datetime, timedelta
 import logging
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
+
+class CommandQueue:
+    def __init__(self, spam_window=2.0, max_commands_in_window=2, cooldown_period=5.0):
+        self.queue = deque()
+        self.command_history = deque()
+        self.spam_window = spam_window
+        self.max_commands_in_window = max_commands_in_window
+        self.cooldown_period = cooldown_period
+        self.is_blocked = False
+        self.block_until = 0
+        self.processing_task = None
+        self._lock = asyncio.Lock()
+
+    async def add_command(self, command_info):
+        async with self._lock:
+            current_time = time.time()
+            if self.is_blocked:
+                if current_time < self.block_until:
+                    logger.info(f"Command blocked (spam protection active until {datetime.fromtimestamp(self.block_until)})")
+                    return False
+                else:
+                    self.is_blocked = False
+                    logger.info("Spam protection deactivated, resuming normal operation")
+            self.command_history.append({
+                'timestamp': current_time,
+                'command': command_info.get('command', ''),
+                'eid': command_info.get('eid', ''),
+                'action': command_info.get('action', '')
+            })
+            self._clean_history(current_time)
+            if self._is_spam(current_time):
+                logger.warning(f"Spam detected! Blocking commands for {self.cooldown_period} seconds")
+                self.is_blocked = True
+                self.block_until = current_time + self.cooldown_period
+                self.queue.clear()
+                return False
+            command_info['timestamp'] = current_time
+            self.queue.append(command_info)
+            if self.processing_task is None or self.processing_task.done():
+                self.processing_task = asyncio.create_task(self._process_queue())
+            return True
+
+    def _clean_history(self, current_time):
+        cutoff_time = current_time - self.spam_window
+        while self.command_history and self.command_history[0]['timestamp'] < cutoff_time:
+            self.command_history.popleft()
+
+    def _is_spam(self, current_time):
+        if len(self.command_history) > self.max_commands_in_window:
+            recent_commands = [cmd for cmd in self.command_history if cmd['timestamp'] > current_time - 0.5]
+            if len(recent_commands) > self.max_commands_in_window:
+                entities = set(cmd['eid'] for cmd in recent_commands if cmd['eid'])
+                if len(entities) > 2:
+                    return True
+                if len(recent_commands) > 5:
+                    return True
+        return False
+
+    async def _process_queue(self):
+        while self.queue:
+            async with self._lock:
+                if self.is_blocked and time.time() < self.block_until:
+                    await asyncio.sleep(0.1)
+                    continue
+                if not self.queue:
+                    break
+                command_info = self.queue.popleft()
+            try:
+                command_age = time.time() - command_info.get('timestamp', time.time())
+                if command_age > 5.0:
+                    logger.info(f"Ignoring old command (age: {command_age:.2f}s): {command_info.get('command', '')}")
+                    continue
+                logger.info(f"Processing queued command: {command_info.get('command', '')}")
+                if 'callback' in command_info and command_info['callback']:
+                    await asyncio.to_thread(
+                        command_info['callback'],
+                        command_info['command'],
+                        command_info.get('eid'),
+                        command_info.get('action')
+                    )
+                await asyncio.sleep(0.1)
+            except Exception as e:
+                logger.error(f"Error processing queued command: {e}")
 
 class HAListener:
     """Home Assistant WebSocket Event Listener
@@ -33,7 +119,12 @@ class HAListener:
         self.token = self.cfg.ha_config.HA_TOKEN
         self.start_time = time.time()
         self.mapping = {}
-        self.pending_clicks = {}
+        self.pending_tasks = {}
+        self.command_queue = CommandQueue(
+            spam_window=2.0,
+            max_commands_in_window=3,
+            cooldown_period=5.0
+        )
         self._load_mapping()
 
     def send_cmd(self, content, entity_id=None, action=None):
@@ -133,13 +224,12 @@ class HAListener:
         def _target():
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
-            
+
             def handle_async_exception(loop, context):
                 msg = context.get("exception", context["message"])
                 logger.error(f"Async task crash: {msg}", exc_info=context.get("exception"))
-            
-            loop.set_exception_handler(handle_async_exception)
 
+            loop.set_exception_handler(handle_async_exception)
             try:
                 logger.info("Starting Home Assistant listener thread.")
                 loop.run_until_complete(self.start())
@@ -186,7 +276,6 @@ class HAListener:
 
         edata = event.get("data", {})
         eid = edata.get("entity_id")
-        
         if not eid or eid not in self.mapping:
             return
 
@@ -196,44 +285,48 @@ class HAListener:
         if not action or str(action).lower() in ["unknown", "none", "unavailable"]:
             return
 
-        if eid in self.pending_clicks:
-            self.pending_clicks[eid].cancel()
+        if eid in self.pending_tasks:
+            self.pending_tasks[eid].cancel()
 
-        self.pending_clicks[eid] = asyncio.create_task(self._delayed_trigger(eid, action))
+        self.pending_tasks[eid] = asyncio.create_task(self._delayed_trigger(eid, action))
 
     async def _delayed_trigger(self, eid, action):
         try:
             await asyncio.sleep(0.5) 
-            
             btn_config = self.mapping[eid]
             btn_name = btn_config.get("name", eid)
             custom_message = btn_config.get("actions", {}).get(action)
-
             if custom_message:
-                self.trigger(eid, btn_name, action, custom_message)
-            
-            self.pending_clicks.pop(eid, None)
+                await self.trigger(eid, btn_name, action, custom_message)
+            self.pending_tasks.pop(eid, None)
         except asyncio.CancelledError:
             pass
         except Exception as e:
             logger.error(f"in delayed trigger for {eid}: {e}")
-            self.pending_clicks.pop(eid, None)
+            self.pending_tasks.pop(eid, None)
 
-    def trigger(self, eid, name, action, command):
+    async def trigger(self, eid, name, action, command):
         logger.info(f"EXECUTION: [{name}] -> Action: {action} -> Command: {command}")
 
         if "TO BE CONFIGURED" in command or "NEW" in command:
             logger.info(f"Action ignored: Please edit JSON for {eid}")
             return
-
         if command.startswith("service:"):
             service_call = command.replace("service:", "")
             logger.info(f"Service call HA: {service_call}")
         else:
-            logger.info(f"Sending to AI Hub: '{command}'")
-            asyncio.create_task(
-                asyncio.to_thread(self.send_cmd, command, eid, action)
-            )
+            command_info = {
+                'command': command,
+                'eid': eid,
+                'name': name,
+                'action': action,
+                'callback': self.send_cmd
+            }
+            added = await self.command_queue.add_command(command_info)
+            if added:
+                logger.info(f"Command queued: '{command}'")
+            else:
+                logger.info(f"Command rejected by spam filter: '{command}'")
 
 if __name__ == "__main__":
     from config_loader import cfg

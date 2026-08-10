@@ -82,6 +82,8 @@ class DeviceCollection(ABC):
 
         if best_match:
             logger.info(f"   [Match] '{query_name}' -> '{best_match.name}' ({highest_score}%)")
+        else:
+            logger.error(f"   [Failed to match] '{query_name}' -> '{best_match.name}' ({highest_score}%)")
         return best_match
 
 
