@@ -42,7 +42,7 @@ class CommunicationHA:
             "Content-Type": "application/json"
         }
         
-        registry_file = os.path.join(self.cfg.DATA_DIR, "ha_actuators.json")
+        registry_file = os.path.join(self.cfg.config_dir, "ha_actuators.json")
         try:
             if os.path.exists(registry_file):
                 with open(registry_file, 'r', encoding='utf-8') as f:

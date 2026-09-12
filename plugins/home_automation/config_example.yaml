@@ -1,20 +1,19 @@
-home_automation:
-  config:
-    DESCRIPTION: Weather, lights, plugs, temperature control. EXCLUDING music/audio devices
-    USE_LOCATION: 1
-    USERS:
-      system: password
+config:
+  DESCRIPTION: Weather, lights, plugs, temperature control. EXCLUDING music/audio devices
+  USE_LOCATION: 1
+  USERS:
+    system: password
 
-    BYPASS_ROUTER:
-    - allume
-    - éteint
-    - lumière
-    - purifier
-    - méteo
+  BYPASS_ROUTER:
+  - allume
+  - éteint
+  - lumière
+  - purifier
+  - méteo
 
-  ha_config:
-    HA_TOKEN: YOUR_HOME_ASSISTANT_TOKEN
-    HA_HOSTNAME: ha_hostname
-    HA_WEATHER_LOCATION: weather.city
-    python_bin: "/home/$user/PYTHON_PROJECT_ENV/projects/bin/python"
-    working_dir: "/home/$user/path/MultiRoom"
+ha_config:
+  HA_TOKEN: YOUR_HOME_ASSISTANT_TOKEN
+  HA_HOSTNAME: ha_hostname
+  HA_WEATHER_LOCATION: weather.city
+  python_bin: "/home/$user/PYTHON_PROJECT_ENV/projects/bin/python"
+  working_dir: "/home/$user/path/MultiRoom"

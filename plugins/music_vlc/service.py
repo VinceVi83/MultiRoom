@@ -1,17 +1,10 @@
-from tools.llm_agent import llm
+from tools.llm_client import llm
 from plugins.music_vlc.vlc_user_manager import VLCUserManager
 from tools.utils import Utils
 import logging
 logger = logging.getLogger(__name__)
 
 REQUIRED_CONFIG_KEYS = [
-    "DATA_DIR",
-    "INTENT",
-    "MUSIC_AGENT",
-    "PLAYLIST_ACTION",
-    "PLAYLIST_AGENT",
-    "VLC_ACTIONS",
-    "VLC_AGENT",
     "config.BYPASS_ROUTER.MUSIC",
     "config.BYPASS_ROUTER.PLAYLIST",
     "config.LEN_ALBUMS_CACHE",
@@ -79,14 +72,14 @@ class MusicVlcService:
     def bypass_router(self, context):
         user_input_lower = context.user_input.lower()
         
-        fusion_list = self.cfg.config.BYPASS_ROUTER.PLAYLIST
+        fusion_list = self.cfg.BYPASS_ROUTER.PLAYLIST
         fusion_list += self.cfg.extra.BYPASS_PLAYLIST
         for keyword in fusion_list:
             keyword_lower = keyword.lower()
             if keyword_lower in user_input_lower:
                 return "PLAYLIST"
 
-        fusion_list = self.cfg.config.BYPASS_ROUTER.MUSIC
+        fusion_list = self.cfg.BYPASS_ROUTER.MUSIC
         fusion_list += self.cfg.extra.BYPASS_MUSIC
         for keyword in fusion_list:
             keyword_lower = keyword.lower()
@@ -105,14 +98,14 @@ class MusicVlcService:
                 step_data = {'label': category_res, 'bypass': 1}
                 context.add_step('sub_category', step_data, True)
             else:
-                llm_res = llm.execute(context.user_input, self.cfg.MUSIC_AGENT)
+                llm_res = llm.call(self.cfg.MUSIC_AGENT, context.user_input)
                 context.sub_category = llm_res.get('category', 'NONE')
                 step_data = llm_res
                 context.add_step('sub_category', step_data)
 
             handlers = {
                 'PLAYLIST': self._handle_playlist,
-                'MUSIC':    lambda ctx: llm.execute(ctx.user_input, self.cfg.VLC_AGENT),
+                'MUSIC':    lambda ctx: llm.call(ctx.user_input, self.cfg.VLC_AGENT, context.user_input),
                 'DISCOVER': lambda ctx: self._handle_discover(ctx)
             }
             handler = handlers.get(context.sub_category)
@@ -131,7 +124,7 @@ class MusicVlcService:
 
     def _handle_playlist(self, context):
         vlc_manager = self.check_user_use_service(context)
-        r = llm.execute(context.user_input, vlc_manager.playlist_agent)
+        r = llm.call(vlc_manager.playlist_AGENT, context.user_input)
         context.add_step('Result', r)
         return {'action': f"{r.get('action', 'ERR')}:{r.get('name', 'ERR')}"}
 

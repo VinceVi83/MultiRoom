@@ -150,7 +150,7 @@ class HAListener:
             return None, str(e)
 
     def _load_mapping(self):
-        mapping_file = os.path.join(self.cfg.DATA_DIR, "ha_action_mapping.json")
+        mapping_file = os.path.join(self.cfg.config_dir, "ha_action_mapping.json")
         try:
             if os.path.exists(mapping_file):
                 with open(mapping_file, "r", encoding="utf-8") as f:
@@ -208,7 +208,7 @@ class HAListener:
             logger.error(f"Error parsing learning output: {e}")
 
     def _update_action_mapping(self, entity_id, action, new_command):
-        mapping_file = os.path.join(self.cfg.DATA_DIR, "ha_action_mapping.json")
+        mapping_file = os.path.join(self.cfg.config_dir, "ha_action_mapping.json")
         try:
             if entity_id in self.mapping:
                 actions = self.mapping[entity_id].get("actions", {})
@@ -329,7 +329,7 @@ class HAListener:
                 logger.info(f"Command rejected by spam filter: '{command}'")
 
 if __name__ == "__main__":
-    from config_loader import cfg
+    from config.conf_manager import cfg
     try:
         ha_listener = HAListener(cfg.home_automation)
         asyncio.run(ha_listener.start())

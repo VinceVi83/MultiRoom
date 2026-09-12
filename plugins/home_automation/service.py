@@ -2,8 +2,8 @@ from plugins.home_automation.ha_communication import CommunicationHA
 from plugins.home_automation.ha_listener import HAListener
 from plugins.home_automation.ha_registry import HomeAutomationRegistry
 from plugins.home_automation.ha_weather import WeatherHaApi, WeatherStatus
-from tools.llm_agent import llm
-import asyncio
+from tools.llm_client import llm
+import json
 import logging
 logger = logging.getLogger(__name__)
 
@@ -36,9 +36,6 @@ class HomeAutomationService:
 
     def check_config(self):
         required_keys = [
-            "DATA_DIR",
-            "RETURN_CODE",
-            "DOMOTIC_AGENT",
             "ha_config.HA_HOSTNAME",
             "ha_config.HA_TOKEN",
             "ha_config.HA_WEATHER_LOCATION"
@@ -83,11 +80,15 @@ class HomeAutomationService:
             return self.cfg.RETURN_CODE.ERR
 
     def execute(self, context, callback_internal_request_api):
+        # logger.info(f"[PLUGIN HomeAutomationService] Executing with context: {context}")
         if not self.get_status():
             return self.cfg.RETURN_CODE.ERR
         try:
-            result = llm.execute(context.user_input, self.cfg.DOMOTIC_AGENT)
-            action, dtype = result.get('action', 'NONE'), result.get('type', 'NONE')
+            result = llm.call(self.cfg.agents.home_automation_router, context.user_input)
+            print(f"[PLUGIN HomeAutomationService] LLM result: {result}")
+            print(type(result['content']))
+            parsed = json.loads(result['content'])
+            action, dtype = parsed.get('ACTION', 'NONE'), parsed.get('TYPE', 'NONE')
             context.sub_category = f"{dtype}:{action}"
             context.add_step('sub_category', result)
 

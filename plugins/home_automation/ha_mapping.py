@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from rapidfuzz import fuzz
-from config_loader import cfg
+from config.conf_manager import cfg
 import logging
 logger = logging.getLogger(__name__)
 

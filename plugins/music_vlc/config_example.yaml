@@ -1,48 +1,47 @@
-music_vlc:
-  config:
-    DESCRIPTION: Music, playlists, VLC
-    USE_LOCATION: 1
+config:
+  DESCRIPTION: Music, playlists, VLC
+  USE_LOCATION: 1
 
-    BYPASS_ROUTER:
-      OTHERS:
-      - musique
-      - music
-      PLAYLIST:
-      - playlist
-      MUSIC:
-      - vlc
-      - le son
-      - moins
-      - plus
-      - précédent
-      - suivant
-      - après
-      - remets
-      - passe
-      - relance
-      - volume
-    VLC_PORT_START: 48888
-    LEN_ALBUMS_CACHE: 50
+  BYPASS_ROUTER:
+    OTHERS:
+    - musique
+    - music
+    PLAYLIST:
+    - playlist
+    MUSIC:
+    - vlc
+    - le son
+    - moins
+    - plus
+    - précédent
+    - suivant
+    - après
+    - remets
+    - passe
+    - relance
+    - volume
+  VLC_PORT_START: 48888
+  LEN_ALBUMS_CACHE: 50
 
-    SMB_MOUNT_POINT:
-      - "/mnt/g/Music"
+  SMB_MOUNT_POINT:
+    - "/mnt/g/Music"
 
-  security:
-    VLC_USERS:
-      test: test
-    MA_USERS:
-      TEST: test
+security:
+  VLC_USERS:
+    test: test
+  MA_USERS:
+    TEST: test
 
-  extra:
-    BYPASS_MUSIC:
-    - diminu
-    - augment
-    - coupe
-    - baisse
-    - stop
-    - monte
-    BYPASS_PLAYLIST:
-    - ajoute
-    - crée
-    - supprime
-    - enlève
+extra:
+  BYPASS_MUSIC:
+  - diminu
+  - augment
+  - coupe
+  - baisse
+  - stop
+  - monte
+  BYPASS_PLAYLIST:
+  - ajoute
+  - crée
+  - supprime
+  - enlève

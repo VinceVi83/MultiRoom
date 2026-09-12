@@ -3,12 +3,13 @@ import threading
 import json
 import time
 import importlib
-from config_loader import cfg, PluginConfig
-from tools.llm_agent import llm
+from config.conf_manager import cfg, CfgConfig
+from tools.llm_client import llm
 from tools.task_context import TaskContext
 from tools.utils import Utils
 import copy
 import logging
+
 logger = logging.getLogger(__name__)
 
 class RouterLLM:
@@ -36,6 +37,7 @@ class RouterLLM:
         self.service_registry = {}
         self.is_running = True
         self.test = False
+        self.plugins = ['home_automation', 'music_vlc']
         self._initialize_service_registry()
         self.start()
         self.duration_load = 0
@@ -47,13 +49,13 @@ class RouterLLM:
             self.command_queue.put(context)
 
     def _initialize_service_registry(self):
-        for i, plugin_name in enumerate(cfg.LOADED_PLUGINS, start=1):
+        for i, plugin_name in enumerate(self.plugins, start=1):
             try:
                 module_path = f"plugins.{plugin_name}.service"
                 module = importlib.import_module(module_path)
                 class_name = "".join([x.capitalize() for x in plugin_name.split('_')]) + "Service"
                 if hasattr(module, class_name):
-                    cfg_final = PluginConfig()
+                    cfg_final = CfgConfig()
                     plugin_obj = getattr(cfg, plugin_name, None)
                     if plugin_obj:
                         vars(cfg_final).update(copy.deepcopy(vars(plugin_obj)))
@@ -61,9 +63,11 @@ class RouterLLM:
                     if plugin_obj_2:
                         vars(cfg_final).update(copy.deepcopy(vars(plugin_obj_2)))
                     cfg_final.RETURN_CODE = copy.deepcopy(cfg.RETURN_CODE)
+                    cfg_final.config_dir = cfg.config_dir
+                    cfg_final.agents = cfg.agents
                     service_class = getattr(module, class_name)
                     instance = service_class(cfg_final)
-                    self.service_registry[plugin_name.upper()] = instance
+                    self.service_registry[plugin_name.lower()] = instance
                 else:
                     logger.info(f"  [!] Class {class_name} not found in {module_path}")
 
@@ -82,7 +86,7 @@ class RouterLLM:
         context.location = parts[1] if parts[1] else "Unknown"
         context.sub_category = parts[2].upper()
         context.result   = parts[3]
-        service_instance = self.service_registry.get(plugin_name.upper())
+        service_instance = self.service_registry.get(plugin_name.lower())
         if service_instance and hasattr(service_instance, 'execute_native'):
             try:
                 context.return_code = service_instance.execute_native(context)
@@ -98,7 +102,7 @@ class RouterLLM:
         if Utils.enable_bypass() and self.bypass_location(context):
             return
 
-        local_res = llm.execute(context.user_input, cfg.ALL_PURPOSE.LOCATION_CLEANER_AGENT)
+        local_res = llm.call(cfg.agents.locate, context.user_input)
         if local_res.get('cleaned_command') != 'none':
             context.location = local_res.get('location')
         context.add_step('LOCATION_CLEANER_AGENT', local_res)
@@ -106,13 +110,13 @@ class RouterLLM:
 
     def bypass_location(self, context):
         user_input_lower = context.user_input.lower()
-        for keyword in cfg.sys.config.BYPASS_ALL:
+        for keyword in cfg.sys.BYPASS_ALL:
             if keyword.lower() in user_input_lower:
                 context.location = "ALL"
                 context.add_step('bypass_location', {'location': "ALL", 'bypass': 1}, True)
                 return True
 
-        for keyword in cfg.sys.config.REPLACE_LOCATIONS:
+        for keyword in cfg.sys.REPLACE_LOCATIONS:
             if keyword.lower() in user_input_lower:
                 context.location = keyword
                 context.add_step('bypass_location', {'location': keyword, 'bypass': 1}, True)
@@ -121,12 +125,16 @@ class RouterLLM:
 
     def bypass_router(self, context):
         user_input_lower = context.user_input.lower()
-        
-        for category, keywords in cfg.ROUTER.items():
-            for keyword in keywords:
-                keyword_lower = keyword.lower()
-                if keyword_lower in user_input_lower:
-                    return {'plugin': category, 'bypass': 1}
+
+        for plugin_name in self.plugins:
+            plugin_obj = getattr(cfg, plugin_name, None)
+            if not plugin_obj:
+                continue
+            for keywords in plugin_obj.config.BYPASS_ROUTER:
+                for keyword in keywords:
+                    keyword_lower = keyword.lower()
+                    if keyword_lower in user_input_lower:
+                        return {'plugin': plugin_name, 'bypass': 1}
         return None
 
     def select_plugin(self, context):
@@ -135,11 +143,10 @@ class RouterLLM:
             category_res = self.bypass_router(context)
             context.add_step('ROUTER_AGENT', category_res, True)
         if not category_res:
-            category_res = llm.execute(context.user_input, cfg.ALL_PURPOSE.ROUTER_AGENT)
+            category_res = llm.call(cfg.agents.router, context.user_input)
             context.add_step('ROUTER_AGENT', category_res)
-
         context.category = category_res.get('plugin', 'UNKNOWN')
-        return context.category.lower() in cfg.LOADED_PLUGINS
+        return context.category.lower() in self.plugins
 
     def select_and_execute(self, context):
         context.start = time.time()
@@ -160,12 +167,14 @@ class RouterLLM:
             if service_instance and hasattr(service_instance, 'execute'):
                 return_code = service_instance.execute(context, self.callback_internal_request_api)
                 context.return_code = Utils.format_result(return_code)
+            else:
+                context.return_code = cfg.RETURN_CODE.ERR
+                logger.info(f"[!] Service {context.category} not found or missing execute method.")
   
         except Exception as e:
             logger.error(f"[!] Service {context.category} execute failed: {e}")
             return context._archive_and_rename()
-        if llm.wan_available:
-            context.report_action_status()
+        context.report_action_status()
         context.duration = round(time.time() - context.start, 3)
         return context._archive_and_rename()
 
@@ -190,7 +199,7 @@ class RouterLLM:
         return cfg.RETURN_CODE.SUCCESS
 
     def inference_loop(self):
-        llm.execute("Be ready", cfg.ALL_PURPOSE.ROUTER_AGENT)
+        llm.call(cfg.agents.router, '')
         Utils.send_discord_notification('A.L.I.S.U is ready for commands')
         last_activity = time.time()
         keep_alive_threshold = 240
@@ -206,7 +215,7 @@ class RouterLLM:
                 if context.user_input.startswith('@'):
                     response_context = self.execute_native(context)
                 elif self.test:
-                    result = llm.execute(context.user_input, cfg.ALL_PURPOSE.pre_process_agent)
+                    result = llm.call(cfg.agents.pre_process, context.user_input)
                     if result.get('valid', 0):
                         response_context = self.select_and_execute(context)
                     else:
@@ -235,7 +244,7 @@ class RouterLLM:
             except queue.Empty:
                 if time.time() - last_activity >= keep_alive_threshold:
                     try:
-                        self.llm.execute("Be ready", cfg.ALL_PURPOSE.ROUTER_AGENT)
+                        self.llm.call("Be ready", cfg.agents.router, context.user_input)
                     except:
                         pass
                     last_activity = time.time()

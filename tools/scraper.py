@@ -2,8 +2,8 @@ import requests
 import sys
 from datetime import datetime
 from trafilatura import fetch_url, extract
-from config_loader import cfg
-from tools.llm_agent import llm
+from config.conf_manager import cfg
+from tools.llm_client import llm
 import logging
 logger = logging.getLogger(__name__)
 
@@ -56,7 +56,7 @@ class ScraperService:
                 "language": lang,
                 "safesearch": 1
             }
-            response = requests.get(cfg.sys.config.SEARXNG_URL, params=params, timeout=10)
+            response = requests.get(cfg.sys.SEARXNG_URL, params=params, timeout=10)
             response.raise_for_status()
             results = response.json().get('results', [])
         except Exception as e:
@@ -107,7 +107,7 @@ class ScraperService:
             f"INSTRUCTION: Summarize the information based ONLY on the snippets provided."
         )
 
-        return llm.execute(user_input=payload, agent_cfg=agent_cfg)
+        return llm.call(user_input=payload, agent_cfg=agent_cfg)
 
     def get_web_discovery(self, query, time_boost=False):
         candidates = self.get_search_candidates(query, count=5, time_boost=time_boost)
@@ -130,7 +130,7 @@ class ScraperService:
             f"SOURCE_URL: {selected_candidate['url']}\n\n"
             f"FULL_CONTENT:\n{content}"
         )
-        return llm.execute(user_input=payload, agent_cfg=agent_cfg)
+        return llm.call(user_input=payload, agent_cfg=agent_cfg)
 
     def print_weather_report(self, data):
         if not isinstance(data, dict):

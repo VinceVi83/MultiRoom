@@ -1,10 +1,10 @@
 import json
 import os
 from pathlib import Path
-from config_loader import cfg
+from config.conf_manager import cfg
 
 def main():
-    file_path = Path(cfg.DATA_DIR) / "Archive/record.json"
+    file_path = Path(cfg.config_dir) / "Archive/record.json"
     
     try:
         with open(file_path, 'r', encoding='utf-8') as f:

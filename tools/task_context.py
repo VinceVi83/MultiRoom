@@ -3,9 +3,9 @@ import time
 import shutil
 from pathlib import Path
 from dataclasses import dataclass, fields, asdict, field
-from config_loader import cfg, ReturnCode
+from config.conf_manager import cfg, ReturnCode
 from tools.utils import Utils
-from tools.llm_agent import llm
+from tools.llm_client import llm
 import random
 import copy
 import logging
@@ -125,7 +125,7 @@ class TaskContext:
             pass
 
     def update_record(self, name):
-        record_path = Path(cfg.DATA_DIR) / "Archive/record.json"
+        record_path = Path(cfg.config_dir) / "Archive/record.json"
         record_path.parent.mkdir(parents=True, exist_ok=True)
 
         records = []
@@ -168,7 +168,7 @@ class TaskContext:
             timestamp = int(time.time())
             base = f"{timestamp}_{self.category}_{self.sub_category}"
 
-            archive_dir = Path(cfg.DATA_DIR) / "Archive"
+            archive_dir = Path(cfg.config_dir) / "Archive"
             dest_path, new_name = Utils.get_unique_path(archive_dir, base, ".wav")
             report = self.format_report(new_name)
             self.display_report(report)
@@ -193,10 +193,10 @@ class TaskContext:
         )
         try:
             selected_replica = random.choice(cfg.sys.personality.TSUNDERE)
-            tmp_agent = copy.deepcopy(cfg.ALL_PURPOSE.TSUNDERE_V2_REPORT_AGENT)
-            tmp_agent.prompt = tmp_agent.prompt.replace('RANDOM_REPLICA', selected_replica)
-            report_text = llm.execute(report_input, tmp_agent)
-            # self.add_step('report', report_text)
+            tmp_agent = copy.deepcopy(cfg.agents.tsundere_v2)
+            tmp_agent = tmp_agent.replace('s', selected_replica)
+            report_text = llm.call(tmp_agent, report_input)
+            self.add_step('report', report_text)
             report = report_text.get('content', 'FF')
             logger.info(f"\nALISU: {report}")
             Utils.send_discord_notification(f'A.L.I.S.U : {report}')
@@ -208,3 +208,4 @@ class TaskContext:
                 return f"Action completed: {self.user_input}."
             else:
                 return "I'm sorry, I encountered an issue processing that request."
+

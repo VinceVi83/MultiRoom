@@ -70,7 +70,7 @@ class HomeAutomationRegistry:
             return None, None
 
     def _safe_load_json(self, filename):
-        path = os.path.join(self.cfg.DATA_DIR, filename)
+        path = os.path.join(self.cfg.config_dir, filename)
         if os.path.exists(path) and os.path.getsize(path) > 0:
             try:
                 with open(path, "r", encoding="utf-8") as f:
@@ -80,7 +80,7 @@ class HomeAutomationRegistry:
         return {}
 
     def _safe_save_json(self, data, filename):
-        path = os.path.join(self.cfg.DATA_DIR, filename)
+        path = os.path.join(self.cfg.config_dir, filename)
         with open(path, "w", encoding="utf-8", newline='\n') as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
 
@@ -201,7 +201,7 @@ class HomeAutomationRegistry:
         self.sync_batteries()
 
 if __name__ == "__main__":
-    from config_loader import cfg
+    from config.conf_manager import cfg
     reg = HomeAutomationRegistry(cfg.home_automation)
     reg.update_device()
     # logger.info(f"Actuators: {reg.sync_actuators()}")

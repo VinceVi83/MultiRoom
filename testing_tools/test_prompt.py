@@ -1,7 +1,7 @@
 import socket
 import json
-from config_loader import cfg
-from tools.llm_agent import llm
+from config.conf_manager import cfg
+from tools.llm_client import llm
 from pathlib import Path
 import argparse
 import time
@@ -15,7 +15,7 @@ def record_text(file, text):
         print(f"Error : {e}")
 
 def load_json_tests():
-    file_path = Path(cfg.DATA_DIR) / 'output.json'
+    file_path = Path(cfg.config_dir) / 'output.json'
     if not file_path.exists():
         return []
     try:
@@ -118,7 +118,7 @@ def run_debug_server(host='0.0.0.0', port=28888):
     server.bind((host, port))
     server.listen(5)
 
-    file_path = Path(cfg.DATA_DIR) / 'record.txt'
+    file_path = Path(cfg.config_dir) / 'record.txt'
     try:
         while True:
             client_sock, addr = server.accept()
@@ -156,7 +156,7 @@ def run_debug_server(host='0.0.0.0', port=28888):
         server.close()
 
 def get_location(context):
-    local_res = llm.execute(context.user_input, cfg.ALL_PURPOSE.LOCATION_CLEANER_AGENT)
+    local_res = llm.call(cfg.ALL_PURPOSE.LOCATION_CLEANER_AGENT, context.user_input)
     context.add_durations(local_res)
     if local_res.get('cleaned_command') != 'none':
         context.location = local_res.get('location')
@@ -167,7 +167,7 @@ def get_location(context):
 def test_full_chain(context):
     print(f"\n=== Testing Input: {context.user_input} ===")
     
-    route_res = llm.execute(context.user_input, cfg.ALL_PURPOSE.ROUTER_AGENT)
+    route_res = llm.call(cfg.agents.router, context.user_input)
     context.add_durations(route_res)
     plugin_name = route_res.get('plugin', 'NONE')
     
@@ -193,12 +193,12 @@ def test_full_chain(context):
         print(f"Plugin {plugin_name} not managed.")
 
 def _handle_scheduler(context):
-    time_data = llm.execute(context.user_input, cfg.SCHEDULER.TIME_EXTRACTOR_AGENT)
+    time_data = llm.call(cfg.SCHEDULER.TIME_EXTRACTOR_AGENT, context.user_input)
     context.add_durations(time_data)
-    intent_data = llm.execute(context.user_input, cfg.SCHEDULER.INTENT_AGENT)
+    intent_data = llm.call(cfg.SCHEDULER.INTENT_AGENT, context.user_input)
     context.add_durations(intent_data)
     raw_cmd = intent_data.get('action', context.user_input)
-    mode_data = llm.execute(raw_cmd, cfg.SCHEDULER.SYSTEM_AGENT)
+    mode_data = llm.call(raw_cmd, cfg.SCHEDULER.SYSTEM_AGENT, context.user_input)
     context.add_durations(mode_data)
 
 def _handle_music(context):
@@ -214,13 +214,13 @@ def _handle_music(context):
         context.sub_category = matched
         context.add_step('sub_category', {'label': matched, 'bypass': 1})
     else:
-        res = llm.execute(context.user_input, cfg.MUSIC_VLC.MUSIC_AGENT)
+        res = llm.call(cfg.MUSIC_VLC.MUSIC_AGENT, context.user_input)
         context.add_durations(res)
         context.sub_category = res.get('category', 'NONE')
         context.add_step('sub_category', res)
 
     if context.sub_category == 'PLAYLIST_AGENT':
-        pl_res = llm.execute(context.user_input, cfg.MUSIC_VLC.PLAYLIST_AGENT)
+        pl_res = llm.call(cfg.MUSIC_VLC.PLAYLIST_AGENT, context.user_input)
         context.add_durations(pl_res)
         action = pl_res.get('action', 'ERR')
         if action in ['UNKNOWN', 'PLAY', 'CREATE', 'ADD', 'DEL', 'INFO']:
@@ -228,7 +228,7 @@ def _handle_music(context):
         context.add_step('Result', pl_res)
         
     elif context.sub_category == 'MUSIC':
-        vlc_res = llm.execute(context.user_input, cfg.MUSIC_VLC.VLC_AGENT)
+        vlc_res = llm.call(cfg.MUSIC_VLC.VLC_AGENT, context.user_input)
         context.add_durations(vlc_res)
         action = vlc_res.get('action', '0')
         if action in ['UNKNOWN', 'TOGGLE', 'PREVIOUS', 'NEXT', 'VOL_DOWN', 'VOL_UP', 'SHUFFLE', 'INFO']:
@@ -239,7 +239,7 @@ def _handle_music(context):
         context.return_code = cfg.RETURN_CODE.SUCCESS
 
 def _handle_agenda(context):
-    res = llm.execute(context.user_input, cfg.AGENDA.CALENDAR_AGENT)
+    res = llm.call(cfg.AGENDA.CALENDAR_AGENT, context.user_input)
     context.add_durations(res)
     action = res.get('action', 'NONE')
     context.sub_category = action
@@ -252,14 +252,14 @@ def _handle_daily(context):
     is_fridge = any(w in context.user_input.lower() for w in ['frigo', 'fridge'])
     agent = cfg.DAILY.FRIDGE_AGENT if is_fridge else cfg.DAILY.DAILY_AGENT
     
-    res = llm.execute(context.user_input, agent)
+    res = llm.call(agent)
     context.add_durations(res)
     action = res.get('action', 'NONE')
     context.sub_category = action
     context.add_step('sub_category', res)
 
     if action in ['SHOP_ADD', 'FRIDGE_ADD']:
-        items = llm.execute(context.user_input, cfg.DAILY.EXTRACT_FOOD_AGENT)
+        items = llm.call(cfg.DAILY.EXTRACT_FOOD_AGENT, context.user_input)
         context.add_durations(items)
         context.add_step('result', items)
         
@@ -268,7 +268,7 @@ def _handle_daily(context):
 
 def _handle_home_auto(context):
     get_location(context)
-    res = llm.execute(context.user_input, cfg.HOME_AUTOMATION.DOMOTIC_AGENT)
+    res = llm.call(cfg.HOME_AUTOMATION.DOMOTIC_AGENT, context.user_input)
     context.add_durations(res)
     action, dtype = res.get('action', 'NONE'), res.get('type', 'NONE')
     context.sub_category = f"{dtype}:{action}"

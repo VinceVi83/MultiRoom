@@ -1,5 +1,5 @@
-from config_loader import cfg
-from tools.llm_agent import llm
+from config.conf_manager import cfg
+from tools.llm_client import llm
 from tools.utils import Utils
 from plugins.your_plugin.logic_module import PluginLogic
 import logging
@@ -57,14 +57,14 @@ class YourPluginService:
             return self.cfg.RETURN_CODE.ERR
         logic = PluginLogic()
         
-        intent_result = llm.execute(context.user_input, self.config.INTENT_AGENT)
+        intent_result = llm.call(self.INTENT_AGENT, context.user_input)
         intent_id = int(intent_result.get('ID', '0'))
         
-        context.sub_category = self.config.AGENT_FEATURES[intent_id]
+        context.sub_category = self.AGENT_FEATURES[intent_id]
         result = "NONSENSE"
         
         if context.sub_category == "ACTION_ONE":
-            extracted = llm.execute(context.user_input, self.config.PLUGIN_NAME.EXTRACT_DATA)
+            extracted = llm.call(self.PLUGIN_NAME.EXTRACT_DATA)
             result = logic.perform_action(extracted)
         elif context.sub_category == "ACTION_TWO":
             result = logic.perform_action()

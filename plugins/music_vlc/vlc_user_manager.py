@@ -40,17 +40,17 @@ class VLCUserManager:
         self.current_album_name = ""
         self.replace_playlist = ""
         self.playlist_prompt_o = copy.deepcopy(self.cfg.PLAYLIST_AGENT.prompt)
-        self.playlist_agent = copy.deepcopy(self.cfg.PLAYLIST_AGENT)
+        self.playlist_agent = copy.deepcopy(self.cfg.PLAYLIST_AGENT, context.user_input)
 
-        history_path = Path(self.cfg.DATA_DIR) / self.user_session.username / f"history_user_{user_index}.json"
+        history_path = Path(self.cfg.config_dir) / self.user_session.username / f"history_user_{user_index}.json"
         self.store = SimpleStore(history_path, default_structure={"recently_played": []})
         self.recently_played = self.store.get("recently_played")
-        self.smb_base = self.cfg.config.SMB_MOUNT_POINT
+        self.smb_base = self.cfg.SMB_MOUNT_POINT
         self.album_cache = []
         self._init_album_cache()
 
         self.vlc_monitor = None
-        self.base_dir_playlist = Path(self.cfg.DATA_DIR) / self.user_session.username / "Playlists"
+        self.base_dir_playlist = Path(self.cfg.config_dir) / self.user_session.username / "Playlists"
         self.tmp_playlist = Path("/tmp") / f"tmp_{self.user_session.username}.m3u8"
         self.playlist_manager = PlaylistManager(self.base_dir_playlist)
 

@@ -1,5 +1,5 @@
 from pathlib import Path
-from config_loader import cfg
+from config.conf_manager import cfg
 import logging
 logger = logging.getLogger(__name__)
 

@@ -36,8 +36,8 @@ class VLCControl:
         self.index = index
         self.cfg = cfg
         self.process = None
-        self.port_ctrl = str(int(self.cfg.config.VLC_PORT_START) + index)
-        self.port_stream = str(int(self.cfg.config.VLC_PORT_START) + 1000 + index)
+        self.port_ctrl = str(int(self.cfg.VLC_PORT_START) + index)
+        self.port_stream = str(int(self.cfg.VLC_PORT_START) + 1000 + index)
         self.password = getattr(self.cfg.security.VLC_USERS, "test", None)
         self.base_url = f"http://127.0.0.1:{self.port_ctrl}/requests"
         self.is_initialized = False
