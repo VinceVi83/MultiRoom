@@ -1,8 +1,9 @@
 import argparse
 import requests
 import time
+from config.conf_manager import cfg
 
-BASE_URL = "http://localhost:8888"
+BASE_URL = f"http://localhost:{cfg.sys.HUB_PORT}"
 
 
 def send_command(username: str, command: str):
@@ -16,7 +17,7 @@ def delete_session(username: str):
     print(resp.status_code, resp.json())
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("-u", "--user", required=True)
+    parser.add_argument("-u", "--user", default="system")
     parser.add_argument("command", nargs="+")
     parser.add_argument("--delete-session", action="store_true")
     args = parser.parse_args()

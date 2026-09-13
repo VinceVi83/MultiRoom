@@ -39,8 +39,8 @@ class VLCUserManager:
         self.vlc_instance = None
         self.current_album_name = ""
         self.replace_playlist = ""
-        self.playlist_prompt_o = copy.deepcopy(self.cfg.PLAYLIST_AGENT.prompt)
-        self.playlist_agent = copy.deepcopy(self.cfg.PLAYLIST_AGENT, context.user_input)
+        self.playlist_prompt_o = copy.deepcopy(self.cfg.agents.music_vlc_playlist)
+        self.playlist_agent = ""
 
         history_path = Path(self.cfg.config_dir) / self.user_session.username / f"history_user_{user_index}.json"
         self.store = SimpleStore(history_path, default_structure={"recently_played": []})
@@ -59,7 +59,7 @@ class VLCUserManager:
         
     def update_playlist_agent(self):
         tmp = self.playlist_prompt_o.replace('REPLACE_PLAYLISTS', self.replace_playlist)
-        self.playlist_agent.prompt = tmp
+        self.playlist_agent = tmp
     
     def launch_playlist(self, target):
         if not self._start_vlc_if_needed(target):

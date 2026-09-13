@@ -129,7 +129,7 @@ class HAListener:
 
     def send_cmd(self, content, entity_id=None, action=None):
         try:
-            cmd = [self.cfg.ha_config.python_bin, "-m", "tools.hub_messenger"]
+            cmd = [self.cfg.ha_config.python_bin, "-m", "tools.hub_messenger", "-u", "system"]
             cmd.append(content.strip())
             process = subprocess.Popen(
                 cmd, 
