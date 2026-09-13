@@ -48,8 +48,8 @@ class TaskContext:
         report_action_status(self) : Generate and return action status report.
     """
     user_input: str
-    session: any = None
-    audio_path: str = None
+    session:  object | None = None
+    audio_path: str | None = None
     category: str = "NONSENSE"
     sub_category: str = "NONSENSE"
     result: str = "NONSENSE"
@@ -60,7 +60,7 @@ class TaskContext:
     start: float = time.time()
     data: dict = field(default_factory=dict)
     data_request: dict = field(default_factory=dict)
-    return_code: ReturnCode = cfg.RETURN_CODE.ERR
+    return_code: ReturnCode | str = cfg.RETURN_CODE.ERR
     call_counter: int = 0
 
     def add_step(self, step_name, data, bypass=False):
@@ -214,14 +214,17 @@ class TaskContext:
             tmp_agent = tmp_agent.replace('s', selected_replica)
             report_text = llm.call(tmp_agent, report_input, model=cfg.sys.llm_modele.large_model)
             self.add_step('report', report_text)
-            report = report_text.get('content', 'FF')
+            report = report_text['content'] if isinstance(report_text, dict) else report_text
             logger.info(f"\nALISU: {report}")
             Utils.send_discord_notification(f'A.L.I.S.U : {report}')
             return report
 
         except Exception as e:
             logger.error("Exception", e)
-            if "success" in self.return_code:
+            if (self.return_code == ReturnCode.SUCCESS
+                or (isinstance(self.return_code, str)
+                    and "success" in self.return_code.lower())
+            ):
                 return f"Action completed: {self.user_input}."
             else:
                 return "I'm sorry, I encountered an issue processing that request."

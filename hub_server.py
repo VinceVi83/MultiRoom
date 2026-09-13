@@ -1,6 +1,6 @@
 import threading
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+from fastapi import FastAPI, HTTPException # type: ignore
+from pydantic import BaseModel # type: ignore
 import sys
 from config.conf_manager import cfg, setup_logging
 from tools.task_context import TaskContext
@@ -61,5 +61,6 @@ def delete_session(username: str):
     return {"status": "deleted"}
 
 if __name__ == "__main__":
-    import uvicorn
+    import uvicorn # type: ignore
     uvicorn.run(app, host="0.0.0.0", port=cfg.sys.HUB_PORT)
+
