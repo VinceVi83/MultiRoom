@@ -84,13 +84,11 @@ class HomeAutomationService:
         if not self.get_status():
             return self.cfg.RETURN_CODE.ERR
         try:
-            result = llm.call(self.cfg.agents.home_automation_router, context.user_input)
-            print(f"[PLUGIN HomeAutomationService] LLM result: {result}")
-            print(type(result['content']))
-            parsed = json.loads(result['content'])
-            action, dtype = parsed.get('ACTION', 'NONE'), parsed.get('TYPE', 'NONE')
+            result = llm.call(self.cfg.agents.home_automation_router, context.user_input, model=self.cfg.llm_modele.small_model)
+            result_extracted = json.loads(result['content'])
+            action, dtype = result_extracted.get('ACTION', 'NONE'), result_extracted.get('TYPE', 'NONE')
             context.sub_category = f"{dtype}:{action}"
-            context.add_step('sub_category', result)
+            context.add_step('sub_category', result_extracted)
 
             if "WEATHER" in context.sub_category:
                 result = self.ha_weather.fetch_current_status()
@@ -114,3 +112,4 @@ class HomeAutomationService:
             logger.warning(f"Home Automation not configured")
             return False
         return True
+

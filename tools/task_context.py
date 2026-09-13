@@ -212,7 +212,7 @@ class TaskContext:
             selected_replica = random.choice(cfg.sys.personality.TSUNDERE)
             tmp_agent = copy.deepcopy(cfg.agents.tsundere_v2)
             tmp_agent = tmp_agent.replace('s', selected_replica)
-            report_text = llm.call(tmp_agent, report_input)
+            report_text = llm.call(tmp_agent, report_input, model=cfg.sys.llm_modele.large_model)
             self.add_step('report', report_text)
             report = report_text.get('content', 'FF')
             logger.info(f"\nALISU: {report}")

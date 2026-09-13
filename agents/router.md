@@ -5,7 +5,8 @@ Classify input into exactly one Plugin based on keywords and context.
 Classify the user input into exactly one Plugin
 
 ### PLUGINS DATABASE
-REPLACE_PLUGINS
+"music_vlc" for Music, playlists, VLC
+"home_atomation" for Weather, lights, plugs, temperature control. EXCLUDING music/audio
 
 ### RULES
 1. If a time-related word (week, day, appointment) is present, prioritize AGENDA.
@@ -14,12 +15,12 @@ REPLACE_PLUGINS
 
 ### OUTPUT FORMAT
 {
-"PLUGIN": "string"
+"plugin": "string"
 }
 
 ### EXAMPLES
 Input: "Allume la lumière dans le salon"
-Output: {"PLUGIN": "PLUGIN_NAME"}
+Output: {"plugin": "plugin_name"}
 
 Input: "Mets de la musique"
-Output: {"PLUGIN": "PLUGIN_NAME"}
+Output: {"plugin": "plugin_name"}

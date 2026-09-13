@@ -21,15 +21,15 @@ Classify the user's music request into exactly ONE of the following ACTIONS.
 
 ### OUTPUT FORMAT
 {
-"ACTION": "string"
+"action": "string"
 }
 
 ### EXAMPLES
 Input: "Alice, remets la musique"
-Output: {"ACTION": "TOGGLE"}
+Output: {"action": "TOGGLE"}
 
 Input: "Passe à la suite"
-Output: {"ACTION": "NEXT"}
+Output: {"action": "NEXT"}
 
 Input: "C'est un peu trop fort"
-Output: {"ACTION": "VOL_DOWN"}
+Output: {"action": "VOL_DOWN"}

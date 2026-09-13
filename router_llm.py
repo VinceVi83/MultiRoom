@@ -64,6 +64,7 @@ class RouterLLM:
                         vars(cfg_final).update(copy.deepcopy(vars(plugin_obj_2)))
                     cfg_final.RETURN_CODE = copy.deepcopy(cfg.RETURN_CODE)
                     cfg_final.config_dir = cfg.config_dir
+                    cfg_final.llm_modele = copy.deepcopy(cfg.sys.llm_modele)
                     cfg_final.agents = cfg.agents
                     service_class = getattr(module, class_name)
                     instance = service_class(cfg_final)
@@ -102,10 +103,11 @@ class RouterLLM:
         if Utils.enable_bypass() and self.bypass_location(context):
             return
 
-        local_res = llm.call(cfg.agents.locate, context.user_input)
-        if local_res.get('cleaned_command') != 'none':
-            context.location = local_res.get('location')
-        context.add_step('LOCATION_CLEANER_AGENT', local_res)
+        local_res = llm.call(cfg.agents.locate, context.user_input, model=cfg.sys.llm_modele.small_model)
+        result_extracted = json.loads(local_res['content'])
+        if result_extracted.get('cleaned_command') != 'none':
+            context.location = result_extracted.get('location')
+        context.add_step('LOCATION_CLEANER_AGENT', result_extracted)
         return
 
     def bypass_location(self, context):
@@ -130,22 +132,33 @@ class RouterLLM:
             plugin_obj = getattr(cfg, plugin_name, None)
             if not plugin_obj:
                 continue
-            for keywords in plugin_obj.config.BYPASS_ROUTER:
-                for keyword in keywords:
-                    keyword_lower = keyword.lower()
-                    if keyword_lower in user_input_lower:
+            bypass_router = plugin_obj.config.BYPASS_ROUTER
+            if isinstance(bypass_router, list):
+                for keyword in bypass_router:
+                    if keyword in user_input_lower:
                         return {'plugin': plugin_name, 'bypass': 1}
+            else:
+                dico_tmp = bypass_router._to_dict_recursive(bypass_router)
+                for category, keywords in dico_tmp.items():
+                    for keyword in keywords:
+                        if keyword in user_input_lower:
+                            return {'plugin': plugin_name, 'bypass': 1}
         return None
 
     def select_plugin(self, context):
         category_res = None
+        context.category = 'UNKNOWN'
         if Utils.enable_bypass():
             category_res = self.bypass_router(context)
-            context.add_step('ROUTER_AGENT', category_res, True)
+            if category_res:
+                context.category = category_res.get('plugin', 'UNKNOWN')
+                context.add_step('ROUTER_AGENT', category_res, True)
         if not category_res:
-            category_res = llm.call(cfg.agents.router, context.user_input)
-            context.add_step('ROUTER_AGENT', category_res)
-        context.category = category_res.get('plugin', 'UNKNOWN')
+            category_res = llm.call(cfg.agents.router, context.user_input, model=cfg.sys.llm_modele.small_model)
+            result_extracted = json.loads(category_res['content'])
+            context.add_step('ROUTER_AGENT', result_extracted)
+            context.category = result_extracted.get('plugin', 'UNKNOWN')
+
         return context.category.lower() in self.plugins
 
     def select_and_execute(self, context):
@@ -199,7 +212,7 @@ class RouterLLM:
         return cfg.RETURN_CODE.SUCCESS
 
     def inference_loop(self):
-        llm.call(cfg.agents.router, '')
+        llm.call(cfg.agents.router, '', model=cfg.sys.llm_modele.small_model)
         Utils.send_discord_notification('A.L.I.S.U is ready for commands')
         last_activity = time.time()
         keep_alive_threshold = 240
@@ -215,8 +228,9 @@ class RouterLLM:
                 if context.user_input.startswith('@'):
                     response_context = self.execute_native(context)
                 elif self.test:
-                    result = llm.call(cfg.agents.pre_process, context.user_input)
-                    if result.get('valid', 0):
+                    result = llm.call(cfg.agents.pre_process, context.user_input, model=cfg.sys.llm_modele.small_model)
+                    result_extracted = json.loads(result['content'])
+                    if result_extracted.get('valid', 0):
                         response_context = self.select_and_execute(context)
                     else:
                         continue
@@ -244,7 +258,7 @@ class RouterLLM:
             except queue.Empty:
                 if time.time() - last_activity >= keep_alive_threshold:
                     try:
-                        self.llm.call("Be ready", cfg.agents.router, context.user_input)
+                        self.llm.call("Be ready", cfg.agents.router, context.user_input, model=cfg.sys.llm_modele.small_model)
                     except:
                         pass
                     last_activity = time.time()
@@ -262,3 +276,4 @@ class RouterLLM:
         self.command_queue.put(None) 
         if hasattr(self, 'thread') and self.thread.is_alive():
             self.thread.join(timeout=5.0)
+
