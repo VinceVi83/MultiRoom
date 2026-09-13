@@ -1,9 +1,10 @@
+from enum import Enum
 import json
 import time
 import shutil
 from pathlib import Path
 from dataclasses import dataclass, fields, asdict, field
-from config.conf_manager import cfg, ReturnCode
+from config.conf_manager import cfg
 from tools.utils import Utils
 from tools.llm_client import llm
 import random
@@ -11,6 +12,22 @@ import copy
 import logging
 logger = logging.getLogger(__name__)
 
+class ReturnCode(Enum):
+    SUCCESS = 1
+    ERR = 2
+    ERR_NOT_CONNECTED = 3
+    ERR_NOT_IMPLEMENTED = 4
+    SUCCESS_NOTHING_TO_DO = 5
+    ERR_UNKNOWN_DEVICE = 6
+    ERR_INVALID_ARGUMENT = 7
+    ERR_NOT_CONFIGURED = 8
+    ERR_MISSING_FILE = 9
+    SUCCESS_NONSENSE = 10
+    NULL = 11
+    DUPLICATE = 12
+    ERR_FILE_NOT_FOUND = 13
+
+cfg.RETURN_CODE = ReturnCode
 
 @dataclass
 class TaskContext:
