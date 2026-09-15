@@ -1,7 +1,7 @@
 import json
 import os
 from pathlib import Path
-from config.conf_manager import cfg
+from common.conf_manager import cfg
 
 def main():
     file_path = Path(cfg.config_dir) / "Archive/record.json"
@@ -81,3 +81,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

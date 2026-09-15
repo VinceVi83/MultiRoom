@@ -2,7 +2,7 @@ from plugins.home_automation.ha_communication import CommunicationHA
 from plugins.home_automation.ha_listener import HAListener
 from plugins.home_automation.ha_registry import HomeAutomationRegistry
 from plugins.home_automation.ha_weather import WeatherHaApi, WeatherStatus
-from tools.llm_client import llm
+from common.llm_client import llm
 import json
 import logging
 logger = logging.getLogger(__name__)

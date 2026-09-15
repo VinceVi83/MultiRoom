@@ -1,5 +1,5 @@
 from threading import Event
-from config.conf_manager import cfg
+from common.conf_manager import cfg
 import logging
 logger = logging.getLogger(__name__)
 
@@ -76,3 +76,4 @@ class UserSession:
     
         self.services.clear()
         self.stop_threads.set()
+

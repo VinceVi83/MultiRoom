@@ -1,7 +1,7 @@
 import argparse
 import requests
 import time
-from config.conf_manager import cfg
+from common.conf_manager import cfg
 
 BASE_URL = f"http://localhost:{cfg.sys.HUB_PORT}"
 
@@ -28,3 +28,4 @@ if __name__ == "__main__":
     # time.sleep(10)
     # send_command("system", "Eteint la lumière dans la cuisine")
     # delete_session("system")
+

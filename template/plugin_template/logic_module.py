@@ -1,5 +1,5 @@
 from pathlib import Path
-from config.conf_manager import cfg
+from common.conf_manager import cfg
 import logging
 logger = logging.getLogger(__name__)
 
@@ -30,3 +30,4 @@ class PluginLogic:
 
     def perform_action(self, data=None):
         return "Result of action"
+

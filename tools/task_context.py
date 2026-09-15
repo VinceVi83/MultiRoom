@@ -4,9 +4,9 @@ import time
 import shutil
 from pathlib import Path
 from dataclasses import dataclass, fields, asdict, field
-from config.conf_manager import cfg
+from common.conf_manager import cfg
 from tools.utils import Utils
-from tools.llm_client import llm
+from common.llm_client import llm
 import random
 import copy
 import logging

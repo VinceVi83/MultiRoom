@@ -3,8 +3,8 @@ import threading
 import json
 import time
 import importlib
-from config.conf_manager import cfg, CfgConfig
-from tools.llm_client import llm
+from common.conf_manager import cfg, CfgConfig
+from common.llm_client import llm
 from tools.task_context import TaskContext
 from tools.utils import Utils
 import copy

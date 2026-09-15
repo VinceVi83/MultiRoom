@@ -2,8 +2,8 @@ import requests
 import sys
 from datetime import datetime
 from trafilatura import fetch_url, extract
-from config.conf_manager import cfg
-from tools.llm_client import llm
+from common.conf_manager import cfg
+from common.llm_client import llm
 import logging
 logger = logging.getLogger(__name__)
 
@@ -157,3 +157,4 @@ if __name__ == "__main__":
     query = " ".join(sys.argv[1:]) if len(sys.argv) > 1 else "Weather Paris"
     report = scraper.get_web_summary(query, cfg.ALL_PURPOSE.weather_forecast)
     scraper.print_weather_report(report)
+

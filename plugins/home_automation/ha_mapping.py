@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from rapidfuzz import fuzz
-from config.conf_manager import cfg
+from common.conf_manager import cfg
 import logging
 logger = logging.getLogger(__name__)
 
@@ -147,3 +147,4 @@ class SwitchEntity(BaseEntity):
 
     def toggle(self):
         return self.service.call_action("switch", "toggle", self.id)
+

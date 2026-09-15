@@ -1,7 +1,7 @@
 import socket
 import json
-from config.conf_manager import cfg
-from tools.llm_client import llm
+from common.conf_manager import cfg
+from common.llm_client import llm
 from pathlib import Path
 import argparse
 import time

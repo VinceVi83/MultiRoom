@@ -201,9 +201,10 @@ class HomeAutomationRegistry:
         self.sync_batteries()
 
 if __name__ == "__main__":
-    from config.conf_manager import cfg
+    from common.conf_manager import cfg
     reg = HomeAutomationRegistry(cfg.home_automation)
     reg.update_device()
     # logger.info(f"Actuators: {reg.sync_actuators()}")
     # logger.info(f"Buttons: {reg.sync_button_mapping()}")
     # logger.info(f"Batteries: {reg.sync_batteries()}")
+

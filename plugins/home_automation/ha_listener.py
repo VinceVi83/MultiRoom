@@ -329,7 +329,7 @@ class HAListener:
                 logger.info(f"Command rejected by spam filter: '{command}'")
 
 if __name__ == "__main__":
-    from config.conf_manager import cfg
+    from common.conf_manager import cfg
     try:
         ha_listener = HAListener(cfg.home_automation)
         asyncio.run(ha_listener.start())
@@ -337,3 +337,4 @@ if __name__ == "__main__":
         logger.error("\nStopping the listener.")
     except Exception as e:
         logger.error(f"Fatal error: {e}")
+

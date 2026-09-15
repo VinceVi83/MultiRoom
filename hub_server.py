@@ -2,7 +2,7 @@ import threading
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import sys
-from config.conf_manager import cfg, setup_logging
+from common.conf_manager import cfg, setup_logging
 from tools.task_context import TaskContext
 from router_llm import RouterLLM
 from user_session import UserSession
@@ -63,3 +63,4 @@ def delete_session(username: str):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=cfg.sys.HUB_PORT)
+

@@ -1,7 +1,7 @@
 import os
 import json
 from pathlib import Path
-from config.conf_manager import cfg
+from common.conf_manager import cfg
 import sys
 import logging
 import threading

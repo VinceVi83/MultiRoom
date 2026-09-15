@@ -1,4 +1,4 @@
-from tools.llm_client import llm
+from common.llm_client import llm
 from plugins.music_vlc.vlc_user_manager import VLCUserManager
 from tools.utils import Utils
 import json

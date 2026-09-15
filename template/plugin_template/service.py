@@ -1,5 +1,5 @@
-from config.conf_manager import cfg
-from tools.llm_client import llm
+from common.conf_manager import cfg
+from common.llm_client import llm
 from tools.utils import Utils
 from plugins.your_plugin.logic_module import PluginLogic
 import logging
