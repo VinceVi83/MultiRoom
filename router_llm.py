@@ -64,7 +64,7 @@ class RouterLLM:
                         vars(cfg_final).update(copy.deepcopy(vars(plugin_obj_2)))
                     cfg_final.RETURN_CODE = copy.deepcopy(cfg.RETURN_CODE)
                     cfg_final.config_dir = cfg.config_dir
-                    cfg_final.llm_modele = copy.deepcopy(cfg.sys.llm_modele)
+                    cfg_final.llm_model = copy.deepcopy(cfg.sys.llm_model)
                     cfg_final.agents = cfg.agents
                     service_class = getattr(module, class_name)
                     instance = service_class(cfg_final)
@@ -103,7 +103,7 @@ class RouterLLM:
         if Utils.enable_bypass() and self.bypass_location(context):
             return
 
-        local_res = llm.call(cfg.agents.locate, context.user_input, model=cfg.sys.llm_modele.small_model)
+        local_res = llm.call(cfg.agents.locate, context.user_input, model=cfg.sys.llm_model.small_model)
         result_extracted = json.loads(local_res['content'])
         if result_extracted.get('cleaned_command') != 'none':
             context.location = result_extracted.get('location')
@@ -154,7 +154,7 @@ class RouterLLM:
                 context.category = category_res.get('plugin', 'UNKNOWN')
                 context.add_step('ROUTER_AGENT', category_res, True)
         if not category_res:
-            category_res = llm.call(cfg.agents.router, context.user_input, model=cfg.sys.llm_modele.small_model)
+            category_res = llm.call(cfg.agents.router, context.user_input, model=cfg.sys.llm_model.small_model)
             result_extracted = json.loads(category_res['content'])
             context.add_step('ROUTER_AGENT', result_extracted)
             context.category = result_extracted.get('plugin', 'UNKNOWN')
@@ -212,7 +212,7 @@ class RouterLLM:
         return cfg.RETURN_CODE.SUCCESS
 
     def inference_loop(self):
-        llm.call(cfg.agents.router, '', model=cfg.sys.llm_modele.small_model)
+        llm.call(cfg.agents.router, '', model=cfg.sys.llm_model.small_model)
         Utils.send_discord_notification('A.L.I.S.U is ready for commands')
         last_activity = time.time()
         keep_alive_threshold = 240
@@ -228,7 +228,7 @@ class RouterLLM:
                 if context.user_input.startswith('@'):
                     response_context = self.execute_native(context)
                 elif self.test:
-                    result = llm.call(cfg.agents.pre_process, context.user_input, model=cfg.sys.llm_modele.small_model)
+                    result = llm.call(cfg.agents.pre_process, context.user_input, model=cfg.sys.llm_model.small_model)
                     result_extracted = json.loads(result['content'])
                     if result_extracted.get('valid', 0):
                         response_context = self.select_and_execute(context)
@@ -258,7 +258,7 @@ class RouterLLM:
             except queue.Empty:
                 if time.time() - last_activity >= keep_alive_threshold:
                     try:
-                        self.llm.call("Be ready", cfg.agents.router, context.user_input, model=cfg.sys.llm_modele.small_model)
+                        self.llm.call("Be ready", cfg.agents.router, context.user_input, model=cfg.sys.llm_model.small_model)
                     except:
                         pass
                     last_activity = time.time()

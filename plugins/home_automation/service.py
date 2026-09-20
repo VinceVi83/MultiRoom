@@ -84,7 +84,7 @@ class HomeAutomationService:
         if not self.get_status():
             return self.cfg.RETURN_CODE.ERR
         try:
-            result = llm.call(self.cfg.agents.home_automation_router, context.user_input, model=self.cfg.llm_modele.small_model)
+            result = llm.call(self.cfg.agents.home_automation_router, context.user_input, model=self.cfg.llm_model.small_model)
             result_extracted = json.loads(result['content'])
             action, dtype = result_extracted.get('ACTION', 'NONE'), result_extracted.get('TYPE', 'NONE')
             context.sub_category = f"{dtype}:{action}"
