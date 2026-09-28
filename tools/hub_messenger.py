@@ -5,16 +5,18 @@ from common.conf_manager import cfg
 
 BASE_URL = f"http://localhost:{cfg.sys.HUB_PORT}"
 
-
-def send_command(username: str, command: str):
-    resp = requests.post(f"{BASE_URL}/command", json={"username": username, "command": command})
+def send_command(username: str, command: str, origin: str = None):
+    resp = requests.post(
+        f"{BASE_URL}/command",
+        json={"username": username, "command": command, "origin": origin}
+    )
     resp.raise_for_status()
     print(resp.json())
-
 
 def delete_session(username: str):
     resp = requests.delete(f"{BASE_URL}/session/{username}")
     print(resp.status_code, resp.json())
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-u", "--user", default="system")

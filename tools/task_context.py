@@ -4,8 +4,7 @@ import time
 import shutil
 from pathlib import Path
 from dataclasses import dataclass, fields, asdict, field
-from common.conf_manager import cfg
-from tools.utils import Utils
+from common.conf_manager import cfg, Utils
 from common.llm_client import llm
 import random
 import copy
@@ -57,6 +56,7 @@ class TaskContext:
     duration_inference: float = 0
     duration: float = 0
     location: str = "NONSENSE"
+    origin: str = None
     start: float = time.time()
     data: dict = field(default_factory=dict)
     data_request: dict = field(default_factory=dict)
@@ -87,45 +87,37 @@ class TaskContext:
         return data
 
     def _build_report_header(self):
-        header = f"{'='*50}\n"
-        header += f"{'DISPATCH REPORT':^50}\n"
-        header += f"{'='*50}\n"
+        header = f"{'='*30}\n"
+        header += f"{'DISPATCH REPORT':^40}\n"
+        header += f"{'='*30}\n"
         return header
 
     def _build_report_metadata(self):
         call_count = self.call_counter
         input_text = self.user_input
-        file_name = self.audio_path if self.audio_path else "None"
         location = self.location
         category = self.category
         label = self.sub_category
         result = Utils.format_result(self.result)
         return_code = Utils.format_result(self.return_code)
         duration = self.duration
-        load_time = self.duration_load
-        inference_time = self.duration_inference
         metadata = (
             f"{'LLMCallCount:':<15} {call_count}\n"
             f"{'Input:':<15} {input_text}\n"
-            f"{'File:':<15} {file_name}\n"
-            f"{'-' * 50}\n"
+            f"{'-' * 30}\n"
             f"{'Location:':<15} {location}\n"
             f"{'Category:':<15} {category}\n"
             f"{'Label:':<15} {label}\n"
             f"{'Result:':<15} {result}\n"
             f"{'ReturnCode:':<15} {return_code}\n"
             f"{'Duration:':<15} {duration}s\n"
-            f"{'LoadTimeLLM:':<15} {load_time}s\n"
-            f"{'InferenceTime:':<15} {inference_time}s\n"
-            f"{'='*50}"
+            f"{'='*30}"
         )
         return metadata
 
     def format_report(self, new_audio_name="None"):
         header = self._build_report_header()
         metadata = self._build_report_metadata()
-        if new_audio_name != "None":
-            metadata = metadata.replace("None", new_audio_name)
         return header + metadata
 
     def display_report(self, new_audio_name="None"):
@@ -181,21 +173,9 @@ class TaskContext:
         try:
             if "NONSENSE" in [self.category, self.sub_category]:
                 return self.clone_safe()
-
-            timestamp = int(time.time())
-            base = f"{timestamp}_{self.category}_{self.sub_category}"
-
-            archive_dir = Path(cfg.config_dir) / "Archive"
-            dest_path, new_name = Utils.get_unique_path(archive_dir, base, ".wav")
-            report = self.format_report(new_name)
+            report = self.format_report("")
             self.display_report(report)
-            Utils.send_discord_notification(report)
-
-            if self.audio_path and Path(self.audio_path).exists():
-                shutil.move(self.audio_path, dest_path)
-                self.audio_path = str(dest_path)
-                self.update_record(new_name)
-
+            # Utils.send_discord_notification(report)
             return self.clone_safe()
 
         except Exception as e:
@@ -205,19 +185,26 @@ class TaskContext:
     def report_action_status(self):
         report_input = (
             f"User Command: {self.user_input}\n"
-            f"Status: {self.return_code}\n"
             f"Result: {self.result}"
         )
         try:
             selected_replica = random.choice(cfg.sys.personality.TSUNDERE)
-            tmp_agent = copy.deepcopy(cfg.agents.tsundere_v2)
-            tmp_agent = tmp_agent.replace('s', selected_replica)
-            report_text = llm.call(tmp_agent, report_input, model=cfg.sys.llm_model.large_model)
+            tmp_agent = copy.deepcopy(cfg.agents.tsundere)
+            tmp_agent = tmp_agent.replace('RANDOM_SENTENCE', selected_replica)
+            report_text = llm.call(tmp_agent, report_input, model=cfg.sys.llm_model.large_model, mode='summarize')
             self.add_step('report', report_text)
-            report = report_text.get('content', 'FF')
-            logger.info(f"\nALISU: {report}")
-            Utils.send_discord_notification(f'A.L.I.S.U : {report}')
-            return report
+            result_extracted = json.loads(report_text['content'])
+            if self.origin: # tempory
+                Utils.send_discord_notification(f'A.L.I.S.U : {result_extracted}')
+                return result_extracted
+            try:
+                vocal = Utils.create_vocal(f"{result_extracted['jp']}")
+                Utils.send_discord_notification(f'A.L.I.S.U : {result_extracted['fr']}', files=[vocal])
+                if self.origin is None: # tempory
+                    Utils.play_announcement(vocal)
+            except Exception as e:
+                Utils.send_discord_notification(f'A.L.I.S.U : {result_extracted}')
+            return result_extracted
 
         except Exception as e:
             logger.error("Exception", e)
