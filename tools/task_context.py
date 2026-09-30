@@ -87,9 +87,9 @@ class TaskContext:
         return data
 
     def _build_report_header(self):
-        header = f"{'='*30}\n"
+        header = f"{'='*40}\n"
         header += f"{'DISPATCH REPORT':^40}\n"
-        header += f"{'='*30}\n"
+        header += f"{'='*40}\n"
         return header
 
     def _build_report_metadata(self):
@@ -104,14 +104,13 @@ class TaskContext:
         metadata = (
             f"{'LLMCallCount:':<15} {call_count}\n"
             f"{'Input:':<15} {input_text}\n"
-            f"{'-' * 30}\n"
+            f"{'-' * 40}\n"
             f"{'Location:':<15} {location}\n"
             f"{'Category:':<15} {category}\n"
             f"{'Label:':<15} {label}\n"
-            f"{'Result:':<15} {result}\n"
             f"{'ReturnCode:':<15} {return_code}\n"
             f"{'Duration:':<15} {duration}s\n"
-            f"{'='*30}"
+            f"{'='*40}"
         )
         return metadata
 
@@ -175,7 +174,7 @@ class TaskContext:
                 return self.clone_safe()
             report = self.format_report("")
             self.display_report(report)
-            # Utils.send_discord_notification(report)
+            Utils.send_discord_notification(report)
             return self.clone_safe()
 
         except Exception as e:
@@ -200,7 +199,7 @@ class TaskContext:
             try:
                 vocal = Utils.create_vocal(f"{result_extracted['jp']}")
                 Utils.send_discord_notification(f'A.L.I.S.U : {result_extracted['fr']}', files=[vocal])
-                if self.origin is None: # tempory
+                if self.origin: # tempory
                     Utils.play_announcement(vocal)
             except Exception as e:
                 Utils.send_discord_notification(f'A.L.I.S.U : {result_extracted}')
@@ -212,4 +211,3 @@ class TaskContext:
                 return f"Action completed: {self.user_input}."
             else:
                 return "I'm sorry, I encountered an issue processing that request."
-

@@ -1,9 +1,51 @@
 import requests
 import json
 import os
+from dataclasses import dataclass
+from typing import Optional
 from plugins.home_automation.ha_mapping import DeviceCollection
 import logging
 logger = logging.getLogger(__name__)
+
+@dataclass
+class HAAction:
+    type: str = "NONE"
+    action: str = "NONE"
+
+    @classmethod
+    def from_dict(cls, data: dict):
+        return cls(
+            type=str(data.get("TYPE", "NONE")).upper(),
+            action=str(data.get("ACTION", "NONE")).upper(),
+        )
+
+    @classmethod
+    def from_json(cls, raw: str):
+        return cls.from_dict(json.loads(raw))
+
+    @classmethod
+    def from_native(cls, sub_category: str):
+        if not sub_category:
+            return cls()
+
+        s = sub_category.strip()
+        if "," in s:
+            try:
+                data = {
+                    k.strip().upper(): v.strip().upper()
+                    for k, v in (item.split(":", 1) for item in s.split(",") if ":" in item)
+                }
+                return cls.from_dict(data)
+            except Exception:
+                return cls()
+        if ":" in s:
+            device_type, action = s.split(":", 1)
+            return cls(type=device_type.strip().upper(), action=action.strip().upper())
+        return cls()
+
+    @property
+    def label(self) -> str:
+        return f"{self.type}:{self.action}"
 
 class CommunicationHA:
     """Home Assistant Service Plugin
@@ -41,7 +83,6 @@ class CommunicationHA:
             "Authorization": f"Bearer {self.cfg.ha_config.HA_TOKEN}",
             "Content-Type": "application/json"
         }
-        
         registry_file = os.path.join(self.cfg.config_dir, "ha_actuators.json")
         try:
             if os.path.exists(registry_file):
@@ -108,38 +149,48 @@ class CommunicationHA:
             return self.call_action("light", "turn_on", all_ids, data=data)
         return self.cfg.RETURN_CODE.ERR_INVALID_ARGUMENT
 
-    def handle_request(self, context):
+    def _handle_global_light(self, cmd_action: str):
+        if cmd_action in ("ON", "OFF"):
+            return self.smart_toggle(cmd_action)
+        return self.cfg.RETURN_CODE.ERR_INVALID_ARGUMENT
+
+    def handle_request(self, context, action: HAAction):
         if context.location == "NONSENSE":
             return self.cfg.RETURN_CODE.ERR_INVALID_ARGUMENT
+        device_type = action.type.upper()
+        cmd_action = action.action.upper()
+
         try:
-            params = context.sub_category.split(":")
-            device_type = params[0]
-            action = params[1]
             if context.location == "ALL" and device_type == "LIGHT":
-                if action == "ON":
-                    return self.smart_toggle(action)
-                elif action == "OFF":
-                    return self.smart_toggle(action)
-                return self.cfg.RETURN_CODE.ERR_INVALID_ARGUMENT
+                return self._handle_global_light(cmd_action)
 
             target = self.devices.search(context.location, device_type)
             if not target:
                 return self.cfg.RETURN_CODE.ERR_UNKNOWN_DEVICE
-            if action == "OFF":
-                return target.turn_off()
-            elif action == "ON":
-                return target.turn_on()
-            elif action == "TOGGLE":
-                return target.toggle()
-            elif action == "NIGHT_MODE":
-                return self.devices.set_brightness_percent_all(5)
-            elif action == "DAY_MODE":
-                return self.devices.set_brightness_percent_all(100)
-            return self.cfg.RETURN_CODE.ERR_INVALID_ARGUMENT
+            return self._dispatch_device_action(target, cmd_action, device_type)
 
         except Exception as e:
             logger.error(f"[!] CommunicationHA handle_request error: {e}")
             return self.cfg.RETURN_CODE.ERR
+    
+    def _dispatch_device_action(self, target, cmd_action: str, device_type: str):
+        if cmd_action in ("ON", "OFF", "TOGGLE"):
+            try:
+                return {
+                    "ON": target.turn_on,
+                    "OFF": target.turn_off,
+                    "TOGGLE": target.toggle,
+                }[cmd_action]()
+            except Exception as e:
+                logger.error(f"Error executing '{cmd_action}' on device: {e}")
+                return self.cfg.RETURN_CODE.ERR
+        if device_type == "LIGHT":
+            if cmd_action == "NIGHT_MODE":
+                return target.set_brightness(5)
+            if cmd_action == "DAY_MODE":
+                return target.set_brightness(100)
+        logger.warning(f"Action '{cmd_action}' not supported for device type '{device_type}'")
+        return self.cfg.RETURN_CODE.ERR_INVALID_ARGUMENT
 
     def get_state(self, entity_id):
         try:

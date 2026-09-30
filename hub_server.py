@@ -10,6 +10,7 @@ from common.conf_manager import cfg, setup_logging
 from tools.task_context import TaskContext
 from router_llm import RouterLLM
 from user_session import UserSession
+from common.llm_client import llm
 
 import logging
 setup_logging()
@@ -105,6 +106,11 @@ def post_command(req: CommandRequest):
     if req.username not in cfg.sys.security.USERS:
         raise HTTPException(status_code=403, detail="Unknown user")
     session = get_or_create_session(req.username)
+    try:
+        if 'http' in req.command:
+            req.command = llm.transcribe(req.command)['content']
+    except Exception as e:
+        logger.error(f"Error processing command: {e} {req.command}")
     context = TaskContext(user_input=req.command, session=session, origin=req.origin)
     router.add_to_queue(context)
     return {"status": "queued"}

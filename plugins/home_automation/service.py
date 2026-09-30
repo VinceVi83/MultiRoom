@@ -1,4 +1,4 @@
-from plugins.home_automation.ha_communication import CommunicationHA
+from plugins.home_automation.ha_communication import CommunicationHA, HAAction
 from plugins.home_automation.ha_listener import HAListener
 from plugins.home_automation.ha_registry import HomeAutomationRegistry
 from plugins.home_automation.ha_weather import WeatherHaApi, WeatherStatus
@@ -40,7 +40,6 @@ class HomeAutomationService:
             "ha_config.HA_TOKEN",
             "ha_config.HA_WEATHER_LOCATION"
         ]
-        
         missing_keys = []
 
         for key_path in required_keys:
@@ -55,10 +54,9 @@ class HomeAutomationService:
         if missing_keys:
             logger.error(f"Configuration {self.plugin_name} Error: Missing parameters: {', '.join(missing_keys)}")
             return self.cfg.RETURN_CODE.ERR_NOT_CONFIGURED
-        
         logger.info(f"Configuration {self.plugin_name} successfully loaded.")
         return self.cfg.RETURN_CODE.SUCCESS
-    
+
     def get_status(self):
         if self.status != self.cfg.RETURN_CODE.SUCCESS:
             logger.warning(f"{self.plugin_name} not configured")
@@ -69,47 +67,32 @@ class HomeAutomationService:
         if not self.get_status():
             return self.cfg.RETURN_CODE.ERR
         try:
-            params = {}
-            if context.sub_category and (',' in context.sub_category or ':' in context.sub_category):
-                params = dict(item.split(":") for item in context.sub_category.split(",") if ":" in item)
-                context.params = params
-                return self.ha_service.handle_request(context)
-            
+            action = HAAction.from_native(context.sub_category or "")
+            context.params = {"TYPE": action.type, "ACTION": action.action}
+            return self.ha_service.handle_request(context, action)
+
         except Exception as e:
-            logger.error(f"parsing params in service: {e}")
+            logger.exception(f"[HomeAutomation native ERROR] {e} | sub_category={context.sub_category}")
             return self.cfg.RETURN_CODE.ERR
+
 
     def execute(self, context, callback_internal_request_api):
-        # logger.info(f"[PLUGIN HomeAutomationService] Executing with context: {context}")
         if not self.get_status():
             return self.cfg.RETURN_CODE.ERR
+
         try:
-            result = llm.call(self.cfg.agents.home_automation_router, context.user_input, model=self.cfg.llm_model.small_model)
-            result_extracted = json.loads(result['content'])
-            action, dtype = result_extracted.get('ACTION', 'NONE'), result_extracted.get('TYPE', 'NONE')
-            context.sub_category = f"{dtype}:{action}"
-            context.add_step('sub_category', result_extracted)
-
-            if "WEATHER" in context.sub_category:
-                result = self.ha_weather.fetch_current_status()
-                if isinstance(result, WeatherStatus):
-                    context.result = result.display()
-                    return self.cfg.RETURN_CODE.SUCCESS
-            else:
-                result = self.ha_service.handle_request(context)
-
-            if result == self.cfg.RETURN_CODE.SUCCESS:
-                context.result = "Executed"
-            else:
-                context.result = "Already Executed"
+            raw = llm.call(
+                self.cfg.agents.home_automation_router,
+                context.user_input,
+                model=self.cfg.llm_model.small_model,
+            )
+            content = raw.get("content") if isinstance(raw, dict) else raw
+            action = HAAction.from_json(content)
+            context.sub_category = action.label
+            context.add_step("sub_category", {"TYPE": action.type, "ACTION": action.action})
+            result = self.ha_service.handle_request(context, action)
+            context.result = "Executed" if result == self.cfg.RETURN_CODE.SUCCESS else "Already Executed"
             return result
         except Exception as e:
-            logger.error(f"[PLUGIN HomeAutomationService ERROR] {e}")
+            logger.error(f"[HomeAutomation ERROR] {e} | user_input={context.user_input}")
             return self.cfg.RETURN_CODE.ERR
-    
-    def get_status(self):
-        if self.status != self.cfg.RETURN_CODE.SUCCESS:
-            logger.warning(f"Home Automation not configured")
-            return False
-        return True
-
