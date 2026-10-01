@@ -27,6 +27,13 @@ class UserSession:
         self.last_seen = 0
         self.services = {}
 
+    def get_vlc_is_active(self):
+        if ("Music VLC" in self.services and
+            hasattr(self.services["Music VLC"], 'vlc_instance') and
+            self.services["Music VLC"].vlc_instance is not None):
+            return self.services["Music VLC"].vlc_instance.is_active()
+        return False
+
     def add_new_service(self, service_name, service):
         if not service_name or not service:
             return cfg.RETURN_CODE.INVALID_INPUT

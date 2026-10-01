@@ -139,7 +139,7 @@ class VLCControl:
                 logger.error(f"Could not parse current volume. Output: {result.stdout}")
                 return None
             current_volume = int(match.group(1))
-            step = 10
+            step = 5
             if action == "VOL_DOWN":
                 new_volume = max(0, current_volume - step)
             else:
@@ -190,6 +190,16 @@ class VLCControl:
         ]
 
         try:
+            try:
+                self.audio_sink = self._detect_audio_sink()
+                if self.audio_sink is None:
+                    raise Exception("No audio sink detected")
+                self._run_pactl_command(["set-sink-volume", self.audio_sink, "10%"])
+                logger.info(f"System volume set to 20% after VLC startup (sink: {self.audio_sink})")
+                time.sleep(5)
+            except Exception as e:
+                logger.error(f"Failed to set volume to 20%: {e}")
+
             self.process = subprocess.Popen(
                 args,
                 stdout=subprocess.DEVNULL,
@@ -198,16 +208,6 @@ class VLCControl:
             )
             self.is_initialized = True
             self.is_playing = True
-            time.sleep(5)
-
-            try:
-                self.audio_sink = self._detect_audio_sink()
-                if self.audio_sink is None:
-                    raise Exception("No audio sink detected")
-                self._run_pactl_command(["set-sink-volume", self.audio_sink, "40%"])
-                logger.info(f"System volume set to 100% after VLC startup (sink: {self.audio_sink})")
-            except Exception as e:
-                logger.error(f"Failed to set volume to 100%: {e}")
             return self.cfg.RETURN_CODE.SUCCESS
         except Exception:
             return self.cfg.RETURN_CODE.ERR
@@ -293,12 +293,12 @@ class VLCControl:
         if current_loop != target_state:
             self._vlc_request("status.xml?command=pl_loop")
 
-    def get_current_state(self):
+    def is_active(self):
         xml_data = self._vlc_request("status.xml")
         parsed_data = self._parse_status_xml(xml_data)
         if parsed_data is None:
             return "unknown"
-        return parsed_data["state"]
+        return parsed_data["state"] == "playing"
 
     def __del__(self):
         self.kill_vlc()

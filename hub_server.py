@@ -3,6 +3,7 @@ import re
 import subprocess
 import sys
 import threading
+import time
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
@@ -57,12 +58,12 @@ def _run_pactl_command(args, check=True):
 
 def _detect_audio_sink():
     try:
-        try:
-            _run_pactl_command(["get-sink-volume", "@DEFAULT_SINK@"])
-            return "@DEFAULT_SINK@"
-        except subprocess.CalledProcessError:
-            pass
+        _run_pactl_command(["get-sink-volume", "@DEFAULT_SINK@"])
+        return "@DEFAULT_SINK@"
+    except subprocess.CalledProcessError:
+        pass
 
+    try:
         result = _run_pactl_command(["list", "short", "sinks"])
         lines = result.stdout.strip().split('\n')
         if lines and lines[0]:
@@ -128,6 +129,21 @@ def delete_session(username: str):
 
 @app.post("/announcement")
 def play_announcement(req: AnnouncementRequest):
+    active_sessions = []
+    with sessions_lock:
+        for username, user_session in sessions.items():
+            try:
+                if (user_session.get_vlc_is_active() is True and
+                    "Music VLC" in user_session.services):
+                    vlc_manager = user_session.services["Music VLC"]
+                    if (hasattr(vlc_manager, 'vlc_instance') and
+                        vlc_manager.vlc_instance is not None):
+                        logger.info(f"Pausing VLC for user: {username}")
+                        vlc_manager.vlc_instance.handle_simple_command("TOGGLE")
+                        active_sessions.append(user_session)
+            except Exception as e:
+                logger.error(f"Error pausing VLC for {username}: {e}")
+    time.sleep(3)
     saved_volume = None
     target_sink = None
 
@@ -149,24 +165,26 @@ def play_announcement(req: AnnouncementRequest):
         logger.info(f"Saved volume: {saved_volume}% (sink: {target_sink})")
 
         _run_pactl_command(["set-sink-mute", target_sink, "0"])
-        _run_pactl_command(["set-sink-volume", target_sink, "65536"])
+        _run_pactl_command(["set-sink-volume", target_sink, "40000"])
         verify = _run_pactl_command(["get-sink-volume", target_sink])
         logger.info(f"Volume after set-sink-volume 100%: {verify.stdout.strip()}")
         if "100%" not in verify.stdout:
             logger.warning(f"Le volume ne semble pas être passé à 100% sur {target_sink}")
 
         if not os.path.isfile(req.file_path):
+            logger.error(f"File not found: {req.file_path}")
             raise HTTPException(status_code=404, detail="Announcement file not found")
 
         env = _pulse_env()
-
         cmd = ["paplay"]
         if target_sink and target_sink != "@DEFAULT_SINK@":
             cmd += [f"--device={target_sink}"]
         cmd.append(req.file_path)
-
-        subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
+        logger.info(f"Playing announcement with command: {' '.join(cmd)}")
+        result = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
                     text=True, env=env, check=True)
+        if result.returncode != 0:
+            logger.error(f"paplay failed: {result.stderr}")
     except HTTPException:
         raise
     except Exception as e:
@@ -179,6 +197,14 @@ def play_announcement(req: AnnouncementRequest):
                 logger.info(f"Volume restored to {saved_volume}% (sink: {target_sink})")
             except Exception as e:
                 logger.error(f"Failed to restore volume: {e}")
+        
+        for user_session in active_sessions:
+            try:
+                vlc_manager = user_session.services["Music VLC"]
+                logger.info(f"Resuming VLC for user: {user_session.username}")
+                vlc_manager.vlc_instance.handle_simple_command("TOGGLE")
+            except Exception as e:
+                logger.error(f"Error resuming VLC for {user_session.username}: {e}")
 
     return {"status": "played", "file_path": req.file_path, "location": target_sink}
 
