@@ -194,7 +194,7 @@ class VLCControl:
                 self.audio_sink = self._detect_audio_sink()
                 if self.audio_sink is None:
                     raise Exception("No audio sink detected")
-                self._run_pactl_command(["set-sink-volume", self.audio_sink, "10%"])
+                self._run_pactl_command(["set-sink-volume", self.audio_sink, "20%"])
                 logger.info(f"System volume set to 20% after VLC startup (sink: {self.audio_sink})")
                 time.sleep(5)
             except Exception as e:
