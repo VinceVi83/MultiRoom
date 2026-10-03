@@ -107,7 +107,7 @@ class TaskContext:
             f"{'-' * 40}\n"
             f"{'Location:':<15} {location}\n"
             f"{'Category:':<15} {category}\n"
-            f"{'Label:':<15} {label}\n"
+            f"{'Label:':<30} {label}  Result: {result}\n"
             f"{'ReturnCode:':<15} {return_code}\n"
             f"{'Duration:':<15} {duration}s\n"
             f"{'='*40}"
@@ -199,7 +199,7 @@ class TaskContext:
             try:
                 vocal = Utils.create_vocal(f"{result_extracted['jp']}")
                 Utils.send_discord_notification(f'A.L.I.S.U : {result_extracted['fr']}', files=[vocal])
-                if self.origin: # tempory
+                if not self.origin: # tempory
                     Utils.play_announcement(vocal)
             except Exception as e:
                 Utils.send_discord_notification(f'A.L.I.S.U : {result_extracted}')
