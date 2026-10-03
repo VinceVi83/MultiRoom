@@ -55,6 +55,9 @@ class TaskContext:
     duration_load: float = 0
     duration_inference: float = 0
     duration: float = 0
+    duration_cmd: float = 0
+    duration_report: float = 0
+    duration_vocal: float = 0
     location: str = "NONSENSE"
     origin: str = None
     start: float = time.time()
@@ -107,9 +110,10 @@ class TaskContext:
             f"{'-' * 40}\n"
             f"{'Location:':<15} {location}\n"
             f"{'Category:':<15} {category}\n"
-            f"{'Label:':<30} {label}  Result: {result}\n"
+            f"{'Label:':<10} {label} Result: {result}\n"
             f"{'ReturnCode:':<15} {return_code}\n"
-            f"{'Duration:':<15} {duration}s\n"
+            f"{'Duration:':<15} {duration:.2f}s\n"
+            f" TCmd: {self.duration_cmd:.2f}s TReport: {self.duration_report:.2f}s TVocal: {self.duration_vocal:.2f}s\n"
             f"{'='*40}"
         )
         return metadata
@@ -190,17 +194,21 @@ class TaskContext:
             selected_replica = random.choice(cfg.sys.personality.TSUNDERE)
             tmp_agent = copy.deepcopy(cfg.agents.tsundere)
             tmp_agent = tmp_agent.replace('RANDOM_SENTENCE', selected_replica)
+            self.duration_cmd = time.time() - self.start
             report_text = llm.call(tmp_agent, report_input, model=cfg.sys.llm_model.large_model, mode='summarize')
+            self.duration_report = time.time() - self.start - self.duration_cmd
             self.add_step('report', report_text)
             result_extracted = json.loads(report_text['content'])
             if self.origin: # tempory
                 Utils.send_discord_notification(f'A.L.I.S.U : {result_extracted}')
                 return result_extracted
             try:
-                vocal = Utils.create_vocal(f"{result_extracted['jp']}")
-                Utils.send_discord_notification(f'A.L.I.S.U : {result_extracted['fr']}', files=[vocal])
                 if not self.origin: # tempory
+                    vocal = Utils.create_vocal(f"{result_extracted['jp']}")
+                    vocal2 = Utils.create_vocal(f"{result_extracted['en']}")
+                    self.duration_vocal = time.time() - self.start - self.duration_report - self.duration_cmd
                     Utils.play_announcement(vocal)
+                    Utils.send_discord_notification(f'A.L.I.S.U : {result_extracted["fr"]}', files=[vocal, vocal2])
             except Exception as e:
                 Utils.send_discord_notification(f'A.L.I.S.U : {result_extracted}')
             return result_extracted

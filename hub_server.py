@@ -4,7 +4,7 @@ import subprocess
 import sys
 import threading
 import time
-
+import requests
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from common.conf_manager import cfg, setup_logging
@@ -95,6 +95,11 @@ class AnnouncementRequest(BaseModel):
     file_path: str
     location: str | None = None
 
+class AnnouncementTTSRequest(BaseModel):
+    text: str
+    lang: str = "jp"
+    location: str = None
+
 def get_or_create_session(username: str) -> UserSession:
     with sessions_lock:
         if username not in sessions:
@@ -127,6 +132,127 @@ def delete_session(username: str):
     return {"status": "deleted"}
 
 
+def _create_vocal(text: str, lang: str = "jp") -> str:
+    try:
+        if lang == "jp":
+            return _create_vocal_jp(text)
+        # elif lang == "fr": # TODO: need better prompt or model or STT...
+        #     return _create_vocal_fr(text)
+        elif lang == "en":
+            return _create_vocal_jp(text)
+        elif lang == "fren":
+            text = _transcribe_with_llm(text, cfg.agents.translator_fren)
+            return _create_vocal_jp(text)
+        else:
+            logger.error(f"Unsupported language: {lang}")
+            return None
+    except Exception as e:
+        logger.exception(f"Error creating vocal: {e}")
+        return None
+
+
+def _create_vocal_jp(text: str) -> str:
+    base = cfg.sys.tts.rstrip("/")
+    try:
+        r = requests.post(
+            f"{base}/audio_query",
+            params={"text": text, "speaker": 3},
+            timeout=10,
+        )
+        r.raise_for_status()
+        query = r.json()
+        r = requests.post(
+            f"{base}/synthesis",
+            params={"speaker": 3},
+            json=query,
+            timeout=10,
+        )
+        r.raise_for_status()
+        timestamp = int(time.time() * 1000)
+        file_path = f"/tmp/vocal_jp_{timestamp}.wav"
+        with open(file_path, "wb") as f:
+            f.write(r.content)
+        logger.info(f"Created JP vocal file: {file_path}")
+        return file_path
+    except Exception as e:
+        logger.error(f"Error creating JP vocal: {e}")
+        return None
+
+def _transcribe_with_llm(text: str, system_prompt: str) -> str:
+    try:
+        response = llm.call(
+            system_prompt,
+            text,
+            model=cfg.sys.llm_model.large_model,
+            mode='creative'
+        )
+        processed_text = response.get("content", text)
+        logger.info(f"LLM transcription result: {text} {response}")
+        return processed_text
+    except Exception as e:
+        logger.error(f"Error in LLM transcription: {e}")
+        return text
+
+# def _create_vocal_fr(text: str) -> str:
+#     base = cfg.sys.tts.rstrip("/")
+#     try:
+#         processed_text = _transcribe_with_llm(text, cfg.agents.tts_furansugo)
+#         processed_text = romaji_to_katakana(processed_text)
+#         logger.info(f"Processed FR text for TTS: {processed_text}")
+#         r = requests.post(
+#             f"{base}/audio_query",
+#             params={"text": processed_text, "speaker": 1},
+#             timeout=10,
+#         )
+#         r.raise_for_status()
+#         query = r.json()
+#         r = requests.post(
+#             f"{base}/synthesis",
+#             params={"speaker": 1},
+#             json=query,
+#             timeout=10,
+#         )
+#         r.raise_for_status()
+#         timestamp = int(time.time() * 1000)
+#         file_path = f"/tmp/vocal_fr_{timestamp}.wav"
+#         with open(file_path, "wb") as f:
+#             f.write(r.content)
+#         logger.info(f"Created FR vocal file: {file_path}")
+#         return file_path
+#     except Exception as e:
+#         logger.error(f"Error creating FR vocal: {e}")
+#         return None
+
+@app.post("/play_announcement")
+def play_announcement_with_tts(request: AnnouncementTTSRequest):
+    text = request.text
+    lang = request.lang
+    location = request.location
+    try:
+        file_path = _create_vocal(text, lang)
+        if not file_path:
+            raise HTTPException(status_code=500, detail="Failed to generate vocal file")
+        logger.info(f"Generated vocal file: {file_path}")
+        announcement_request = AnnouncementRequest(
+            file_path=file_path,
+            location=location
+        )
+        result = play_announcement(announcement_request)
+        
+        return {
+            "status": "success",
+            "text": text,
+            "lang": lang,
+            "file_path": file_path,
+            "location": location,
+            "announcement_result": result
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(f"Error in play_announcement_with_tts: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.post("/announcement")
 def play_announcement(req: AnnouncementRequest):
     active_sessions = []
@@ -143,7 +269,7 @@ def play_announcement(req: AnnouncementRequest):
                         active_sessions.append(user_session)
             except Exception as e:
                 logger.error(f"Error pausing VLC for {username}: {e}")
-    time.sleep(3)
+    time.sleep(2)
     saved_volume = None
     target_sink = None
 
