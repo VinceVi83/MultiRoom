@@ -1,6 +1,5 @@
-from common.conf_manager import cfg
+from common.conf_manager import cfg, Utils
 from common.llm_client import llm
-from tools.utils import Utils
 from plugins.your_plugin.logic_module import PluginLogic
 import logging
 logger = logging.getLogger(__name__)

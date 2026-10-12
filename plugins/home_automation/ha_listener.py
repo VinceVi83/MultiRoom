@@ -6,8 +6,11 @@ import time
 import threading
 import subprocess
 from collections import deque
-from datetime import datetime, timedelta
+from datetime import datetime
+from common.conf_manager import Utils
+import ast
 import logging
+
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -26,48 +29,48 @@ class CommandQueue:
 
     async def add_command(self, command_info):
         async with self._lock:
-            current_time = time.time()
+            now = time.time()
             if self.is_blocked:
-                if current_time < self.block_until:
-                    logger.info(f"Command blocked (spam protection active until {datetime.fromtimestamp(self.block_until)})")
+                if now < self.block_until:
+                    logger.info(f"Command blocked until {datetime.fromtimestamp(self.block_until)}")
                     return False
-                else:
-                    self.is_blocked = False
-                    logger.info("Spam protection deactivated, resuming normal operation")
+                self.is_blocked = False
+                logger.info("Spam protection deactivated")
+
             self.command_history.append({
-                'timestamp': current_time,
+                'timestamp': now,
                 'command': command_info.get('command', ''),
                 'eid': command_info.get('eid', ''),
-                'action': command_info.get('action', '')
+                'action': command_info.get('action', ''),
             })
-            self._clean_history(current_time)
-            if self._is_spam(current_time):
-                logger.warning(f"Spam detected! Blocking commands for {self.cooldown_period} seconds")
+            self._clean_history(now)
+
+            if self._is_spam(now):
+                logger.warning(f"Spam detected, blocking for {self.cooldown_period}s")
                 self.is_blocked = True
-                self.block_until = current_time + self.cooldown_period
+                self.block_until = now + self.cooldown_period
                 self.queue.clear()
                 return False
-            command_info['timestamp'] = current_time
+
+            command_info['timestamp'] = now
             self.queue.append(command_info)
             if self.processing_task is None or self.processing_task.done():
                 self.processing_task = asyncio.create_task(self._process_queue())
             return True
 
-    def _clean_history(self, current_time):
-        cutoff_time = current_time - self.spam_window
-        while self.command_history and self.command_history[0]['timestamp'] < cutoff_time:
+    def _clean_history(self, now):
+        cutoff = now - self.spam_window
+        while self.command_history and self.command_history[0]['timestamp'] < cutoff:
             self.command_history.popleft()
 
-    def _is_spam(self, current_time):
-        if len(self.command_history) > self.max_commands_in_window:
-            recent_commands = [cmd for cmd in self.command_history if cmd['timestamp'] > current_time - 0.5]
-            if len(recent_commands) > self.max_commands_in_window:
-                entities = set(cmd['eid'] for cmd in recent_commands if cmd['eid'])
-                if len(entities) > 2:
-                    return True
-                if len(recent_commands) > 5:
-                    return True
-        return False
+    def _is_spam(self, now):
+        if len(self.command_history) <= self.max_commands_in_window:
+            return False
+        recent = [c for c in self.command_history if c['timestamp'] > now - 0.5]
+        if len(recent) <= self.max_commands_in_window:
+            return False
+        entities = {c['eid'] for c in recent if c['eid']}
+        return len(entities) > 2 or len(recent) > 5
 
     async def _process_queue(self):
         while self.queue:
@@ -79,27 +82,29 @@ class CommandQueue:
                     break
                 command_info = self.queue.popleft()
             try:
-                command_age = time.time() - command_info.get('timestamp', time.time())
-                if command_age > 5.0:
-                    logger.info(f"Ignoring old command (age: {command_age:.2f}s): {command_info.get('command', '')}")
+                age = time.time() - command_info.get('timestamp', time.time())
+                if age > 5.0:
+                    logger.info(f"Ignoring old command (age: {age:.2f}s)")
                     continue
                 logger.info(f"Processing queued command: {command_info.get('command', '')}")
-                if 'callback' in command_info and command_info['callback']:
+                callback = command_info.get('callback')
+                if callback:
                     await asyncio.to_thread(
-                        command_info['callback'],
+                        callback,
                         command_info['command'],
                         command_info.get('eid'),
-                        command_info.get('action')
+                        command_info.get('action'),
                     )
                 await asyncio.sleep(0.1)
             except Exception as e:
-                logger.error(f"Error processing queued command: {e}")
+                logger.error(f"Error processing queued command: {e}", exc_info=True)
+
 
 class HAListener:
     """Home Assistant WebSocket Event Listener
-    
+
     Role: Monitors Home Assistant events and triggers corresponding actions via AI Hub.
-    
+
     Methods:
         __init__(self, cfg) : Initialize listener with config, mapping, and hub messenger.
         _load_mapping(self) : Load action mapping from JSON file.
@@ -113,6 +118,7 @@ class HAListener:
         _delayed_trigger(self, eid, action) : Delayed action trigger with error handling.
         trigger(self, eid, name, action, command) : Execute the actual command/service call.
     """
+
     def __init__(self, cfg):
         self.cfg = cfg
         self.uri = f"ws://{self.cfg.ha_config.HA_HOSTNAME}:8123/api/websocket"
@@ -123,31 +129,9 @@ class HAListener:
         self.command_queue = CommandQueue(
             spam_window=2.0,
             max_commands_in_window=3,
-            cooldown_period=5.0
+            cooldown_period=5.0,
         )
         self._load_mapping()
-
-    def send_cmd(self, content, entity_id=None, action=None):
-        try:
-            cmd = [self.cfg.ha_config.python_bin, "-m", "tools.hub_messenger", "-u", "system"]
-            cmd.append(content.strip())
-            process = subprocess.Popen(
-                cmd, 
-                cwd=self.cfg.ha_config.working_dir,
-                stdout=subprocess.PIPE, 
-                stderr=subprocess.PIPE,
-                text=True
-            )
-            stdout, stderr = process.communicate()
-
-            if entity_id and action and not content.startswith('@'):
-                combined_output = (stdout or "") + (stderr or "")
-                if combined_output.strip():
-                    self._parse_and_learn_from_output(combined_output, entity_id, action, content)
-            return stdout, stderr
-        except Exception as e:
-            logger.error(f"HAListener sent order error: {e}")
-            return None, str(e)
 
     def _load_mapping(self):
         mapping_file = os.path.join(self.cfg.config_dir, "ha_action_mapping.json")
@@ -155,72 +139,111 @@ class HAListener:
             if os.path.exists(mapping_file):
                 with open(mapping_file, "r", encoding="utf-8") as f:
                     self.mapping = json.load(f)
+                logger.info(f"Loaded mapping: {len(self.mapping)} entities")
+            else:
+                logger.warning(f"Mapping file not found: {mapping_file}")
         except Exception as e:
-            logger.error(f"loading mapping: {e}")
-
-    def _parse_and_learn_from_output(self, output, entity_id, action, original_command):
-        if not output or not output.strip():
-            return
-
-        json_str = output.strip()
-        if '{' in json_str and '}' in json_str:
-            first_brace = json_str.find('{')
-            last_brace = json_str.rfind('}')
-            if first_brace < last_brace:
-                json_str = json_str[first_brace:last_brace+1]
-        try:
-            data = json.loads(json_str)
-            success = False
-            result_action = None
-            category = "Unknown"
-            sub_category = "Unknown"
-            location = "Unknown"
-
-            return_code = data.get('return_code') or data.get('returnCode') or data.get('ReturnCode')
-            if return_code and 'SUCCESS' in str(return_code):
-                success = True
-
-            result_action = data.get('result') or data.get('Result') or data.get('RESULT')
-            if not result_action and isinstance(data.get('Result'), dict):
-                result_action = data.get('Result', {}).get('action')
-
-            category = data.get('category') or data.get('Category') or data.get('CATEGORY') or "Unknown"
-            location = data.get('location') or data.get('Location') or data.get('LOCATION') or "Unknown"
-            if not location and isinstance(data.get('data'), dict):
-                location = data.get('data', {}).get('LOCATION_CLEANER_AGENT', {}).get('location') or "Unknown"
-
-            sub_cat_data = data.get('sub_category') or data.get('subCategory') or data.get('sub_category')
-            if isinstance(sub_cat_data, dict):
-                sub_category = sub_cat_data.get('label') or "Unknown"
-            elif sub_cat_data:
-                sub_category = sub_cat_data
-
-            if sub_category == "Unknown":
-                sub_category = data.get('sub_category') or data.get('subCategory') or "Unknown"
-
-            if success and result_action:
-                full_native_command = f"@{category.lower()};-;{location};-;{sub_category};-;{result_action}"
-                self._update_action_mapping(entity_id, action, full_native_command)
-                logger.info(f"Learned native command for {entity_id}/{action}: '{original_command}' -> '{full_native_command}'")
-        except json.JSONDecodeError:
-            pass
-        except Exception as e:
-            logger.error(f"Error parsing learning output: {e}")
+            logger.error(f"Loading mapping failed: {e}", exc_info=True)
 
     def _update_action_mapping(self, entity_id, action, new_command):
         mapping_file = os.path.join(self.cfg.config_dir, "ha_action_mapping.json")
         try:
-            if entity_id in self.mapping:
-                actions = self.mapping[entity_id].get("actions", {})
-                if action in actions:
-                    actions[action] = new_command
-                    with open(mapping_file, "w", encoding="utf-8") as f:
-                        json.dump(self.mapping, f, indent=2, ensure_ascii=False)
+            if entity_id not in self.mapping:
+                logger.warning(f"Entity {entity_id} not in mapping, skipping update")
+                return
+
+            entry = self.mapping[entity_id]
+            if not isinstance(entry, dict):
+                logger.warning(f"Unexpected mapping structure for {entity_id}")
+                return
+
+            if isinstance(entry.get("actions"), dict):
+                entry["actions"][action] = new_command
+            else:
+                entry[action] = new_command
+
+            with open(mapping_file, "w", encoding="utf-8") as f:
+                json.dump(self.mapping, f, indent=2, ensure_ascii=False)
+            logger.info(f"Updated mapping {entity_id}/{action} -> {new_command}")
         except Exception as e:
-            logger.error(f"Failed to update action mapping: {e}")
+            logger.error(f"Failed to update mapping: {e}", exc_info=True)
+
+    def _parse_and_learn_from_output(self, output, entity_id, action, original_command):
+        if isinstance(output, dict):
+            data = output
+        else:
+            if not output or not output.strip():
+                return
+            json_str = output.strip()
+            if '{' in json_str and '}' in json_str:
+                first_brace = json_str.find('{')
+                last_brace = json_str.rfind('}')
+                if first_brace < last_brace:
+                    json_str = json_str[first_brace:last_brace + 1]
+            try:
+                data = json.loads(json_str)
+            except json.JSONDecodeError:
+                try:
+                    data = ast.literal_eval(json_str)
+                except (ValueError, SyntaxError) as e:
+                    logger.error(f"Failed to parse learning output: {e}")
+                    return
+        if not isinstance(data, dict):
+            return
+
+        return_code = data.get('return_code') or data.get('returnCode') or data.get('ReturnCode')
+        rc_str = str(return_code).upper() if return_code else ""
+        if 'NOTHING_TO_DO' in rc_str:
+            return
+        if 'SUCCESS' not in rc_str:
+            return
+
+        category = data.get('category') or data.get('Category') or "Unknown"
+        location = data.get('location') or data.get('Location') or "Unknown"
+        sub_cat_data = data.get('sub_category') or data.get('subCategory')
+        if isinstance(sub_cat_data, dict):
+            sub_category = sub_cat_data.get('label') or "Unknown"
+        elif sub_cat_data:
+            sub_category = sub_cat_data
+        else:
+            sub_category = "Unknown"
+
+        if sub_category == "Unknown":
+            return
+
+        full_native_command = f"@{category.lower()};-;{location};-;{sub_category}"
+        self._update_action_mapping(entity_id, action, full_native_command)
+        logger.info(f"Learned {entity_id}/{action}: '{original_command}' -> '{full_native_command}'")
+
+    @staticmethod
+    def _extract_output(result):
+        if result is None:
+            return ""
+        if isinstance(result, str):
+            return result
+        if isinstance(result, (tuple, list)):
+            return "".join(str(p) for p in result if p)
+        if isinstance(result, dict):
+            return json.dumps(result)
+        return str(result)
+
+    def send_cmd(self, content, entity_id=None, action=None):
+        try:
+            result = Utils.send_command_multiroom(content.strip())
+            logger.info(f"send_cmd result: {result}")
+
+            if entity_id and action and not content.startswith('@'):
+                output = self._extract_output(result)
+                if output and output.strip():
+                    self._parse_and_learn_from_output(output, entity_id, action, content)
+            return result
+        except Exception as e:
+            logger.error(f"send_cmd error: {e}", exc_info=True)
+            return None
 
     def run_ha_listener(self):
         self.start_time = time.time()
+
         def _target():
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
@@ -231,15 +254,14 @@ class HAListener:
 
             loop.set_exception_handler(handle_async_exception)
             try:
-                logger.info("Starting Home Assistant listener thread.")
+                logger.info("Starting Home Assistant listener thread")
                 loop.run_until_complete(self.start())
             except Exception as e:
                 logger.critical(f"Fatal crash in listener thread: {e}", exc_info=True)
             finally:
-                logger.warning("Listener thread stopped.")
+                logger.warning("Listener thread stopped")
 
-        thread = threading.Thread(target=_target, daemon=True)
-        thread.start()
+        threading.Thread(target=_target, daemon=True).start()
 
     async def start(self):
         while True:
@@ -259,11 +281,11 @@ class HAListener:
 
     async def _auth(self, ws):
         try:
-            await ws.recv() 
+            await ws.recv()
             await ws.send(json.dumps({"type": "auth", "access_token": self.token}))
             res = json.loads(await asyncio.wait_for(ws.recv(), timeout=10))
             return res.get("type") == "auth_ok"
-        except (asyncio.TimeoutError, websockets.exceptions.ConnectionClosed, Exception) as e:
+        except Exception as e:
             logger.error(f"Auth error: {e}")
             return False
 
@@ -282,7 +304,7 @@ class HAListener:
         attrs = edata.get("new_state", {}).get("attributes", {})
         action = edata.get("event_type") or attrs.get("event_type")
 
-        if not action or str(action).lower() in ["unknown", "none", "unavailable"]:
+        if not action or str(action).lower() in ("unknown", "none", "unavailable"):
             return
 
         if eid in self.pending_tasks:
@@ -292,7 +314,7 @@ class HAListener:
 
     async def _delayed_trigger(self, eid, action):
         try:
-            await asyncio.sleep(0.5) 
+            await asyncio.sleep(0.5)
             btn_config = self.mapping[eid]
             btn_name = btn_config.get("name", eid)
             custom_message = btn_config.get("actions", {}).get(action)
@@ -302,31 +324,31 @@ class HAListener:
         except asyncio.CancelledError:
             pass
         except Exception as e:
-            logger.error(f"in delayed trigger for {eid}: {e}")
+            logger.error(f"delayed_trigger error for {eid}: {e}", exc_info=True)
             self.pending_tasks.pop(eid, None)
 
     async def trigger(self, eid, name, action, command):
-        logger.info(f"EXECUTION: [{name}] -> Action: {action} -> Command: {command}")
+        logger.info(f"EXECUTION: [{name}] -> {action} -> {command}")
 
         if "TO BE CONFIGURED" in command or "NEW" in command:
-            logger.info(f"Action ignored: Please edit JSON for {eid}")
+            logger.info(f"Action ignored, edit JSON for {eid}")
             return
         if command.startswith("service:"):
-            service_call = command.replace("service:", "")
-            logger.info(f"Service call HA: {service_call}")
+            logger.info(f"Service call HA: {command.replace('service:', '')}")
+            return
+
+        added = await self.command_queue.add_command({
+            'command': command,
+            'eid': eid,
+            'name': name,
+            'action': action,
+            'callback': self.send_cmd,
+        })
+        if added:
+            logger.info(f"Command queued: '{command}'")
         else:
-            command_info = {
-                'command': command,
-                'eid': eid,
-                'name': name,
-                'action': action,
-                'callback': self.send_cmd
-            }
-            added = await self.command_queue.add_command(command_info)
-            if added:
-                logger.info(f"Command queued: '{command}'")
-            else:
-                logger.info(f"Command rejected by spam filter: '{command}'")
+            logger.info(f"Command rejected by spam filter: '{command}'")
+
 
 if __name__ == "__main__":
     from common.conf_manager import cfg
@@ -334,7 +356,6 @@ if __name__ == "__main__":
         ha_listener = HAListener(cfg.home_automation)
         asyncio.run(ha_listener.start())
     except KeyboardInterrupt:
-        logger.error("\nStopping the listener.")
+        logger.error("Stopping the listener")
     except Exception as e:
-        logger.error(f"Fatal error: {e}")
-
+        logger.error(f"Fatal error: {e}", exc_info=True)

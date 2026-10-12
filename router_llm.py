@@ -3,10 +3,10 @@ import threading
 import json
 import time
 import importlib
-from common.conf_manager import cfg, CfgConfig
+from concurrent.futures import Future
+from common.conf_manager import cfg, CfgConfig, Utils
 from common.llm_client import llm
 from tools.task_context import TaskContext
-from tools.utils import Utils
 import copy
 import logging
 
@@ -96,11 +96,10 @@ class RouterLLM:
                 context.return_code = cfg.RETURN_CODE.ERR
         else:
             context.return_code = cfg.RETURN_CODE.ERR
-
         return context._archive_and_rename()
 
     def get_location(self, context):
-        if Utils.enable_bypass() and self.bypass_location(context):
+        if cfg.no_bypass and self.bypass_location(context):
             return
 
         local_res = llm.call(cfg.agents.locate, context.user_input, model=cfg.sys.llm_model.small_model)
@@ -148,7 +147,7 @@ class RouterLLM:
     def select_plugin(self, context):
         category_res = None
         context.category = 'UNKNOWN'
-        if Utils.enable_bypass():
+        if cfg.no_bypass:
             category_res = self.bypass_router(context)
             if category_res:
                 context.category = category_res.get('plugin', 'UNKNOWN')
@@ -227,13 +226,6 @@ class RouterLLM:
                 
                 if context.user_input.startswith('@'):
                     response_context = self.execute_native(context)
-                elif self.test:
-                    result = llm.call(cfg.agents.pre_process, context.user_input, model=cfg.sys.llm_model.small_model)
-                    result_extracted = json.loads(result['content'])
-                    if result_extracted.get('valid', 0):
-                        response_context = self.select_and_execute(context)
-                    else:
-                        continue
                 else:
                     response_context = self.select_and_execute(context)
 
@@ -248,10 +240,10 @@ class RouterLLM:
                 json_output = json.dumps(response_context.to_dict())
                 socks = getattr(context.session, 'socks', [])
                 for s in socks:
-                    try:
-                        s.sendall(json_output.encode() + b"\n")
-                    except:
-                        pass
+                    s.sendall(json_output.encode() + b"\n")
+
+                if context.reply_future is not None and not context.reply_future.done():
+                    context.reply_future.set_result(response_context.to_dict())
 
                 self.command_queue.task_done()
 
@@ -276,4 +268,3 @@ class RouterLLM:
         self.command_queue.put(None) 
         if hasattr(self, 'thread') and self.thread.is_alive():
             self.thread.join(timeout=5.0)
-

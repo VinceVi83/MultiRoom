@@ -3,13 +3,26 @@ import json
 import time
 import shutil
 from pathlib import Path
+from concurrent.futures import Future
+from datetime import time as dt_time, datetime, timedelta
 from dataclasses import dataclass, fields, asdict, field
 from common.conf_manager import cfg, Utils
 from common.llm_client import llm
 import random
 import copy
+import queue
 import logging
+
 logger = logging.getLogger(__name__)
+
+NIGHT_START = dt_time(22, 0)
+NIGHT_END   = dt_time(7, 0)
+
+def night_mode(now: datetime | None = None) -> bool:
+    t = (now or datetime.now()).time()
+    if NIGHT_START <= NIGHT_END:
+        return NIGHT_START <= t < NIGHT_END
+    return t >= NIGHT_START or t < NIGHT_END
 
 class ReturnCode(Enum):
     SUCCESS = 1
@@ -65,6 +78,7 @@ class TaskContext:
     data_request: dict = field(default_factory=dict)
     return_code: ReturnCode = cfg.RETURN_CODE.ERR
     call_counter: int = 0
+    reply_future: Future | None = field(default=None, repr=False, compare=False)
 
     def add_step(self, step_name, data, bypass=False):
         self.data[step_name] = data
@@ -76,7 +90,11 @@ class TaskContext:
         self.return_code = Utils.format_result(self.return_code)
         if isinstance(self.result, ReturnCode):
             self.result = self.result.name
-        data = {f.name: getattr(self, f.name) for f in fields(self) if f.name != 'session'}
+        data = {
+            f.name: getattr(self, f.name)
+            for f in fields(self)
+            if f.name not in ('session', 'reply_future')
+        }
         return TaskContext(**data, session=None)
 
     @staticmethod
@@ -85,9 +103,11 @@ class TaskContext:
         return TaskContext(**data)
 
     def to_dict(self):
-        data = asdict(self)
-        data.pop('session', None)
-        return data
+        return {
+            f.name: getattr(self, f.name)
+            for f in fields(self)
+            if f.name not in ('session', 'reply_future')
+        }
 
     def _build_report_header(self):
         header = f"{'='*40}\n"
@@ -203,7 +223,7 @@ class TaskContext:
                 Utils.send_discord_notification(f'A.L.I.S.U : {result_extracted}')
                 return result_extracted
             try:
-                if not self.origin: # tempory
+                if not self.origin and not night_mode(): # tempory
                     vocal = Utils.create_vocal(f"{result_extracted['jp']}")
                     vocal2 = Utils.create_vocal(f"{result_extracted['en']}")
                     self.duration_vocal = time.time() - self.start - self.duration_report - self.duration_cmd

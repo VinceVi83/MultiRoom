@@ -5,6 +5,7 @@ import sys
 import threading
 import time
 import requests
+from concurrent.futures import Future
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from common.conf_manager import cfg, setup_logging
@@ -118,9 +119,13 @@ def post_command(req: CommandRequest):
     except Exception as e:
         logger.error(f"Error processing command: {e} {req.command}")
     context = TaskContext(user_input=req.command, session=session, origin=req.origin)
+    context.reply_future = Future()
     router.add_to_queue(context)
-    return {"status": "queued"}
-
+    try:
+        result = context.reply_future.result(timeout=180)
+    except Exception as e:
+        raise HTTPException(status_code=504, detail=f"Timeout or error: {e}")
+    return result
 
 @app.delete("/session/{username}")
 def delete_session(username: str):
@@ -337,4 +342,3 @@ def play_announcement(req: AnnouncementRequest):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=cfg.sys.HUB_PORT)
-

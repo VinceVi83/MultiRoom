@@ -1,6 +1,5 @@
 from common.llm_client import llm
 from plugins.music_vlc.vlc_user_manager import VLCUserManager
-from tools.utils import Utils
 import json
 import logging
 
@@ -92,7 +91,7 @@ class MusicVlcService:
     def execute(self, context, callback_internal_request_api):
         if not self.get_status():
             return self.cfg.RETURN_CODE.ERR
-        category_res = self.bypass_router(context) if Utils.enable_bypass() else None
+        category_res = self.bypass_router(context) if cfg.no_bypass else None
         try:
             if category_res:
                 context.sub_category = category_res
