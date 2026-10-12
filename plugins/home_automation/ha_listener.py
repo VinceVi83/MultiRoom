@@ -211,7 +211,7 @@ class HAListener:
         if sub_category == "Unknown":
             return
 
-        full_native_command = f"@{category.lower()};-;{location};-;{sub_category}"
+        full_native_command = f"@{category.lower()};-;{location};-;{sub_category};-;Unknown"
         self._update_action_mapping(entity_id, action, full_native_command)
         logger.info(f"Learned {entity_id}/{action}: '{original_command}' -> '{full_native_command}'")
 

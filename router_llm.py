@@ -80,7 +80,9 @@ class RouterLLM:
         Utils.send_discord_notification(f'A.L.I.S.U will execute : {context.user_input}')
         if len(parts) < 4:
             logger.info(f"[!] Native Format Error: {context.user_input}")
-            return "FORMAT_ERROR"
+            context.return_code = cfg.RETURN_CODE.ERR_INVALID_ARGUMENT
+            context.result = "FORMAT_ERROR"
+            return context._archive_and_rename()
 
         plugin_name = parts[0]
         context.category = plugin_name.upper()
@@ -249,10 +251,6 @@ class RouterLLM:
 
             except queue.Empty:
                 if time.time() - last_activity >= keep_alive_threshold:
-                    try:
-                        self.llm.call("Be ready", cfg.agents.router, context.user_input, model=cfg.sys.llm_model.small_model)
-                    except:
-                        pass
                     last_activity = time.time()
                 continue
             except Exception as e:
