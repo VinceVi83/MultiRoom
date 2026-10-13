@@ -2,6 +2,7 @@ from common.llm_client import llm
 from plugins.music_vlc.vlc_user_manager import VLCUserManager
 import json
 import logging
+from common.conf_manager import cfg
 
 logger = logging.getLogger(__name__)
 
@@ -89,6 +90,7 @@ class MusicVlcService:
         return None
 
     def execute(self, context, callback_internal_request_api):
+        logger.info("Hello")
         if not self.get_status():
             return self.cfg.RETURN_CODE.ERR
         category_res = self.bypass_router(context) if cfg.no_bypass else None
