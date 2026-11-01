@@ -243,7 +243,6 @@ def play_announcement_with_tts(request: AnnouncementTTSRequest):
             location=location
         )
         result = play_announcement(announcement_request)
-        
         return {
             "status": "success",
             "text": text,
@@ -307,13 +306,27 @@ def play_announcement(req: AnnouncementRequest):
             raise HTTPException(status_code=404, detail="Announcement file not found")
 
         env = _pulse_env()
-        cmd = ["paplay"]
+        cmd = [
+            "mpv",
+            "--no-video",
+            "--no-terminal",
+            "--keep-open=no",
+        ]
         if target_sink and target_sink != "@DEFAULT_SINK@":
-            cmd += [f"--device={target_sink}"]
+            cmd.append(f"--audio-device=pulse/{target_sink}")
+            
         cmd.append(req.file_path)
         logger.info(f"Playing announcement with command: {' '.join(cmd)}")
-        result = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
-                    text=True, env=env, check=True)
+        
+        result = subprocess.run(
+            cmd,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+            text=True,
+            env=env,
+            check=True
+        )
         if result.returncode != 0:
             logger.error(f"paplay failed: {result.stderr}")
     except HTTPException:
@@ -328,7 +341,6 @@ def play_announcement(req: AnnouncementRequest):
                 logger.info(f"Volume restored to {saved_volume}% (sink: {target_sink})")
             except Exception as e:
                 logger.error(f"Failed to restore volume: {e}")
-        
         for user_session in active_sessions:
             try:
                 vlc_manager = user_session.services["Music VLC"]
@@ -336,7 +348,6 @@ def play_announcement(req: AnnouncementRequest):
                 vlc_manager.vlc_instance.handle_simple_command("TOGGLE")
             except Exception as e:
                 logger.error(f"Error resuming VLC for {user_session.username}: {e}")
-
     return {"status": "played", "file_path": req.file_path, "location": target_sink}
 
 if __name__ == "__main__":
