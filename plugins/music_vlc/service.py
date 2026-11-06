@@ -100,7 +100,7 @@ class MusicVlcService:
                 step_data = {'label': category_res, 'bypass': 1}
                 context.add_step('sub_category', step_data, True)
             else:
-                llm_res = llm.call(self.cfg.agents.music_vlc_music_vlc, context.user_input, model=self.cfg.llm_model.small_model)
+                llm_res = llm.call(self.cfg.agents.music_vlc_music_vlc, context.user_input, model=self.cfg.common.llm_gateway.model.small)
                 result_extracted = json.loads(llm_res['content'])
                 context.sub_category = result_extracted.get('CATEGORY', 'NONE')
                 step_data = result_extracted
@@ -108,7 +108,7 @@ class MusicVlcService:
 
             handlers = {
                 'PLAYLIST': self._handle_playlist,
-                'MUSIC':    lambda ctx: llm.call(self.cfg.agents.music_vlc_vlc, context.user_input, model=self.cfg.llm_model.small_model),
+                'MUSIC':    lambda ctx: llm.call(self.cfg.agents.music_vlc_vlc, context.user_input, model=self.cfg.common.llm_gateway.model.small),
                 'DISCOVER': lambda ctx: self._handle_discover(ctx)
             }
             handler = handlers.get(context.sub_category)
@@ -128,7 +128,7 @@ class MusicVlcService:
 
     def _handle_playlist(self, context):
         vlc_manager = self.check_user_use_service(context)
-        r = llm.call(vlc_manager.playlist_AGENT, context.user_input, model=self.cfg.llm_model.small_model)
+        r = llm.call(vlc_manager.playlist_AGENT, context.user_input, model=self.cfg.common.llm_gateway.model.small)
         result_extracted = json.loads(r['content'])
         context.add_step('Result', r)
         return {'action': f"{result_extracted.get('action', 'ERR')}:{result_extracted.get('NAME', 'ERR')}"}

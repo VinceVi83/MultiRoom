@@ -56,7 +56,7 @@ class YourPluginService:
             return self.cfg.RETURN_CODE.ERR
         logic = PluginLogic()
         
-        intent_result = llm.call(self.INTENT_AGENT, context.user_input, model=cfg.sys.llm_model.small_model)
+        intent_result = llm.call(self.INTENT_AGENT, context.user_input, model=self.cfg.common.llm_gateway.model.small)
         result_extracted = json.loads(intent_result['content'])
         intent_id = int(result_extracted.get('ID', '0'))
         
@@ -64,7 +64,7 @@ class YourPluginService:
         result = "NONSENSE"
         
         if context.sub_category == "ACTION_ONE":
-            extracted = llm.call(self.PLUGIN_NAME.EXTRACT_DATA, model=cfg.sys.llm_model.small_model)
+            extracted = llm.call(self.PLUGIN_NAME.EXTRACT_DATA, model=self.cfg.common.llm_gateway.model.small)
             result_extracted = json.loads(extracted['content'])
             result = logic.perform_action(result_extracted)
         elif context.sub_category == "ACTION_TWO":

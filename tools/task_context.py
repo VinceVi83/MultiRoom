@@ -215,7 +215,7 @@ class TaskContext:
             tmp_agent = copy.deepcopy(cfg.agents.tsundere)
             tmp_agent = tmp_agent.replace('RANDOM_SENTENCE', selected_replica)
             self.duration_cmd = time.time() - self.start
-            report_text = llm.call(tmp_agent, report_input, model=cfg.sys.llm_model.large_model, mode='summarize')
+            report_text = llm.call(tmp_agent, report_input, model=cfg.common.llm_gateway.model.large, mode='summarize')
             self.duration_report = time.time() - self.start - self.duration_cmd
             self.add_step('report', report_text)
             result_extracted = json.loads(report_text['content'])

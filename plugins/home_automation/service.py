@@ -84,7 +84,7 @@ class HomeAutomationService:
             raw = llm.call(
                 self.cfg.agents.home_automation_router,
                 context.user_input,
-                model=self.cfg.llm_model.small_model,
+                model=self.cfg.common.llm_gateway.model.small
             )
             content = raw.get("content") if isinstance(raw, dict) else raw
             action = HAAction.from_json(content)

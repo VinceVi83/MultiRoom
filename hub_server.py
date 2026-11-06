@@ -8,14 +8,13 @@ import requests
 from concurrent.futures import Future
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from common.conf_manager import cfg, setup_logging
+from common.conf_manager import cfg
 from tools.task_context import TaskContext
 from router_llm import RouterLLM
 from user_session import UserSession
 from common.llm_client import llm
 
 import logging
-setup_logging()
 logger = logging.getLogger(__name__)
 
 cfg.debug = 1 if "-d" in sys.argv or "--debug" in sys.argv else 0
@@ -188,7 +187,7 @@ def _transcribe_with_llm(text: str, system_prompt: str) -> str:
         response = llm.call(
             system_prompt,
             text,
-            model=cfg.sys.llm_model.large_model,
+            model=cfg.common.llm_gateway.model.large,
             mode='creative'
         )
         processed_text = response.get("content", text)
