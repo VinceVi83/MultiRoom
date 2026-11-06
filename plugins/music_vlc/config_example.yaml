@@ -22,16 +22,13 @@ config:
     - volume
   VLC_PORT_START: 48888
   LEN_ALBUMS_CACHE: 50
-
   SMB_MOUNT_POINT:
     - "/mnt/g/Music"
-
 security:
   VLC_USERS:
     test: test
   MA_USERS:
     TEST: test
-
 extra:
   BYPASS_MUSIC:
   - diminu
